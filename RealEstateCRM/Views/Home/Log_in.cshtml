@@ -1,0 +1,105 @@
+﻿<link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Login";
+}
+
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 rounded-3xl overflow-hidden shadow-lg bg-white">
+        <!-- Illustration side -->
+        <div class="bg-[#e9e9eb] flex items-center justify-center p-8">
+            <img src="~/assets/images/Homey_transparent.png"
+                 asp-append-version="true"
+                 alt="Homey illustration"
+                 class="w-full max-w-xl h-auto object-contain" />
+        </div>
+
+        <!-- Auth panel -->
+        <div class="bg-white p-8 md:p-12">
+            <!-- Small logo glyph -->
+            <div class="flex justify-center mb-6">
+                <div class="h-8 w-8 rounded-full bg-neutral-900 flex items-center justify-center">
+                    <span class="text-white text-lg select-none">+</span>
+                </div>
+            </div>
+
+            <h1 class="text-3xl md:text-[28px] font-semibold text-center text-neutral-900">Welcome back!</h1>
+            <p class="text-center text-sm text-neutral-500 mt-2">Please enter your details</p>
+
+            <form asp-controller="Home" asp-action="Log_in" method="post" class="mt-10 space-y-6">
+                @Html.AntiForgeryToken()
+                <div>
+                    <label for="email" class="block text-sm font-medium text-neutral-700">Email</label>
+                    <input id="email" name="email" type="email" autocomplete="email"
+                           class="mt-2 w-full border-0 border-b border-neutral-300 focus:border-neutral-900 focus:ring-0 py-2 placeholder-neutral-400"
+                           placeholder="you@example.com" required />
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-neutral-700">Password</label>
+                    <div class="relative mt-2">
+                        <input id="password" name="password" type="password" autocomplete="current-password"
+                               class="w-full border-0 border-b border-neutral-300 focus:border-neutral-900 focus:ring-0 py-2 pr-10 placeholder-neutral-400"
+                               placeholder="••••••••" required />
+                        <button type="button" id="togglePassword"
+                                class="absolute inset-y-0 right-0 flex items-center text-neutral-500 hover:text-neutral-700"
+                                aria-label="Toggle password visibility">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke-width="2"/>
+                                <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="mt-3 flex items-center justify-between text-xs text-neutral-500">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="accent-neutral-900" />
+                            <span>Remember for 30 days</span>
+                        </label>
+                        <a href="/Account/ForgotPassword" class="hover:underline">Forgot password?</a>
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="w-full h-12 rounded-full bg-neutral-900 text-white font-medium hover:bg-neutral-800 transition">
+                    Log In
+                </button>
+
+                <button type="button"
+                        class="w-full h-12 rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 font-medium transition inline-flex items-center justify-center gap-3">
+                    <!-- Google 'G' icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 533.5 544.3">
+                        <path fill="#4285F4" d="M533.5 278.4c0-18.6-1.7-36.5-5-53.8H272.1v101.8h147.1c-6.3 34-25 62.8-53.4 82v68.1h86.2c50.5-46.5 81.5-115 81.5-198.1z"/>
+                        <path fill="#34A853" d="M272.1 544.3c72.9 0 134.1-24.1 178.8-65.8l-86.2-68.1c-24 16.1-54.7 25.7-92.6 25.7-71 0-131.1-47.9-152.7-112.3H31.9v70.5C76.4 493.8 168.4 544.3 272.1 544.3z"/>
+                        <path fill="#FBBC05" d="M119.4 323.8c-10.7-31.9-10.7-66.1 0-98.1V155.2H31.9c-44.3 88.6-44.3 194.2 0 282.8l87.5-70.5z"/>
+                        <path fill="#EA4335" d="M272.1 107.7c39.6-.6 77.7 14.8 106.7 43.1l79.5-79.5C406.2 25.6 344.9 0 272.1 0 168.4 0 76.4 50.5 31.9 155.2l87.5 70.5C141 155.9 201.1 107.7 272.1 107.7z"/>
+                    </svg>
+                    Log in with Google
+                </button>
+            </form>
+
+            <div class="mt-12 text-center text-sm text-neutral-500">
+                Don’t have an account?
+                <a href="/SignUp" class="text-neutral-900 hover:underline ml-1">Sign Up</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simple password show/hide
+    (function () {
+        const pwd = document.getElementById('password');
+        const toggle = document.getElementById('togglePassword');
+        const icon = document.getElementById('eyeIcon');
+        if (pwd && toggle && icon) {
+            toggle.addEventListener('click', function () {
+                const show = pwd.type === 'password';
+                pwd.type = show ? 'text' : 'password';
+                icon.innerHTML = show
+                    ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke-width="2"/><path d="M4 4l16 16" stroke-width="2"/>'
+                    : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke-width="2"/>';
+            });
+        }
+    })();
+</script>
