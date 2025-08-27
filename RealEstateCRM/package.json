@@ -1,0 +1,19 @@
+{
+  "name": "realestatecrm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx @tailwindcss/cli -i ./Styles/app.css -o ./wwwroot/css/output.css --minify",
+    "watch": "npx @tailwindcss/cli -i ./Styles/app.css -o ./wwwroot/css/output.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.12",
+    "tailwindcss": "^4.1.12"
+  }
+}
