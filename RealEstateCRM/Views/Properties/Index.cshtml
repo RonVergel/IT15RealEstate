@@ -1,0 +1,117 @@
+﻿@{
+   
+}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="font-semibold text-2xl">Properties</h1>
+
+    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        Add Property
+    </button>
+</div>
+
+<!-- Search / controls (keeps your existing row) -->
+<div class="flex items-center justify-between mb-6 gap-4">
+    <div class="flex-1 max-w-2xl">
+        <label class="relative block">
+            <span class="sr-only">Search</span>
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
+            </span>
+
+            <input type="search"
+                   placeholder="Search"
+                   class="w-[275px] pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </label>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <button type="button" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md text-gray-600 hover:bg-gray-50">
+            <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+            </svg>
+            <span>Filter</span>
+        </button>
+
+        <div class="relative inline-block text-left">
+            <button type="button" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md text-gray-600 hover:bg-gray-50">
+                <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h6" />
+                </svg>
+                <span>Newest to Oldest</span>
+                <svg class="h-3 w-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- property cards -->
+@{
+    /* Demo: render 8 cards. Replace with your model-bound loop (foreach Model.Properties) later. */
+    var total = 4;
+    var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
+}
+
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    @for (int i = 0; i < total; i++)
+    {
+        var isSell = (i % 2 == 0);
+        var badgeText = isSell ? "Sell" : "Rent";
+        var badgeColor = isSell ? "bg-blue-600" : "bg-purple-600";
+        var imageSrc = placeholder;
+    <div class="w-[267px] h-[317px] bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col">
+        <!-- Image area -->
+        <div class="relative w-full h-[130px]">
+            <img src="@imageSrc" alt="Property image" class="w-full h-full object-cover" />
+        </div>
+
+        <!-- Content area -->
+        <div class="p-4 flex-1 flex flex-col">
+            <!-- Title and Badge -->
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-gray-900 truncate">Property 1</h3>
+                <span class="text-xs font-medium text-white px-2.5 py-1 rounded @badgeColor">
+                    @badgeText
+                </span>
+            </div>
+
+            <!-- Address -->
+            <p class="text-sm text-gray-600 mt-1 truncate">1234 Greenfield Avenue</p>
+
+            <!-- Icons -->
+            <div class="flex items-center gap-4 text-sm text-gray-600 my-4">
+                <div class="flex items-center gap-1.5">
+                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l1.5-2.5A2 2 0 017 3h10a2 2 0 011.5.5L21 7" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21V7h10v14" />
+                    </svg>
+                    <span>4</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 1.38-1.79 2.5-4 2.5S13 11.38 13 10s1.79-2.5 4-2.5 4 1.12 4 2.5z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10c0 1.38 1.79 2.5 4 2.5S11 11.38 11 10 9.21 7.5 7 7.5 3 8.62 3 10z" />
+                    </svg>
+                    <span>2</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M7 7v14M17 7v14" />
+                    </svg>
+                    <span>99 sqm</span>
+                </div>
+            </div>
+
+            <!-- Price -->
+            <div class="mt-auto">
+                <p class="text-xl font-bold text-gray-900">₱ 9,999,999</p>
+            </div>
+        </div>
+    </div>
+    }
+</div>
+

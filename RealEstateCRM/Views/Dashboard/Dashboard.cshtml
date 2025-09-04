@@ -1,0 +1,47 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Dashboard";
+}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside style="width: 248px;" class="bg-white border-r border-gray-200 flex flex-col py-8 px-4">
+        <!-- Logo at top-left -->
+        <img src="~/assets/images/Homey_transparent.png"
+             alt="Homey Logo"
+             style="width: 101px; height: 101px;"
+             class="object-contain self-start mb-6" />
+
+        <!-- Nav -->
+        <nav class="flex flex-col gap-4 mt-6">
+            <a href="/Home/Dashboard" class="text-gray-700 hover:text-blue-600 font-medium px-3 py-2 rounded">Dashboard</a>
+            <a href="/Home/Profile" class="text-gray-700 hover:text-blue-600 font-medium px-3 py-2 rounded">Profile</a>
+            <a href="/Home/Settings" class="text-gray-700 hover:text-blue-600 font-medium px-3 py-2 rounded">Settings</a>
+            <a href="/Home/Log_out" class="text-gray-700 hover:text-blue-600 font-medium px-3 py-2 rounded">Log Out</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col">
+        <!-- Top Bar -->
+        <header class="w-full bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+            <!-- Search -->
+            <div class="flex-1 max-w-lg">
+                <input type="text"
+                       placeholder="Search Properties, Leads, and more"
+                       class="w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+
+            <div class="flex items-center gap-4 ml-6">
+                <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    Add Property
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Body -->
+        <main class="flex-1 px-8 py-6 bg-gray-50">
+            <h1 class="text-2xl font-semibold mb-4">Dashboard</h1>
+            <p>Welcome!</p>
+        </main>
+    </div>
+</div>

@@ -1,0 +1,194 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    ViewData["Title"] = "Deals";
+    var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
+    var avatarPlaceholder = Url.Content("~/assets/images/avatar-placeholder.png");
+}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="font-semibold text-2xl">Deals</h1>
+    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        Add Deal
+    </button>
+</div>
+
+<!-- Deals Pipeline -->
+<div id="deals-pipeline" class="flex gap-5 overflow-x-auto min-h-[600px]">
+    <!-- Column: New -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm font-medium">
+            New
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="New">
+            <!-- Deal Card -->
+            <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing">
+                <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-sm">Property 1</h4>
+                    <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">Sell</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">1234 Greenfield Avenue</p>
+                <div class="mt-4 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">Rheniel Penional</p>
+                            <p class="text-xs text-gray-500">Agent</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">John Kerl Parantar</p>
+                            <p class="text-xs text-gray-500">Client</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column: Offer Made -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-lime-200 text-lime-800 px-3 py-2 rounded-md text-sm font-medium">
+            Offer Made
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="OfferMade">
+            <!-- Cards will be dragged here -->
+        </div>
+    </div>
+
+    <!-- Column: Negotiation -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-yellow-200 text-yellow-800 px-3 py-2 rounded-md text-sm font-medium">
+            Negotiation
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="Negotiation">
+            <!-- Deal Card -->
+            <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing">
+                <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-sm">Property 1</h4>
+                    <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">Sell</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">1234 Greenfield Avenue</p>
+                <div class="mt-4 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">Rheniel Penional</p>
+                            <p class="text-xs text-gray-500">Agent</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">John Kerl Parantar</p>
+                            <p class="text-xs text-gray-500">Client</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column: Contract Draft -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm font-medium">
+            Contract Draft
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="ContractDraft">
+            <!-- Deal Card -->
+            <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing">
+                <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-sm">Property 1</h4>
+                    <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">Sell</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">1234 Greenfield Avenue</p>
+                <div class="mt-4 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">Rheniel Penional</p>
+                            <p class="text-xs text-gray-500">Agent</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">John Kerl Parantar</p>
+                            <p class="text-xs text-gray-500">Client</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Deal Card -->
+            <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing">
+                <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-sm">Property 1</h4>
+                    <span class="text-xs font-medium bg-purple-600 text-white px-2 py-0.5 rounded">Rent</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">5678 Oak Street</p>
+                <div class="mt-4 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">Rheniel Penional</p>
+                            <p class="text-xs text-gray-500">Agent</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <img src="@avatarPlaceholder" class="w-6 h-6 rounded-full object-cover" />
+                        <div>
+                            <p class="text-xs font-medium text-gray-800">Jane Doe</p>
+                            <p class="text-xs text-gray-500">Client</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const columns = document.querySelectorAll('.deal-cards');
+            columns.forEach(column => {
+                new Sortable(column, {
+                    group: 'deals', // Allows dragging between columns with the same group name
+                    animation: 150,
+                    ghostClass: 'sortable-ghost', // Class for the drop placeholder
+                    dragClass: 'sortable-drag', // Class for the item being dragged
+                    onEnd: function (evt) {
+                        // You can add an AJAX call here to save the new state
+                        const dealId = evt.item.dataset.dealId; // Assuming you add data-deal-id to your cards
+                        const newStage = evt.to.dataset.stage;
+                        console.log(`Deal ${dealId} moved to ${newStage}`);
+                        // Example: fetch('/api/deals/moveto', { method: 'POST', ... });
+                    }
+                });
+            });
+        });
+    </script>
+}
+
+@section Styles {
+    <style>
+        .sortable-ghost {
+            background-color: #cce5ff;
+            border: 2px dashed #007bff;
+            opacity: 0.6;
+        }
+        .sortable-drag {
+            opacity: 1 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+}
+

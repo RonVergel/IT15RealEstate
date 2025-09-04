@@ -1,0 +1,95 @@
+﻿@{
+   
+}
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-semibold">Dashboard</h1>
+
+        <div class="flex gap-2">
+            <a asp-controller="Properties" asp-action="Index" class="inline-block px-4 py-2 bg-white border border-gray-200 rounded shadow-sm text-sm hover:bg-gray-50">Properties</a>
+            <a asp-controller="Contacts" asp-action="Index" class="inline-block px-4 py-2 bg-blue-600 text-white rounded shadow-sm text-sm hover:bg-blue-700">Contacts</a>
+        </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="text-sm text-gray-500">Total Contacts</div>
+            <div class="mt-2 text-2xl font-bold">—</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="text-sm text-gray-500">Properties</div>
+            <div class="mt-2 text-2xl font-bold">—</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="text-sm text-gray-500">Open Deals</div>
+            <div class="mt-2 text-2xl font-bold">—</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="text-sm text-gray-500">Pending Tasks</div>
+            <div class="mt-2 text-2xl font-bold">—</div>
+        </div>
+    </div>
+
+    <!-- Main panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Recent activity / activity feed -->
+        <section class="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-medium">Recent Activity</h2>
+                <a class="text-sm text-blue-600 hover:underline" asp-controller="Activities" asp-action="Index">View all</a>
+            </div>
+
+            <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <div class="w-2.5 h-2.5 rounded-full bg-blue-500 mt-2"></div>
+                    <div>
+                        <div class="text-sm"><strong>New contact</strong> — John Doe added to Contacts</div>
+                        <div class="text-xs text-gray-500 mt-1">10 minutes ago</div>
+                    </div>
+                </li>
+
+                <li class="flex items-start gap-3">
+                    <div class="w-2.5 h-2.5 rounded-full bg-green-500 mt-2"></div>
+                    <div>
+                        <div class="text-sm"><strong>Property listed</strong> — 123 Main St added</div>
+                        <div class="text-xs text-gray-500 mt-1">1 hour ago</div>
+                    </div>
+                </li>
+
+                <li class="flex items-start gap-3">
+                    <div class="w-2.5 h-2.5 rounded-full bg-yellow-500 mt-2"></div>
+                    <div>
+                        <div class="text-sm"><strong>Deal updated</strong> — Offer received for 45 Elm</div>
+                        <div class="text-xs text-gray-500 mt-1">Yesterday</div>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Quick actions / upcoming tasks -->
+        <aside class="bg-white p-4 rounded-lg shadow-sm">
+            <h2 class="text-lg font-medium mb-3">Quick Actions</h2>
+
+            <div class="flex flex-col gap-2">
+                <a asp-controller="Contacts" asp-action="Index" class="w-full text-left px-3 py-2 bg-gray-50 rounded hover:bg-gray-100">View Contacts</a>
+                <a asp-controller="Properties" asp-action="Index" class="w-full text-left px-3 py-2 bg-gray-50 rounded hover:bg-gray-100">View Properties</a>
+                <a asp-controller="Deals" asp-action="Index" class="w-full text-left px-3 py-2 bg-gray-50 rounded hover:bg-gray-100">View Deals</a>
+                <a asp-controller="Tasks" asp-action="Index" class="w-full text-left px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">My Tasks</a>
+            </div>
+
+            <hr class="my-4" />
+
+            <h3 class="text-sm font-medium mb-2">Upcoming</h3>
+            <ul class="text-sm text-gray-600 space-y-2">
+                <li>Call with client — 2:00 PM</li>
+                <li>Property viewing — 4:30 PM</li>
+                <li>Send contract — Tomorrow</li>
+            </ul>
+        </aside>
+    </div>
+</div>
