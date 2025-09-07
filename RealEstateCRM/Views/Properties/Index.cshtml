@@ -1,11 +1,12 @@
-﻿@{
-   
+﻿@model List<RealEstateCRM.Models.Property>
+@{
+   ViewData["Title"] = "Properties";
 }
 
 <div class="flex items-center justify-between mb-6">
     <h1 class="font-semibold text-2xl">Properties</h1>
 
-    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+    <button id="add-property-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
         Add Property
     </button>
 </div>
@@ -51,67 +52,648 @@
 
 <!-- property cards -->
 @{
-    /* Demo: render 8 cards. Replace with your model-bound loop (foreach Model.Properties) later. */
-    var total = 4;
     var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
 }
 
 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-    @for (int i = 0; i < total; i++)
+    @if (Model != null && Model.Any())
     {
-        var isSell = (i % 2 == 0);
-        var badgeText = isSell ? "Sell" : "Rent";
-        var badgeColor = isSell ? "bg-blue-600" : "bg-purple-600";
-        var imageSrc = placeholder;
-    <div class="w-[267px] h-[317px] bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col">
-        <!-- Image area -->
-        <div class="relative w-full h-[130px]">
-            <img src="@imageSrc" alt="Property image" class="w-full h-full object-cover" />
+        @foreach (var property in Model)
+        {
+            var badgeColor = property.PropertyType == "Sell" ? "bg-blue-600" : "bg-purple-600";
+            var badgeText = property.PropertyType == "Sell" ? "For Sale" : "For Rent";
+            var imageSrc = placeholder;
+            
+            <div class="property-card w-[267px] h-[317px] bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200"
+                 data-property-id="@property.Id"
+                 data-property-title="@property.Title"
+                 data-property-address="@property.Address"
+                 data-property-price="@property.Price"
+                 data-property-area="@(property.Area ?? 0)"
+                 data-property-sqft="@(property.SQFT ?? 0)"
+                 data-property-bedrooms="@(property.Bedrooms ?? 0)"
+                 data-property-bathrooms="@(property.Bathrooms ?? 0)"
+                 data-property-type="@property.PropertyType"
+                 data-property-buying-type="@(property.Type ?? "")"
+                 data-property-status="@(property.ListingStatus ?? "Unknown")"
+                 data-property-listing-time="@property.ListingTime.ToString("yyyy-MM-dd HH:mm")"
+                 data-property-days-market="@(property.DaysOnMarket ?? 0)"
+                 data-property-price-per-sqft="@(property.PricePerSQFT ?? 0)"
+                 data-property-link="@(property.PropertyLink ?? "")"
+                 data-property-agent="@(property.Agent ?? "")"
+                 data-property-description="@(property.Description ?? "")">
+                
+                <!-- Image area -->
+                <div class="relative w-full h-[130px]">
+                    <img src="@imageSrc" alt="Property image" class="w-full h-full object-cover" />
+                </div>
+
+                <!-- Content area -->
+                <div class="p-4 flex-1 flex flex-col">
+                    <!-- Title and Badge -->
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-gray-900 truncate">@property.Title</h3>
+                        <span class="text-xs font-medium text-white px-2.5 py-1 rounded @badgeColor">
+                            @badgeText
+                        </span>
+                    </div>
+
+                    <!-- Address -->
+                    <p class="text-sm text-gray-600 mt-1 truncate">@property.Address</p>
+
+                    <!-- Icons -->
+                    <div class="flex items-center gap-4 text-sm text-gray-600 my-4">
+                        <div class="flex items-center gap-1.5">
+                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l1.5-2.5A2 2 0 007 3h10a2 2 0 011.5.5L21 7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21V7h10v14" />
+                            </svg>
+                            <span>@(property.Bedrooms ?? 0)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 1.38-1.79 2.5-4 2.5S13 11.38 13 10s1.79-2.5 4-2.5 4 1.12 4 2.5z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10c0 1.38 1.79 2.5 4 2.5S11 11.38 11 10 9.21 7.5 7 7.5 3 8.62 3 10z" />
+                            </svg>
+                            <span>@(property.Bathrooms ?? 0)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M7 7v14M17 7v14" />
+                            </svg>
+                            <span>@(property.Area ?? 0) sqm</span>
+                        </div>
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mt-auto">
+                        <p class="text-xl font-bold text-gray-900">₱ @property.Price.ToString("N0")</p>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <!-- Simple centered message -->
+        <div class="col-span-full text-center py-16">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No Properties Found!</h3>
+            <p class="text-sm text-gray-500">Add your first property to get started.</p>
         </div>
+    }
+</div>
 
-        <!-- Content area -->
-        <div class="p-4 flex-1 flex flex-col">
-            <!-- Title and Badge -->
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-bold text-gray-900 truncate">Property 1</h3>
-                <span class="text-xs font-medium text-white px-2.5 py-1 rounded @badgeColor">
-                    @badgeText
-                </span>
+<!-- Property Details Modal -->
+<div id="property-details-modal" class="fixed inset-0 z-[9999] hidden opacity-0 transition-opacity duration-300 ease-out" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;">
+    <!-- Background overlay -->
+    <div class="absolute inset-0 transition-all duration-300 ease-out" id="property-details-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
+
+    <!-- Modal content container -->
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+        <!-- Modal dialog -->
+        <div class="relative bg-white rounded-lg shadow-xl w-[500px] h-[90vh] max-w-[95vw] max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="property-details-content">
+            <!-- Header with close button -->
+            <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-900" id="modal-property-title">Property Details</h3>
+                <button id="close-property-details-btn" class="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors duration-200" aria-label="Close">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
-            <!-- Address -->
-            <p class="text-sm text-gray-600 mt-1 truncate">1234 Greenfield Avenue</p>
+            <!-- Scrollable content -->
+            <div class="overflow-y-auto h-full pb-16">
+                <!-- Property Image -->
+                <div class="w-full h-48 bg-gray-200">
+                    <img src="@placeholder" alt="Property" class="w-full h-full object-cover" id="modal-property-image" />
+                </div>
 
-            <!-- Icons -->
-            <div class="flex items-center gap-4 text-sm text-gray-600 my-4">
-                <div class="flex items-center gap-1.5">
-                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l1.5-2.5A2 2 0 017 3h10a2 2 0 011.5.5L21 7" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21V7h10v14" />
-                    </svg>
-                    <span>4</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 1.38-1.79 2.5-4 2.5S13 11.38 13 10s1.79-2.5 4-2.5 4 1.12 4 2.5z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10c0 1.38 1.79 2.5 4 2.5S11 11.38 11 10 9.21 7.5 7 7.5 3 8.62 3 10z" />
-                    </svg>
-                    <span>2</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M7 7v14M17 7v14" />
-                    </svg>
-                    <span>99 sqm</span>
-                </div>
-            </div>
+                <!-- Property Information -->
+                <div class="p-6 space-y-6">
+                    <!-- Basic Info -->
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-2" id="modal-property-name">Property Name</h4>
+                        <p class="text-gray-600 mb-1" id="modal-property-address">Address</p>
+                        <div class="flex items-center gap-4 text-sm text-gray-600">
+                            <span id="modal-property-bed-bath">4 🛏️ 2 🛁</span>
+                            <span id="modal-property-area">99 sqm</span>
+                        </div>
+                    </div>
 
-            <!-- Price -->
-            <div class="mt-auto">
-                <p class="text-xl font-bold text-gray-900">₱ 9,999,999</p>
+                    <!-- About the Property -->
+                    <div>
+                        <h5 class="text-md font-semibold text-gray-900 mb-2">About the Property</h5>
+                        <p class="text-sm text-gray-600 leading-relaxed" id="modal-property-description">
+                            Property description will appear here...
+                        </p>
+                    </div>
+
+                    <!-- Details Grid -->
+                    <div>
+                        <h5 class="text-md font-semibold text-gray-900 mb-3">Details</h5>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">For Sale</span>
+                                    <span class="font-medium" id="modal-property-type">Yes</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Status</span>
+                                    <span class="font-medium" id="modal-property-status">Active</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Price</span>
+                                    <span class="font-medium" id="modal-property-price">₱ 9,999,999</span>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Type</span>
+                                    <span class="font-medium" id="modal-property-buying-type">House</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Days on Market</span>
+                                    <span class="font-medium" id="modal-days-on-market">30</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Price/sqft</span>
+                                    <span class="font-medium" id="modal-price-per-sqft">₱ 50,000</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Property Information -->
+                    <div>
+                        <h5 class="text-md font-semibold text-gray-900 mb-3">Property Information</h5>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Listed On</span>
+                                    <span class="font-medium" id="modal-listing-date">2020</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">SQFT</span>
+                                    <span class="font-medium" id="modal-sqft">1,200</span>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Bedrooms</span>
+                                    <span class="font-medium" id="modal-bedrooms">4</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Bathrooms</span>
+                                    <span class="font-medium" id="modal-bathrooms">2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Added by & Owner -->
+                    <div>
+                        <div class="space-y-3">
+                            <div>
+                                <h6 class="text-sm font-medium text-gray-700 mb-1">Added by</h6>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <span class="text-xs font-medium text-blue-600" id="modal-agent-initials">AG</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900" id="modal-agent-name">Agent Name</p>
+                                        <p class="text-xs text-gray-500">Agent</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Property Link -->
+                            <div id="property-link-section" class="hidden">
+                                <a href="#" target="_blank" id="modal-property-link" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                    </svg>
+                                    View Property Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    }
 </div>
+
+<!-- Add Property Modal -->
+<div id="add-property-modal" class="fixed inset-0 z-[9999] hidden opacity-0 transition-opacity duration-300 ease-out" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;">
+    <!-- Background overlay with custom color #1D1D1D -->
+    <div class="absolute inset-0 transition-all duration-300 ease-out modal-backdrop-custom" id="modal-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
+
+    <!-- Modal content container -->
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+        <!-- Modal dialog -->
+        <div class="relative bg-white rounded-lg shadow-xl w-[900px] h-[900px] max-w-[95vw] max-h-[95vh] overflow-auto transform scale-95 transition-transform duration-300 ease-out" id="modal-content">
+            <!-- Close button -->
+            <div class="absolute top-4 right-4 z-10">
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors duration-200" aria-label="Close">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal content -->
+            <div class="p-8">
+                <h3 class="text-xl font-semibold text-gray-900 text-center mb-6">Add New Property</h3>
+
+                <form asp-controller="Properties" asp-action="Index" method="post" class="space-y-4">
+                    @Html.AntiForgeryToken()
+                    
+                    <!-- Property Title (Required) -->
+                    <div>
+                        <label for="property-title" class="block text-sm font-medium text-gray-700 mb-1">
+                            Property Title <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="property-title" name="Title" required 
+                               placeholder="e.g., Beautiful Family Home"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                    </div>
+
+                    <!-- Address (Required) -->
+                    <div>
+                        <label for="property-address" class="block text-sm font-medium text-gray-700 mb-1">
+                            Address <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="property-address" name="Address" required 
+                               placeholder="e.g., 1234 Greenfield Avenue, Quezon City"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                    </div>
+
+                    <!-- Two-column layout for numbers -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Property Price -->
+                        <div>
+                            <label for="property-price" class="block text-sm font-medium text-gray-700 mb-1">Property Price (₱)</label>
+                            <input type="number" id="property-price" name="Price" min="0" step="0.01"
+                                   placeholder="e.g., 5000000"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+
+                        <!-- Area -->
+                        <div>
+                            <label for="property-area" class="block text-sm font-medium text-gray-700 mb-1">Area (sqm)</label>
+                            <input type="number" id="property-area" name="Area" min="0"
+                                   placeholder="e.g., 120"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+
+                        <!-- SQFT -->
+                        <div>
+                            <label for="property-sqft" class="block text-sm font-medium text-gray-700 mb-1">SQFT</label>
+                            <input type="number" id="property-sqft" name="SQFT" min="0" step="0.01"
+                                   placeholder="e.g., 1291.67"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+
+                        <!-- Bedrooms -->
+                        <div>
+                            <label for="property-bedrooms" class="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
+                            <input type="number" id="property-bedrooms" name="Bedrooms" min="0"
+                                   placeholder="e.g., 3"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+
+                        <!-- Bathrooms -->
+                        <div>
+                            <label for="property-bathrooms" class="block text-sm font-medium text-gray-700 mb-1">Bathrooms</label>
+                            <input type="number" id="property-bathrooms" name="Bathrooms" min="0"
+                                   placeholder="e.g., 2"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+
+                        <!-- Listing Time -->
+                        <div>
+                            <label for="property-listing-time" class="block text-sm font-medium text-gray-700 mb-1">Listing Time</label>
+                            <input type="datetime-local" id="property-listing-time" name="ListingTime"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+                    </div>
+
+                    <!-- Property Type (Required) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                            Property Type <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Sell">
+                                For Sale
+                            </button>
+                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Rent">
+                                For Rent
+                            </button>
+                        </div>
+                        <input type="hidden" name="PropertyType" id="property-type" value="" required />
+                    </div>
+
+                    <!-- Type (Buying/Viewing) (Required) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                            Type <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <button type="button" class="type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Buying">
+                                Buying
+                            </button>
+                            <button type="button" class="type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Viewing">
+                                Viewing
+                            </button>
+                        </div>
+                        <input type="hidden" name="Type" id="property-buying-type" value="" required />
+                    </div>
+
+                    <!-- Listing Status -->
+                    <div>
+                        <label for="property-listing-status" class="block text-sm font-medium text-gray-700 mb-1">Listing Status</label>
+                        <select id="property-listing-status" name="ListingStatus"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200">
+                            <option value="Active">Active</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Sold">Sold</option>
+                            <option value="Off Market">Off Market</option>
+                        </select>
+                    </div>
+
+                    <!-- Property Link -->
+                    <div>
+                        <label for="property-link" class="block text-sm font-medium text-gray-700 mb-1">Property Link</label>
+                        <input type="url" id="property-link" name="PropertyLink" 
+                               placeholder="e.g., https://example.com/property/123"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                    </div>
+
+                    <!-- Agent -->
+                    <div>
+                        <label for="property-agent" class="block text-sm font-medium text-gray-700 mb-1">Assigned Agent</label>
+                        <input type="text" id="property-agent" name="Agent" 
+                               placeholder="e.g., Rheniel Penional"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label for="property-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea id="property-description" name="Description" rows="3" 
+                                  placeholder="Describe the property features, amenities, and highlights..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 resize-none"></textarea>
+                    </div>
+
+                    <div class="flex gap-3 pt-6">
+                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200">
+                            Save Property
+                        </button>
+                        <button type="button" id="cancel-modal-btn" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-lg shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all duration-200">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var addPropertyBtn = document.getElementById('add-property-btn');
+            var closeModalBtn = document.getElementById('close-modal-btn');
+            var cancelModalBtn = document.getElementById('cancel-modal-btn');
+            var modal = document.getElementById('add-property-modal');
+            var modalBackdrop = document.getElementById('modal-backdrop');
+            var modalContent = document.getElementById('modal-content');
+
+            // Property Details Modal Elements
+            var propertyDetailsModal = document.getElementById('property-details-modal');
+            var propertyDetailsBackdrop = document.getElementById('property-details-backdrop');
+            var propertyDetailsContent = document.getElementById('property-details-content');
+            var closePropertyDetailsBtn = document.getElementById('close-property-details-btn');
+
+            function openModal() {
+                // Show modal immediately
+                modal.classList.remove('hidden');
+
+                // Force a reflow to ensure the initial state is applied
+                modal.offsetHeight;
+
+                // Add the visible state classes with a slight delay for smooth animation
+                setTimeout(function() {
+                    modal.classList.remove('opacity-0');
+                    modal.classList.add('opacity-100');
+                    // Set custom background color with 40% opacity
+                    modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+                    modalContent.classList.remove('scale-95');
+                    modalContent.classList.add('scale-100');
+                }, 10);
+
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+
+            function closeModal() {
+                // Start closing animation
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+                // Reset background to transparent
+                modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
+                modalContent.classList.remove('scale-100');
+                modalContent.classList.add('scale-95');
+
+                // Hide modal after animation completes
+                setTimeout(function() {
+                    modal.classList.add('hidden');
+                }, 300); // Match the transition duration
+
+                document.body.style.overflow = ''; // Restore background scrolling
+            }
+
+            function openPropertyDetailsModal(propertyCard) {
+                // Extract data from the property card
+                var title = propertyCard.dataset.propertyTitle;
+                var address = propertyCard.dataset.propertyAddress;
+                var price = propertyCard.dataset.propertyPrice;
+                var area = propertyCard.dataset.propertyArea;
+                var sqft = propertyCard.dataset.propertySqft;
+                var bedrooms = propertyCard.dataset.propertyBedrooms;
+                var bathrooms = propertyCard.dataset.propertyBathrooms;
+                var propertyType = propertyCard.dataset.propertyType;
+                var buyingType = propertyCard.dataset.propertyBuyingType;
+                var status = propertyCard.dataset.propertyStatus;
+                var listingTime = propertyCard.dataset.propertyListingTime;
+                var daysOnMarket = propertyCard.dataset.propertyDaysMarket;
+                var pricePerSqft = propertyCard.dataset.propertyPricePerSqft;
+                var propertyLink = propertyCard.dataset.propertyLink;
+                var agent = propertyCard.dataset.propertyAgent;
+                var description = propertyCard.dataset.propertyDescription;
+
+                // Populate modal content
+                document.getElementById('modal-property-title').textContent = title;
+                document.getElementById('modal-property-name').textContent = title;
+                document.getElementById('modal-property-address').textContent = address;
+                document.getElementById('modal-property-bed-bath').textContent = bedrooms + ' 🛏️ ' + bathrooms + ' 🛁';
+                document.getElementById('modal-property-area').textContent = area + ' sqm';
+                document.getElementById('modal-property-description').textContent = description || 'No description available.';
+                document.getElementById('modal-property-type').textContent = propertyType === 'Sell' ? 'Yes' : 'No';
+                document.getElementById('modal-property-status').textContent = status;
+                document.getElementById('modal-property-price').textContent = '₱ ' + parseFloat(price).toLocaleString();
+                document.getElementById('modal-property-buying-type').textContent = buyingType || 'Not specified';
+                document.getElementById('modal-days-on-market').textContent = daysOnMarket || '0';
+                document.getElementById('modal-price-per-sqft').textContent = '₱ ' + parseFloat(pricePerSqft || 0).toLocaleString();
+                document.getElementById('modal-sqft').textContent = sqft || '0';
+                document.getElementById('modal-bedrooms').textContent = bedrooms || '0';
+                document.getElementById('modal-bathrooms').textContent = bathrooms || '0';
+                
+                // Format and display listing date
+                if (listingTime) {
+                    var date = new Date(listingTime);
+                    document.getElementById('modal-listing-date').textContent = date.toLocaleDateString();
+                } else {
+                    document.getElementById('modal-listing-date').textContent = 'Not specified';
+                }
+
+                // Agent information
+                if (agent) {
+                    var initials = agent.split(' ').map(name => name.charAt(0)).join('').toUpperCase();
+                    document.getElementById('modal-agent-initials').textContent = initials;
+                    document.getElementById('modal-agent-name').textContent = agent;
+                } else {
+                    document.getElementById('modal-agent-initials').textContent = 'NA';
+                    document.getElementById('modal-agent-name').textContent = 'No Agent Assigned';
+                }
+
+                // Property link
+                var linkSection = document.getElementById('property-link-section');
+                var linkElement = document.getElementById('modal-property-link');
+                if (propertyLink && propertyLink !== 'null' && propertyLink !== '') {
+                    linkElement.href = propertyLink;
+                    linkSection.classList.remove('hidden');
+                } else {
+                    linkSection.classList.add('hidden');
+                }
+
+                // Show modal
+                propertyDetailsModal.classList.remove('hidden');
+                propertyDetailsModal.offsetHeight; // Force reflow
+
+                setTimeout(function() {
+                    propertyDetailsModal.classList.remove('opacity-0');
+                    propertyDetailsModal.classList.add('opacity-100');
+                    propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+                    propertyDetailsContent.classList.remove('scale-95');
+                    propertyDetailsContent.classList.add('scale-100');
+                }, 10);
+
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closePropertyDetailsModal() {
+                propertyDetailsModal.classList.remove('opacity-100');
+                propertyDetailsModal.classList.add('opacity-0');
+                propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
+                propertyDetailsContent.classList.remove('scale-100');
+                propertyDetailsContent.classList.add('scale-95');
+
+                setTimeout(function() {
+                    propertyDetailsModal.classList.add('hidden');
+                }, 300);
+
+                document.body.style.overflow = '';
+            }
+
+            // Event listeners for Add Property Modal
+            addPropertyBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelModalBtn.addEventListener('click', closeModal);
+
+            // Event listeners for Property Details Modal
+            closePropertyDetailsBtn.addEventListener('click', closePropertyDetailsModal);
+
+            // Property card click handlers
+            var propertyCards = document.querySelectorAll('.property-card');
+            propertyCards.forEach(function(card) {
+                card.addEventListener('click', function() {
+                    openPropertyDetailsModal(this);
+                });
+            });
+
+            // Close modals when clicking on background overlay
+            modal.addEventListener('click', function (event) {
+                if (event.target === modal || event.target === modalBackdrop) {
+                    closeModal();
+                }
+            });
+
+            propertyDetailsModal.addEventListener('click', function (event) {
+                if (event.target === propertyDetailsModal || event.target === propertyDetailsBackdrop) {
+                    closePropertyDetailsModal();
+                }
+            });
+
+            // Close modals with Escape key
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    if (!modal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                    if (!propertyDetailsModal.classList.contains('hidden')) {
+                        closePropertyDetailsModal();
+                    }
+                }
+            });
+
+            // Property type button functionality
+            var propertyTypeBtns = document.querySelectorAll('.property-type-btn');
+            propertyTypeBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    // Remove active class from all buttons (reset to white/default)
+                    propertyTypeBtns.forEach(function(b) {
+                        b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                    });
+
+                    // Add active class to the clicked button (make it blue)
+                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+
+                    // Set the value of the hidden input field
+                    var selectedType = this.getAttribute('data-type');
+                    document.getElementById('property-type').value = selectedType;
+                });
+            });
+
+            // Type (Buying/Viewing) button functionality
+            var typeBtns = document.querySelectorAll('.type-btn');
+            typeBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    // Remove active class from all buttons (reset to white/default)
+                    typeBtns.forEach(function(b) {
+                        b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                    });
+
+                    // Add active class to the clicked button (make it blue)
+                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg(gray-50');
+                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+
+                    // Set the value of the hidden input field
+                    var selectedType = this.getAttribute('data-type');
+                    document.getElementById('property-buying-type').value = selectedType;
+                });
+            });
+
+            // Set default listing time to current datetime
+            var listingTimeInput = document.getElementById('property-listing-time');
+            var now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            listingTimeInput.value = now.toISOString().slice(0, 16);
+        });
+    </script>
+}
 

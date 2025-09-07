@@ -13,6 +13,8 @@ namespace RealEstateCRM.Data
 
         // Keep your business models separate from Identity
         public DbSet<Contact> Contacts { get; set; }
+        public DbSet<Property> Properties { get; set; } // Add this line
+
         // Add other business models here as needed
 
         protected override void OnModelCreating(ModelBuilder builder)
