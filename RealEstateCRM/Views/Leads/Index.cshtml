@@ -1,13 +1,13 @@
-﻿@{
-    
-    ViewData["Title"] = "Contacts";
+﻿@model List<RealEstateCRM.Models.Lead>
+@{
+    ViewData["Title"] = "Leads";
 }
 
 <div class="flex items-center justify-between mb-6">
     <h1 class="font-semibold text-2xl">Leads</h1>
 
-    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-        Add Contact
+    <button id="add-lead-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        Add Lead
     </button>
 </div>
 
@@ -50,7 +50,33 @@
     </div>
 </div>
 
-<!-- Contacts table: fixed layout + explicit column sizes for consistent spacing -->
+<!-- Success/Error Toast Notification -->
+<div id="toast-notification" class="fixed top-4 right-4 z-[10000] transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
+        <div class="flex items-center gap-3">
+            <div id="toast-icon" class="flex-shrink-0">
+                <!-- Success icon -->
+                <svg id="toast-success-icon" class="h-6 w-6 text-green-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <!-- Error icon -->
+                <svg id="toast-error-icon" class="h-6 w-6 text-red-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+            </div>
+            <button id="toast-close" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Leads table: fixed layout + explicit column sizes for consistent spacing -->
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 table-fixed">
@@ -79,130 +105,9 @@
             </thead>
 
             <tbody class="bg-white divide-y divide-gray-100">
-                <!-- Sample row 1 -->
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 align-top">
-                        <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="flex items-center gap-3">
-                            <img src="~/assets/images/avatar-placeholder.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium text-gray-900 truncate">John Kerl Parantar</div>
-                                <div class="text-xs text-gray-500 truncate">Primary buyer</div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Buyer</span>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">parantar@gmail.com</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">0999 888 9999</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-500 truncate">1 month ago</div>
-                    </td>
-
-                    <td class="px-4 py-4 text-right">
-                        <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-
-                <!-- Sample row 2 -->
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 align-top">
-                        <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="flex items-center gap-3">
-                            <img src="~/assets/images/avatar-placeholder-2.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium text-gray-900 truncate">Maria Lopez</div>
-                                <div class="text-xs text-gray-500 truncate">Owner / seller</div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Owner</span>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">maria.lopez@example.com</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">0917 555 1212</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-500 truncate">2 weeks ago</div>
-                    </td>
-
-                    <td class="px-4 py-4 text-right">
-                        <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 align-top">
-                        <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="flex items-center gap-3">
-                            <img src="~/assets/images/avatar-placeholder-2.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium text-gray-900 truncate">Miguel Andrei</div>
-                                <div class="text-xs text-gray-500 truncate">Owner / seller</div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Owner</span>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">maria.lopez@example.com</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">0917 555 1212</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-500 truncate">2 weeks ago</div>
-                    </td>
-
-                    <td class="px-4 py-4 text-right">
-                        <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-
-                @foreach (var contact in (Model ?? Enumerable.Empty<RealEstateCRM.Models.Contact>()))
+                @foreach (var lead in Model)
                 {
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
                         <td class="px-4 py-4 align-top">
                             <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
                         </td>
@@ -211,30 +116,54 @@
                             <div class="flex items-center gap-3">
                                 <img src="~/assets/images/avatar-placeholder.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
                                 <div class="min-w-0">
-                                    <div class="text-sm font-medium text-gray-900 truncate">@contact.Name</div>
-                                    <div class="text-xs text-gray-500 truncate">Profile</div>
+                                    <div class="text-sm font-medium text-gray-900 truncate">@lead.Name</div>
+                                    <div class="text-xs text-gray-500 truncate">@(lead.Agent ?? "No Agent")</div>
                                 </div>
                             </div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Buyer</span>
+                            <div class="relative">
+                                <button class="lead-type-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-yellow-100 text-yellow-700 border-yellow-200 cursor-pointer hover:shadow-sm transition-all duration-200 group"
+                                        data-contact-id="@lead.Id"
+                                        data-current-type="Lead"
+                                        title="Click to change contact type">
+                                    <span class="lead-type-text">Lead</span>
+                                    <svg class="ml-1 h-3 w-3 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                    <!-- Loading spinner (hidden by default) -->
+                                    <svg class="lead-type-loading ml-1 h-3 w-3 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-700 truncate">@contact.Email</div>
+                            <div class="text-sm text-gray-700 truncate">@(lead.Email ?? "No Email")</div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-700 truncate">@contact.Phone</div>
+                            <div class="text-sm text-gray-700 truncate">@lead.Phone</div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-500 truncate">1 month ago</div>
+                            <div class="text-sm text-gray-500 truncate">
+                                @if (lead.LastContacted.HasValue)
+                                {
+                                    @lead.LastContacted.Value.ToString("MMM dd, yyyy")
+                                }
+                                else
+                                {
+                                    <span>Never</span>
+                                }
+                            </div>
                         </td>
 
                         <td class="px-4 py-4 text-right">
-                            <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
+                            <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-150">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
                                 </svg>
@@ -245,12 +174,390 @@
                 @if (!(Model?.Any() ?? false))
                 {
                     <tr>
-                        <!--<td class="px-4 py-8 text-center text-sm text-gray-500" colspan="7">No contacts yet.</td> -->
+                        <td class="px-4 py-8 text-center text-sm text-gray-500" colspan="7">No leads yet.</td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- FLOATING DROPDOWN OVERLAY (positioned outside table) -->
+<div id="lead-type-dropdown-overlay" class="hidden fixed z-[9999] pointer-events-none">
+    <div class="w-28 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden pointer-events-auto">
+        <div class="py-1">
+            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150 flex items-center gap-2" data-type="Agent">
+                <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                Agent
+            </button>
+            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-green-50 hover:text-green-700 transition-colors duration-150 flex items-center gap-2" data-type="Client">
+                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                Client
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Lead Modal -->
+<div id="add-lead-modal" class="fixed inset-0 z-[9999] hidden opacity-0 transition-opacity duration-300 ease-out" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;">
+    <!-- Background overlay -->
+    <div class="absolute inset-0 transition-all duration-300 ease-out" id="lead-modal-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
+
+    <!-- Modal content container -->
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+        <!-- Modal dialog -->
+        <div class="relative bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="lead-modal-content">
+            <!-- Close button -->
+            <div class="absolute top-4 right-4 z-10">
+                <button id="close-lead-modal-btn" class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors duration-200" aria-label="Close">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal content -->
+            <div class="overflow-y-auto max-h-[90vh]">
+                <div class="p-8">
+                    <h3 class="text-xl font-semibold text-gray-900 text-center mb-6">Add New Lead</h3>
+
+                    <form asp-controller="Leads" asp-action="CreateLead" method="post" id="lead-form" class="space-y-4">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Name -->
+                        <div>
+                            <label for="lead-name" class="block text-sm font-medium text-gray-700 mb-1">
+                                Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="lead-name" name="Name" required 
+                                   placeholder="e.g., John Doe"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Agent -->
+                        <div>
+                            <label for="lead-agent" class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                            <input type="text" id="lead-agent" name="Agent" 
+                                   placeholder="e.g., Rheniel Penional"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="lead-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="lead-email" name="Email" 
+                                   placeholder="e.g., john.doe@example.com"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Phone Number -->
+                        <div>
+                            <label for="lead-phone" class="block text-sm font-medium text-gray-700 mb-1">
+                                Phone Number <span class="text-red-500">*</span>
+                            </label>
+                            <input type="tel" id="lead-phone" name="Phone" required 
+                                   placeholder="e.g., 0999 888 9999"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <div class="flex gap-3 pt-6">
+                            <button type="button" id="cancel-lead-btn" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-lg hover:bg-gray-300">
+                                Cancel
+                            </button>
+                            <button type="submit" class="flex-1 px-4 py-2 bg-yellow-600 text-white text-base font-medium rounded-lg hover:bg-yellow-700">
+                                Add Lead
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ===============================
+            // TOAST NOTIFICATION SYSTEM
+            // ===============================
+            
+            // Enhanced Toast notification system
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast-notification');
+                const messageEl = document.getElementById('toast-message');
+                const successIcon = document.getElementById('toast-success-icon');
+                const errorIcon = document.getElementById('toast-error-icon');
+
+                // Set message
+                messageEl.textContent = message;
+
+                // Show appropriate icon
+                if (type === 'success') {
+                    successIcon.classList.remove('hidden');
+                    errorIcon.classList.add('hidden');
+                } else {
+                    successIcon.classList.add('hidden');
+                    errorIcon.classList.remove('hidden');
+                }
+
+                // Show toast
+                toast.classList.remove('translate-x-full');
+                toast.classList.add('translate-x-0');
+
+                // Auto hide after 3 seconds
+                setTimeout(() => {
+                    hideToast();
+                }, 3000);
+            }
+
+            function hideToast() {
+                const toast = document.getElementById('toast-notification');
+                toast.classList.remove('translate-x-0');
+                toast.classList.add('translate-x-full');
+            }
+
+            // Toast close button
+            document.getElementById('toast-close').addEventListener('click', hideToast);
+
+            // Check for success message from TempData
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <text>
+                showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
+                </text>
+            }
+
+            const addLeadBtn = document.getElementById('add-lead-btn');
+            const leadModal = document.getElementById('add-lead-modal');
+            const leadModalBackdrop = document.getElementById('lead-modal-backdrop');
+            const leadModalContent = document.getElementById('lead-modal-content');
+            const closeLeadModalBtn = document.getElementById('close-lead-modal-btn');
+            const cancelLeadBtn = document.getElementById('cancel-lead-btn');
+
+            function openLeadModal() {
+                leadModal.classList.remove('hidden');
+                leadModal.offsetHeight;
+                setTimeout(function() {
+                    leadModal.classList.remove('opacity-0');
+                    leadModal.classList.add('opacity-100');
+                    leadModalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+                    leadModalContent.classList.remove('scale-95');
+                    leadModalContent.classList.add('scale-100');
+                }, 10);
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLeadModal() {
+                leadModal.classList.remove('opacity-100');
+                leadModal.classList.add('opacity-0');
+                leadModalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
+                leadModalContent.classList.remove('scale-100');
+                leadModalContent.classList.add('scale-95');
+                setTimeout(function() {
+                    leadModal.classList.add('hidden');
+                    resetLeadModal();
+                }, 300);
+                document.body.style.overflow = '';
+            }
+
+            function resetLeadModal() {
+                const form = document.getElementById('lead-form');
+                if (form) form.reset();
+            }
+
+            // Event listeners
+            addLeadBtn.addEventListener('click', openLeadModal);
+            closeLeadModalBtn.addEventListener('click', closeLeadModal);
+            cancelLeadBtn.addEventListener('click', closeLeadModal);
+
+            // Close modal when clicking on background overlay
+            leadModal.addEventListener('click', function (event) {
+                if (event.target === leadModal || event.target === leadModalBackdrop) {
+                    closeLeadModal();
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !leadModal.classList.contains('hidden')) {
+                    closeLeadModal();
+                }
+            });
+
+            // ===============================
+            // FLOATING DROPDOWN SYSTEM
+            // ===============================
+            
+            const dropdownOverlay = document.getElementById('lead-type-dropdown-overlay');
+            let currentActiveBadge = null;
+
+            // Function to get badge class for contact type
+            function getBadgeClass(type) {
+                switch(type) {
+                    case 'Agent': return 'bg-blue-100 text-blue-700 border-blue-200';
+                    case 'Client': return 'bg-green-100 text-green-700 border-green-200';
+                    case 'Lead': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+                    default: return 'bg-gray-100 text-gray-700 border-gray-200';
+                }
+            }
+
+            // Function to get anti-forgery token
+            function getAntiForgeryToken() {
+                return document.querySelector('input[name="__RequestVerificationToken"]').value;
+            }
+
+            // Show floating dropdown
+            function showDropdown(badge) {
+                currentActiveBadge = badge;
+                positionDropdown(badge);
+                dropdownOverlay.classList.remove('hidden');
+            }
+
+            // Hide floating dropdown
+            function hideDropdown() {
+                dropdownOverlay.classList.add('hidden');
+                currentActiveBadge = null;
+            }
+
+            // Position floating dropdown
+            function positionDropdown(badge) {
+                const rect = badge.getBoundingClientRect();
+                const dropdownHeight = 100; // Approximate height
+                const viewportHeight = window.innerHeight;
+                
+                let top = rect.bottom + window.scrollY + 4; // 4px gap
+                let left = rect.left + window.scrollX;
+                
+                // Check if dropdown would go off bottom of viewport
+                if (rect.bottom + dropdownHeight > viewportHeight) {
+                    top = rect.top + window.scrollY - dropdownHeight - 4; // Position above
+                }
+                
+                // Check if dropdown would go off right edge
+                const dropdownWidth = 112; // 28 * 4 = w-28
+                if (left + dropdownWidth > window.innerWidth) {
+                    left = window.innerWidth - dropdownWidth - 8;
+                }
+                
+                dropdownOverlay.style.top = top + 'px';
+                dropdownOverlay.style.left = left + 'px';
+            }
+
+            // Handle lead type badge clicks
+            document.addEventListener('click', function(e) {
+                // Close dropdown when clicking outside
+                if (!e.target.closest('.lead-type-badge') && !e.target.closest('#lead-type-dropdown-overlay')) {
+                    hideDropdown();
+                    return;
+                }
+
+                // Handle badge clicks
+                if (e.target.closest('.lead-type-badge')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const badge = e.target.closest('.lead-type-badge');
+                    
+                    if (currentActiveBadge === badge) {
+                        hideDropdown();
+                    } else {
+                        showDropdown(badge);
+                    }
+                }
+
+                // Handle type option clicks
+                if (e.target.closest('.type-option')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (!currentActiveBadge) return;
+                    
+                    const option = e.target.closest('.type-option');
+                    const newType = option.getAttribute('data-type');
+                    const badge = currentActiveBadge;
+                    const leadId = badge.getAttribute('data-contact-id');
+                    const currentType = badge.getAttribute('data-current-type');
+                    
+                    // Don't do anything if the type is the same
+                    if (newType === currentType) {
+                        hideDropdown();
+                        return;
+                    }
+                    
+                    // Enhanced loading state
+                    const textSpan = badge.querySelector('.lead-type-text');
+                    const arrowIcon = badge.querySelector('svg:not(.lead-type-loading)');
+                    const loadingIcon = badge.querySelector('.lead-type-loading');
+                    
+                    badge.style.pointerEvents = 'none';
+                    arrowIcon.classList.add('hidden');
+                    loadingIcon.classList.remove('hidden');
+                    hideDropdown();
+                    
+                    // Send AJAX request to update lead type
+                    fetch('/Leads/UpdateLeadType', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            'leadId': leadId,
+                            'newType': newType,
+                            '__RequestVerificationToken': getAntiForgeryToken()
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.shouldRedirect && data.redirectUrl) {
+                                // Show success message and redirect
+                                showToast(`Lead moved to ${newType === 'Agent' ? 'Agents' : 'Clients'}`, 'success');
+                                setTimeout(() => {
+                                    window.location.href = data.redirectUrl;
+                                }, 1000);
+                            } else {
+                                // Update the badge text and styling
+                                textSpan.textContent = newType;
+                                
+                                // Update badge classes with enhanced styling
+                                badge.className = 'lead-type-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer hover:shadow-sm transition-all duration-200 group ' + getBadgeClass(newType);
+                                
+                                // Update data attribute
+                                badge.setAttribute('data-current-type', newType);
+                                
+                                // Show success toast
+                                showToast(`Lead type updated to ${newType}`, 'success');
+                            }
+                        } else {
+                            showToast('Error: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('An error occurred while updating the lead type', 'error');
+                    })
+                    .finally(() => {
+                        // Restore badge state
+                        badge.style.pointerEvents = 'auto';
+                        arrowIcon.classList.remove('hidden');
+                        loadingIcon.classList.add('hidden');
+                    });
+                }
+            });
+
+            // Close dropdown when pressing Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideDropdown();
+                }
+            });
+
+            // Close dropdown and reposition on scroll/resize
+            window.addEventListener('scroll', hideDropdown);
+            window.addEventListener('resize', hideDropdown);
+        });
+    </script>
+}
 
 

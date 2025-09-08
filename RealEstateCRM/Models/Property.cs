@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using RealEstateCRM.Attributes;
 
 namespace RealEstateCRM.Models
 {
@@ -34,7 +35,7 @@ namespace RealEstateCRM.Models
         public int? Bathrooms { get; set; }
         
         [Required]
-        public string PropertyType { get; set; } = string.Empty; // "Sell" or "Rent"
+        public string PropertyType { get; set; } = string.Empty; // "Residential", "Commercial", or "Raw Land"
         
         public string? Type { get; set; }
         
@@ -58,5 +59,32 @@ namespace RealEstateCRM.Models
         public string? Agent { get; set; }
         
         public string? Description { get; set; }
+        
+        [Display(Name = "Property Image")]
+        public string? ImagePath { get; set; }
+        
+        // This property is not mapped to the database - it's just for file upload
+        [NotMapped]
+        [Display(Name = "Upload Image")]
+        public IFormFile? ImageFile { get; set; }
+
+        // Method to calculate SQFT from Area (sqm)
+        // 1 sqm = 10.7639 sqft
+        public void CalculateSQFT()
+        {
+            if (Area.HasValue && Area.Value > 0)
+            {
+                SQFT = Area.Value * 10.7639;
+            }
+        }
+
+        // Method to calculate Price Per SQFT
+        public void CalculatePricePerSQFT()
+        {
+            if (Price > 0 && SQFT.HasValue && SQFT.Value > 0)
+            {
+                PricePerSQFT = Price / (decimal)SQFT.Value;
+            }
+        }
     }
 }

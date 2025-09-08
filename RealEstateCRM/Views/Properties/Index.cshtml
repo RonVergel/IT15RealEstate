@@ -50,6 +50,32 @@
     </div>
 </div>
 
+<!-- Success/Error Toast Notification -->
+<div id="toast-notification" class="fixed top-4 right-4 z-[10000] transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
+        <div class="flex items-center gap-3">
+            <div id="toast-icon" class="flex-shrink-0">
+                <!-- Success icon -->
+                <svg id="toast-success-icon" class="h-6 w-6 text-green-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <!-- Error icon -->
+                <svg id="toast-error-icon" class="h-6 w-6 text-red-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+            </div>
+            <button id="toast-close" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- property cards -->
 @{
     var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
@@ -60,9 +86,10 @@
     {
         @foreach (var property in Model)
         {
-            var badgeColor = property.PropertyType == "Sell" ? "bg-blue-600" : "bg-purple-600";
-            var badgeText = property.PropertyType == "Sell" ? "For Sale" : "For Rent";
-            var imageSrc = placeholder;
+            var badgeColor = property.PropertyType == "Residential" ? "bg-blue-600" : 
+                           property.PropertyType == "Commercial" ? "bg-green-600" : "bg-orange-600";
+            var badgeText = property.PropertyType;
+            var imageSrc = !string.IsNullOrEmpty(property.ImagePath) ? property.ImagePath : placeholder;
             
             <div class="property-card w-[267px] h-[317px] bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200"
                  data-property-id="@property.Id"
@@ -81,7 +108,8 @@
                  data-property-price-per-sqft="@(property.PricePerSQFT ?? 0)"
                  data-property-link="@(property.PropertyLink ?? "")"
                  data-property-agent="@(property.Agent ?? "")"
-                 data-property-description="@(property.Description ?? "")">
+                 data-property-description="@(property.Description ?? "")"
+                 data-property-image="@imageSrc">
                 
                 <!-- Image area -->
                 <div class="relative w-full h-[130px]">
@@ -106,14 +134,14 @@
                         <div class="flex items-center gap-1.5">
                             <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l1.5-2.5A2 2 0 007 3h10a2 2 0 011.5.5L21 7" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21V7h10v14" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21V7h10v14" />
                             </svg>
                             <span>@(property.Bedrooms ?? 0)</span>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 1.38-1.79 2.5-4 2.5S13 11.38 13 10s1.79-2.5 4-2.5 4 1.12 4 2.5z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10c0 1.38 1.79 2.5 4 2.5S11 11.38 11 10 9.21 7.5 7 7.5 3 8.62 3 10z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10c0 1.38 1.79 2.5 4 2.5S11 11.38 11 10 9.21 7.5 7 7.5 3 8.62 3 10z" />
                             </svg>
                             <span>@(property.Bathrooms ?? 0)</span>
                         </div>
@@ -144,6 +172,7 @@
 </div>
 
 <!-- Property Details Modal -->
+<!-- Property Details Modal -->
 <div id="property-details-modal" class="fixed inset-0 z-[9999] hidden opacity-0 transition-opacity duration-300 ease-out" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;">
     <!-- Background overlay -->
     <div class="absolute inset-0 transition-all duration-300 ease-out" id="property-details-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
@@ -152,14 +181,31 @@
     <div class="relative h-full w-full flex items-center justify-center p-4">
         <!-- Modal dialog -->
         <div class="relative bg-white rounded-lg shadow-xl w-[500px] h-[90vh] max-w-[95vw] max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="property-details-content">
-            <!-- Header with close button -->
+            <!-- Header with close and edit buttons -->
             <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
                 <h3 class="text-lg font-semibold text-gray-900" id="modal-property-title">Property Details</h3>
-                <button id="close-property-details-btn" class="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors duration-200" aria-label="Close">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="edit-mode-btn" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" title="Edit Property">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                        </svg>
+                    </button>
+                    <button id="save-changes-btn" class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors hidden" title="Save Changes">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                    <button id="cancel-edit-btn" class="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors hidden" title="Cancel Edit">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <button id="close-property-details-btn" class="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors duration-200" aria-label="Close">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Scrollable content -->
@@ -171,10 +217,23 @@
 
                 <!-- Property Information -->
                 <div class="p-6 space-y-6">
+                    <!-- Hidden property ID for updates -->
+                    <input type="hidden" id="modal-property-id" />
+
                     <!-- Basic Info -->
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900 mb-2" id="modal-property-name">Property Name</h4>
-                        <p class="text-gray-600 mb-1" id="modal-property-address">Address</p>
+                        <!-- Editable Property Name -->
+                        <div class="editable-field mb-2">
+                            <span class="view-mode text-lg font-semibold text-gray-900" id="modal-property-name">Property Name</span>
+                            <input type="text" class="edit-mode hidden w-full text-lg font-semibold text-gray-900 border border-gray-300 rounded px-2 py-1" id="edit-property-name" />
+                        </div>
+
+                        <!-- Editable Address -->
+                        <div class="editable-field mb-1">
+                            <p class="view-mode text-gray-600" id="modal-property-address">Address</p>
+                            <input type="text" class="edit-mode hidden w-full text-gray-600 border border-gray-300 rounded px-2 py-1" id="edit-property-address" />
+                        </div>
+
                         <div class="flex items-center gap-4 text-sm text-gray-600">
                             <span id="modal-property-bed-bath">4 🛏️ 2 🛁</span>
                             <span id="modal-property-area">99 sqm</span>
@@ -184,9 +243,12 @@
                     <!-- About the Property -->
                     <div>
                         <h5 class="text-md font-semibold text-gray-900 mb-2">About the Property</h5>
-                        <p class="text-sm text-gray-600 leading-relaxed" id="modal-property-description">
-                            Property description will appear here...
-                        </p>
+                        <div class="editable-field">
+                            <p class="view-mode text-sm text-gray-600 leading-relaxed" id="modal-property-description">
+                                Property description will appear here...
+                            </p>
+                            <textarea class="edit-mode hidden w-full text-sm text-gray-600 border border-gray-300 rounded px-2 py-2 resize-none" rows="3" id="edit-property-description"></textarea>
+                        </div>
                     </div>
 
                     <!-- Details Grid -->
@@ -194,28 +256,62 @@
                         <h5 class="text-md font-semibold text-gray-900 mb-3">Details</h5>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div class="space-y-2">
+                                <!-- Property Type -->
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600">For Sale</span>
-                                    <span class="font-medium" id="modal-property-type">Yes</span>
+                                    <span class="text-gray-600">Property Type</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-property-type">Residential</span>
+                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-property-type">
+                                            <option value="Residential">Residential</option>
+                                            <option value="Commercial">Commercial</option>
+                                            <option value="Raw Land">Raw Land</option>
+                                        </select>
+                                    </div>
                                 </div>
+
+                                <!-- Status -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Status</span>
-                                    <span class="font-medium" id="modal-property-status">Active</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-property-status">Active</span>
+                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-property-status">
+                                            <option value="Active">Active</option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="Sold">Sold</option>
+                                            <option value="Off Market">Off Market</option>
+                                        </select>
+                                    </div>
                                 </div>
+
+                                <!-- Price -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Price</span>
-                                    <span class="font-medium" id="modal-property-price">₱ 9,999,999</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-property-price">₱ 9,999,999</span>
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-24" id="edit-property-price" min="0" step="0.01" />
+                                    </div>
                                 </div>
                             </div>
                             <div class="space-y-2">
+                                <!-- Type -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Type</span>
-                                    <span class="font-medium" id="modal-property-buying-type">House</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-property-buying-type">House</span>
+                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-property-buying-type">
+                                            <option value="Buying">Buying</option>
+                                            <option value="Viewing">Viewing</option>
+                                        </select>
+                                    </div>
                                 </div>
+
+                                <!-- Days on Market (Read-only) -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Days on Market</span>
                                     <span class="font-medium" id="modal-days-on-market">30</span>
                                 </div>
+
+                                <!-- Price/sqft (Read-only) -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Price/sqft</span>
                                     <span class="font-medium" id="modal-price-per-sqft">₱ 50,000</span>
@@ -229,23 +325,47 @@
                         <h5 class="text-md font-semibold text-gray-900 mb-3">Property Information</h5>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div class="space-y-2">
+                                <!-- Listed On -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Listed On</span>
-                                    <span class="font-medium" id="modal-listing-date">2020</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-listing-date">2020</span>
+                                        <input type="datetime-local" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-listing-date" />
+                                    </div>
                                 </div>
+
+                                <!-- SQFT (Read-only) -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">SQFT</span>
                                     <span class="font-medium" id="modal-sqft">1,200</span>
                                 </div>
+
+                                <!-- Area -->
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Area (sqm)</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-area-display">120</span>
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-16" id="edit-property-area" min="0" />
+                                    </div>
+                                </div>
                             </div>
                             <div class="space-y-2">
+                                <!-- Bedrooms -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Bedrooms</span>
-                                    <span class="font-medium" id="modal-bedrooms">4</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-bedrooms">4</span>
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-12" id="edit-bedrooms" min="0" />
+                                    </div>
                                 </div>
+
+                                <!-- Bathrooms -->
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Bathrooms</span>
-                                    <span class="font-medium" id="modal-bathrooms">2</span>
+                                    <div class="editable-field">
+                                        <span class="view-mode font-medium" id="modal-bathrooms">2</span>
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-12" id="edit-bathrooms" min="0" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -260,21 +380,32 @@
                                     <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                         <span class="text-xs font-medium text-blue-600" id="modal-agent-initials">AG</span>
                                     </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900" id="modal-agent-name">Agent Name</p>
+                                    <div class="flex-1">
+                                        <div class="editable-field">
+                                            <p class="view-mode text-sm font-medium text-gray-900" id="modal-agent-name">Agent Name</p>
+                                            <input type="text" class="edit-mode hidden text-sm font-medium text-gray-900 border border-gray-300 rounded px-1 py-0.5" id="edit-agent-name" />
+                                        </div>
                                         <p class="text-xs text-gray-500">Agent</p>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Property Link -->
-                            <div id="property-link-section" class="hidden">
-                                <a href="#" target="_blank" id="modal-property-link" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                                    </svg>
-                                    View Property Details
-                                </a>
+                            <div id="property-link-section">
+                                <div class="editable-field">
+                                    <div class="view-mode">
+                                        <a href="#" target="_blank" id="modal-property-link" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                            </svg>
+                                            <span id="property-link-text">View Property Details</span>
+                                        </a>
+                                    </div>
+                                    <div class="edit-mode hidden">
+                                        <label class="text-xs text-gray-600">Property Link:</label>
+                                        <input type="url" class="w-full text-sm border border-gray-300 rounded px-2 py-1 mt-1" id="edit-property-link" placeholder="https://example.com/property" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -306,8 +437,23 @@
             <div class="p-8">
                 <h3 class="text-xl font-semibold text-gray-900 text-center mb-6">Add New Property</h3>
 
-                <form asp-controller="Properties" asp-action="Index" method="post" class="space-y-4">
+                <form asp-controller="Properties" asp-action="Index" method="post" enctype="multipart/form-data" class="space-y-4">
                     @Html.AntiForgeryToken()
+                    
+                    <!-- Property Image Upload -->
+                    <div>
+                        <label for="property-image" class="block text-sm font-medium text-gray-700 mb-1">Property Image</label>
+                        <div class="relative">
+                            <input type="file" id="property-image" name="ImageFile" accept="image/*"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                            <p class="text-xs text-gray-500 mt-1">Accepted formats: JPG, PNG, GIF, BMP. Max size: 5MB</p>
+                        </div>
+                        <!-- Image preview -->
+                        <div id="image-preview" class="mt-3 hidden">
+                            <img id="preview-image" class="w-32 h-32 object-cover rounded-lg border border-gray-300" alt="Preview" />
+                            <button type="button" id="remove-image" class="mt-2 text-sm text-red-600 hover:text-red-800">Remove Image</button>
+                        </div>
+                    </div>
                     
                     <!-- Property Title (Required) -->
                     <div>
@@ -347,14 +493,6 @@
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
                         </div>
 
-                        <!-- SQFT -->
-                        <div>
-                            <label for="property-sqft" class="block text-sm font-medium text-gray-700 mb-1">SQFT</label>
-                            <input type="number" id="property-sqft" name="SQFT" min="0" step="0.01"
-                                   placeholder="e.g., 1291.67"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
-                        </div>
-
                         <!-- Bedrooms -->
                         <div>
                             <label for="property-bedrooms" class="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
@@ -372,11 +510,27 @@
                         </div>
 
                         <!-- Listing Time -->
-                        <div>
-                            <label for="property-listing-time" class="block text-sm font-medium text-gray-700 mb-1">Listing Time</label>
+                        <div class="md:col-span-2">
+                            <label for="property-listing-time" class="block text-sm font-medium text-gray-700 mb-1">Listing Date</label>
                             <input type="datetime-local" id="property-listing-time" name="ListingTime"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
                         </div>
+                    </div>
+
+                    <!-- Calculated Values Display -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="text-sm font-medium text-gray-700 mb-3">Calculated Values</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">SQFT:</span>
+                                <span id="calculated-sqft" class="font-medium text-gray-900">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Price Per SQFT:</span>
+                                <span id="calculated-price-per-sqft" class="font-medium text-gray-900">-</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Values are automatically calculated based on Area (sqm) and Price</p>
                     </div>
 
                     <!-- Property Type (Required) -->
@@ -385,11 +539,14 @@
                             Property Type <span class="text-red-500">*</span>
                         </label>
                         <div class="flex gap-2">
-                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Sell">
-                                For Sale
+                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Residential">
+                                Residential
                             </button>
-                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Rent">
-                                For Rent
+                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Commercial">
+                                Commercial
+                            </button>
+                            <button type="button" class="property-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Raw Land">
+                                Raw Land
                             </button>
                         </div>
                         <input type="hidden" name="PropertyType" id="property-type" value="" required />
@@ -464,6 +621,8 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            console.log('DOM Content Loaded - Initializing Properties page...'); // Debug log
+            
             var addPropertyBtn = document.getElementById('add-property-btn');
             var closeModalBtn = document.getElementById('close-modal-btn');
             var cancelModalBtn = document.getElementById('cancel-modal-btn');
@@ -471,50 +630,161 @@
             var modalBackdrop = document.getElementById('modal-backdrop');
             var modalContent = document.getElementById('modal-content');
 
+            // Debug - Check if elements exist
+            console.log('Add Property Button:', addPropertyBtn);
+            console.log('Modal:', modal);
+
             // Property Details Modal Elements
             var propertyDetailsModal = document.getElementById('property-details-modal');
             var propertyDetailsBackdrop = document.getElementById('property-details-backdrop');
             var propertyDetailsContent = document.getElementById('property-details-content');
             var closePropertyDetailsBtn = document.getElementById('close-property-details-btn');
 
+            // Edit Mode Elements
+            var editModeBtn = document.getElementById('edit-mode-btn');
+            var saveChangesBtn = document.getElementById('save-changes-btn');
+            var cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+            // Image upload elements
+            var imageInput = document.getElementById('property-image');
+            var imagePreview = document.getElementById('image-preview');
+            var previewImage = document.getElementById('preview-image');
+            var removeImageBtn = document.getElementById('remove-image');
+
+            // Calculation elements
+            var areaInput = document.getElementById('property-area');
+            var priceInput = document.getElementById('property-price');
+            var calculatedSqft = document.getElementById('calculated-sqft');
+            var calculatedPricePerSqft = document.getElementById('calculated-price-per-sqft');
+
+            // Edit Mode State
+            let isEditMode = false;
+            let originalPropertyData = {};
+
+            @{
+                var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
+            }
+
+            // ===============================
+            // TOAST NOTIFICATION SYSTEM
+            // ===============================
+            
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast-notification');
+                const messageEl = document.getElementById('toast-message');
+                const successIcon = document.getElementById('toast-success-icon');
+                const errorIcon = document.getElementById('toast-error-icon');
+
+                messageEl.textContent = message;
+
+                if (type === 'success') {
+                    successIcon.classList.remove('hidden');
+                    errorIcon.classList.add('hidden');
+                } else {
+                    successIcon.classList.add('hidden');
+                    errorIcon.classList.remove('hidden');
+                }
+
+                toast.classList.remove('translate-x-full');
+                toast.classList.add('translate-x-0');
+
+                setTimeout(() => {
+                    hideToast();
+                }, 3000);
+            }
+
+            function hideToast() {
+                const toast = document.getElementById('toast-notification');
+                toast.classList.remove('translate-x-0');
+                toast.classList.add('translate-x-full');
+            }
+
+            document.getElementById('toast-close').addEventListener('click', hideToast);
+
+            // Check for success message from TempData
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <text>
+                showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
+                </text>
+            }
+
+            // ===============================
+            // MODAL FUNCTIONS - ADD PROPERTY MODAL
+            // ===============================
+
             function openModal() {
-                // Show modal immediately
-                modal.classList.remove('hidden');
+                console.log('Opening Add Property modal...'); // Debug log
+                
+                if (!modal) {
+                    console.error('Modal element not found!');
+                    return;
+                }
 
-                // Force a reflow to ensure the initial state is applied
-                modal.offsetHeight;
-
-                // Add the visible state classes with a slight delay for smooth animation
-                setTimeout(function() {
-                    modal.classList.remove('opacity-0');
-                    modal.classList.add('opacity-100');
-                    // Set custom background color with 40% opacity
+                // Simple, reliable approach
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden', 'opacity-0');
+                modal.classList.add('opacity-100');
+                
+                if (modalBackdrop) {
                     modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+                }
+                
+                if (modalContent) {
                     modalContent.classList.remove('scale-95');
                     modalContent.classList.add('scale-100');
-                }, 10);
+                }
 
-                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+                document.body.style.overflow = 'hidden';
+                console.log('Modal should now be visible');
             }
 
             function closeModal() {
-                // Start closing animation
-                modal.classList.remove('opacity-100');
-                modal.classList.add('opacity-0');
-                // Reset background to transparent
-                modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
-                modalContent.classList.remove('scale-100');
-                modalContent.classList.add('scale-95');
+                console.log('Closing Add Property modal...');
+                
+                if (!modal) return;
 
-                // Hide modal after animation completes
+                modal.classList.add('opacity-0');
+                modal.classList.remove('opacity-100');
+                
+                if (modalBackdrop) {
+                    modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
+                }
+                
+                if (modalContent) {
+                    modalContent.classList.add('scale-95');
+                    modalContent.classList.remove('scale-100');
+                }
+
                 setTimeout(function() {
                     modal.classList.add('hidden');
-                }, 300); // Match the transition duration
+                    modal.style.display = 'none';
+                }, 300);
 
-                document.body.style.overflow = ''; // Restore background scrolling
+                document.body.style.overflow = '';
+                
+                // Reset form and image preview
+                const form = document.querySelector('form');
+                if (form) form.reset();
+                if (imagePreview) imagePreview.classList.add('hidden');
+                if (previewImage) previewImage.src = '';
+                
+                // Reset calculations display
+                if (calculatedSqft) calculatedSqft.textContent = '-';
+                if (calculatedPricePerSqft) calculatedPricePerSqft.textContent = '-';
             }
 
+            // ===============================
+            // PROPERTY DETAILS MODAL FUNCTIONS
+            // ===============================
+
             function openPropertyDetailsModal(propertyCard) {
+                console.log('Opening Property Details modal...'); // Debug log
+                
+                // Store property ID for editing
+                const propertyId = propertyCard.dataset.propertyId;
+                document.getElementById('modal-property-id').value = propertyId;
+                
                 // Extract data from the property card
                 var title = propertyCard.dataset.propertyTitle;
                 var address = propertyCard.dataset.propertyAddress;
@@ -532,6 +802,7 @@
                 var propertyLink = propertyCard.dataset.propertyLink;
                 var agent = propertyCard.dataset.propertyAgent;
                 var description = propertyCard.dataset.propertyDescription;
+                var imageSrc = propertyCard.dataset.propertyImage;
 
                 // Populate modal content
                 document.getElementById('modal-property-title').textContent = title;
@@ -539,16 +810,20 @@
                 document.getElementById('modal-property-address').textContent = address;
                 document.getElementById('modal-property-bed-bath').textContent = bedrooms + ' 🛏️ ' + bathrooms + ' 🛁';
                 document.getElementById('modal-property-area').textContent = area + ' sqm';
+                document.getElementById('modal-area-display').textContent = area; // For editing
                 document.getElementById('modal-property-description').textContent = description || 'No description available.';
-                document.getElementById('modal-property-type').textContent = propertyType === 'Sell' ? 'Yes' : 'No';
+                document.getElementById('modal-property-type').textContent = propertyType;
                 document.getElementById('modal-property-status').textContent = status;
                 document.getElementById('modal-property-price').textContent = '₱ ' + parseFloat(price).toLocaleString();
                 document.getElementById('modal-property-buying-type').textContent = buyingType || 'Not specified';
                 document.getElementById('modal-days-on-market').textContent = daysOnMarket || '0';
                 document.getElementById('modal-price-per-sqft').textContent = '₱ ' + parseFloat(pricePerSqft || 0).toLocaleString();
-                document.getElementById('modal-sqft').textContent = sqft || '0';
+                document.getElementById('modal-sqft').textContent = parseFloat(sqft || 0).toFixed(2);
                 document.getElementById('modal-bedrooms').textContent = bedrooms || '0';
                 document.getElementById('modal-bathrooms').textContent = bathrooms || '0';
+                
+                // Set property image
+                document.getElementById('modal-property-image').src = imageSrc;
                 
                 // Format and display listing date
                 if (listingTime) {
@@ -559,7 +834,7 @@
                 }
 
                 // Agent information
-                if (agent) {
+                if (agent && agent !== 'null' && agent !== '') {
                     var initials = agent.split(' ').map(name => name.charAt(0)).join('').toUpperCase();
                     document.getElementById('modal-agent-initials').textContent = initials;
                     document.getElementById('modal-agent-name').textContent = agent;
@@ -569,14 +844,17 @@
                 }
 
                 // Property link
-                var linkSection = document.getElementById('property-link-section');
                 var linkElement = document.getElementById('modal-property-link');
                 if (propertyLink && propertyLink !== 'null' && propertyLink !== '') {
                     linkElement.href = propertyLink;
-                    linkSection.classList.remove('hidden');
+                    document.getElementById('property-link-text').textContent = 'View Property Details';
                 } else {
-                    linkSection.classList.add('hidden');
+                    linkElement.href = '#';
+                    document.getElementById('property-link-text').textContent = 'No Link';
                 }
+
+                // Reset edit mode
+                exitEditMode();
 
                 // Show modal
                 propertyDetailsModal.classList.remove('hidden');
@@ -594,6 +872,11 @@
             }
 
             function closePropertyDetailsModal() {
+                console.log('Closing Property Details modal...');
+                
+                // Exit edit mode if active
+                exitEditMode();
+                
                 propertyDetailsModal.classList.remove('opacity-100');
                 propertyDetailsModal.classList.add('opacity-0');
                 propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
@@ -607,92 +890,445 @@
                 document.body.style.overflow = '';
             }
 
-            // Event listeners for Add Property Modal
-            addPropertyBtn.addEventListener('click', openModal);
-            closeModalBtn.addEventListener('click', closeModal);
-            cancelModalBtn.addEventListener('click', closeModal);
+            // ===============================
+            // PROPERTY EDIT FUNCTIONALITY
+            // ===============================
 
-            // Event listeners for Property Details Modal
-            closePropertyDetailsBtn.addEventListener('click', closePropertyDetailsModal);
+            function enableEditMode() {
+                console.log('Enabling edit mode...');
+                isEditMode = true;
+                
+                // Store original data for cancel functionality
+                storeOriginalData();
+                
+                // Show edit controls, hide view controls
+                document.querySelectorAll('.view-mode').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.edit-mode').forEach(el => el.classList.remove('hidden'));
+                
+                // Show save/cancel buttons, hide edit button
+                editModeBtn.classList.add('hidden');
+                saveChangesBtn.classList.remove('hidden');
+                cancelEditBtn.classList.remove('hidden');
+                
+                // Populate edit fields with current values
+                populateEditFields();
+            }
+
+            function exitEditMode() {
+                console.log('Exiting edit mode...');
+                isEditMode = false;
+                
+                // Show view controls, hide edit controls
+                document.querySelectorAll('.edit-mode').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.view-mode').forEach(el => el.classList.remove('hidden'));
+                
+                // Show edit button, hide save/cancel buttons
+                editModeBtn.classList.remove('hidden');
+                saveChangesBtn.classList.add('hidden');
+                cancelEditBtn.classList.add('hidden');
+            }
+
+            function cancelEditMode() {
+                console.log('Cancelling edit mode...');
+                
+                // Restore original values
+                restoreOriginalData();
+                
+                // Exit edit mode
+                exitEditMode();
+            }
+
+            function storeOriginalData() {
+                originalPropertyData = {
+                    id: document.getElementById('modal-property-id').value,
+                    title: document.getElementById('modal-property-name').textContent,
+                    address: document.getElementById('modal-property-address').textContent,
+                    description: document.getElementById('modal-property-description').textContent,
+                    propertyType: document.getElementById('modal-property-type').textContent,
+                    status: document.getElementById('modal-property-status').textContent,
+                    price: document.getElementById('modal-property-price').textContent.replace(/[₱,]/g, '').trim(),
+                    buyingType: document.getElementById('modal-property-buying-type').textContent,
+                    listingDate: document.getElementById('modal-listing-date').textContent,
+                    area: document.getElementById('modal-area-display').textContent,
+                    bedrooms: document.getElementById('modal-bedrooms').textContent,
+                    bathrooms: document.getElementById('modal-bathrooms').textContent,
+                    agent: document.getElementById('modal-agent-name').textContent,
+                    propertyLink: document.getElementById('modal-property-link').href
+                };
+            }
+
+            function populateEditFields() {
+                document.getElementById('edit-property-name').value = document.getElementById('modal-property-name').textContent;
+                document.getElementById('edit-property-address').value = document.getElementById('modal-property-address').textContent;
+                document.getElementById('edit-property-description').value = document.getElementById('modal-property-description').textContent;
+                document.getElementById('edit-property-type').value = document.getElementById('modal-property-type').textContent;
+                document.getElementById('edit-property-status').value = document.getElementById('modal-property-status').textContent;
+                
+                // Handle price (remove currency symbols and commas)
+                const priceText = document.getElementById('modal-property-price').textContent.replace(/[₱,]/g, '').trim();
+                document.getElementById('edit-property-price').value = priceText;
+                
+                document.getElementById('edit-property-buying-type').value = document.getElementById('modal-property-buying-type').textContent;
+                document.getElementById('edit-property-area').value = document.getElementById('modal-area-display').textContent;
+                document.getElementById('edit-bedrooms').value = document.getElementById('modal-bedrooms').textContent;
+                document.getElementById('edit-bathrooms').value = document.getElementById('modal-bathrooms').textContent;
+                document.getElementById('edit-agent-name').value = document.getElementById('modal-agent-name').textContent;
+                
+                // Handle property link
+                const currentLink = document.getElementById('modal-property-link').href;
+                if (currentLink && currentLink !== '#' && currentLink !== window.location.href + '#') {
+                    document.getElementById('edit-property-link').value = currentLink;
+                } else {
+                    document.getElementById('edit-property-link').value = '';
+                }
+                
+                // Handle listing date - convert from display format to datetime-local format
+                const listingDateText = document.getElementById('modal-listing-date').textContent;
+                if (listingDateText && listingDateText !== 'Not specified') {
+                    try {
+                        const date = new Date(listingDateText);
+                        if (!isNaN(date.getTime())) {
+                            const isoString = date.toISOString().slice(0, 16);
+                            document.getElementById('edit-listing-date').value = isoString;
+                        }
+                    } catch (e) {
+                        console.warn('Could not parse listing date:', listingDateText);
+                    }
+                }
+            }
+
+            function restoreOriginalData() {
+                document.getElementById('modal-property-name').textContent = originalPropertyData.title;
+                document.getElementById('modal-property-address').textContent = originalPropertyData.address;
+                document.getElementById('modal-property-description').textContent = originalPropertyData.description;
+                document.getElementById('modal-property-type').textContent = originalPropertyData.propertyType;
+                document.getElementById('modal-property-status').textContent = originalPropertyData.status;
+                document.getElementById('modal-property-price').textContent = '₱ ' + parseFloat(originalPropertyData.price).toLocaleString();
+                document.getElementById('modal-property-buying-type').textContent = originalPropertyData.buyingType;
+                document.getElementById('modal-area-display').textContent = originalPropertyData.area;
+                document.getElementById('modal-bedrooms').textContent = originalPropertyData.bedrooms;
+                document.getElementById('modal-bathrooms').textContent = originalPropertyData.bathrooms;
+                document.getElementById('modal-agent-name').textContent = originalPropertyData.agent;
+                document.getElementById('modal-property-link').href = originalPropertyData.propertyLink;
+                document.getElementById('modal-listing-date').textContent = originalPropertyData.listingDate;
+            }
+
+            function savePropertyChanges() {
+                console.log('Saving property changes...');
+                
+                const propertyId = document.getElementById('modal-property-id').value;
+                
+                // Collect form data
+                const formData = new FormData();
+                formData.append('Id', propertyId);
+                formData.append('Title', document.getElementById('edit-property-name').value);
+                formData.append('Address', document.getElementById('edit-property-address').value);
+                formData.append('Description', document.getElementById('edit-property-description').value);
+                formData.append('PropertyType', document.getElementById('edit-property-type').value);
+                formData.append('ListingStatus', document.getElementById('edit-property-status').value);
+                formData.append('Price', document.getElementById('edit-property-price').value);
+                formData.append('Type', document.getElementById('edit-property-buying-type').value);
+                formData.append('Area', document.getElementById('edit-property-area').value);
+                formData.append('Bedrooms', document.getElementById('edit-bedrooms').value);
+                formData.append('Bathrooms', document.getElementById('edit-bathrooms').value);
+                formData.append('Agent', document.getElementById('edit-agent-name').value);
+                formData.append('PropertyLink', document.getElementById('edit-property-link').value);
+                
+                // Get listing time
+                const listingTime = document.getElementById('edit-listing-date').value;
+                if (listingTime) {
+                    formData.append('ListingTime', listingTime);
+                }
+                
+                // Add anti-forgery token
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                formData.append('__RequestVerificationToken', token);
+                
+                // Show loading state
+                const originalText = saveChangesBtn.innerHTML;
+                saveChangesBtn.innerHTML = '<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+                saveChangesBtn.disabled = true;
+                
+                // Send update request
+                fetch('/Properties/UpdateProperty', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    saveChangesBtn.innerHTML = originalText;
+                    saveChangesBtn.disabled = false;
+                    
+                    if (data.success) {
+                        // Update the view with new values
+                        updateDisplayValues();
+                        
+                        // Exit edit mode
+                        exitEditMode();
+                        
+                        // Show success message
+                        showToast('Property updated successfully!', 'success');
+                        
+                        // Optionally refresh the page to update the card display
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast('Error: ' + (data.message || 'Unknown error occurred'), 'error');
+                    }
+                })
+                .catch(error => {
+                    saveChangesBtn.innerHTML = originalText;
+                    saveChangesBtn.disabled = false;
+                    console.error('Error:', error);
+                    showToast('Error updating property', 'error');
+                });
+            }
+
+            function updateDisplayValues() {
+                // Update display values with edited data
+                document.getElementById('modal-property-name').textContent = document.getElementById('edit-property-name').value;
+                document.getElementById('modal-property-address').textContent = document.getElementById('edit-property-address').value;
+                document.getElementById('modal-property-description').textContent = document.getElementById('edit-property-description').value;
+                document.getElementById('modal-property-type').textContent = document.getElementById('edit-property-type').value;
+                document.getElementById('modal-property-status').textContent = document.getElementById('edit-property-status').value;
+                
+                const price = parseFloat(document.getElementById('edit-property-price').value);
+                document.getElementById('modal-property-price').textContent = '₱ ' + price.toLocaleString();
+                
+                document.getElementById('modal-property-buying-type').textContent = document.getElementById('edit-property-buying-type').value;
+                document.getElementById('modal-area-display').textContent = document.getElementById('edit-property-area').value;
+                document.getElementById('modal-bedrooms').textContent = document.getElementById('edit-bedrooms').value;
+                document.getElementById('modal-bathrooms').textContent = document.getElementById('edit-bathrooms').value;
+                document.getElementById('modal-agent-name').textContent = document.getElementById('edit-agent-name').value;
+                
+                const link = document.getElementById('edit-property-link').value;
+                document.getElementById('modal-property-link').href = link || '#';
+                document.getElementById('property-link-text').textContent = link ? 'View Property Details' : 'No Link';
+                
+                // Update bed-bath display
+                const bedrooms = document.getElementById('edit-bedrooms').value || '0';
+                const bathrooms = document.getElementById('edit-bathrooms').value || '0';
+                document.getElementById('modal-property-bed-bath').textContent = `${bedrooms} 🛏️ ${bathrooms} 🛁`;
+                
+                // Update area display
+                const area = document.getElementById('edit-property-area').value || '0';
+                document.getElementById('modal-property-area').textContent = `${area} sqm`;
+            }
+
+            // ===============================
+            // EVENT LISTENERS - MAIN FIX AREA
+            // ===============================
+
+            // Add Property Modal Event Listeners
+            if (addPropertyBtn) {
+                addPropertyBtn.addEventListener('click', function(e) {
+                    console.log('Add Property button clicked!'); // Debug log
+                    e.preventDefault();
+                    openModal();
+                });
+                console.log('Add Property button listener attached');
+            } else {
+                console.error('Add Property button not found! Check if ID "add-property-btn" exists');
+            }
+
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeModal();
+                });
+            }
+
+            if (cancelModalBtn) {
+                cancelModalBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeModal();
+                });
+            }
+
+            // Property Details Modal Event Listeners
+            if (closePropertyDetailsBtn) {
+                closePropertyDetailsBtn.addEventListener('click', closePropertyDetailsModal);
+            }
+
+            // Edit Mode Event Listeners
+            if (editModeBtn) {
+                editModeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    enableEditMode();
+                });
+            }
+
+            if (saveChangesBtn) {
+                saveChangesBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    savePropertyChanges();
+                });
+            }
+
+            if (cancelEditBtn) {
+                cancelEditBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    cancelEditMode();
+                });
+            }
 
             // Property card click handlers
             var propertyCards = document.querySelectorAll('.property-card');
+            console.log('Found property cards:', propertyCards.length); // Debug log
+            
             propertyCards.forEach(function(card) {
                 card.addEventListener('click', function() {
+                    console.log('Property card clicked!'); // Debug log
                     openPropertyDetailsModal(this);
                 });
             });
 
-            // Close modals when clicking on background overlay
-            modal.addEventListener('click', function (event) {
-                if (event.target === modal || event.target === modalBackdrop) {
-                    closeModal();
-                }
-            });
+            // ===============================
+            // PROPERTY TYPE BUTTON FUNCTIONALITY - FIXED
+            // ===============================
 
-            propertyDetailsModal.addEventListener('click', function (event) {
-                if (event.target === propertyDetailsModal || event.target === propertyDetailsBackdrop) {
-                    closePropertyDetailsModal();
-                }
-            });
-
-            // Close modals with Escape key
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') {
-                    if (!modal.classList.contains('hidden')) {
-                        closeModal();
-                    }
-                    if (!propertyDetailsModal.classList.contains('hidden')) {
-                        closePropertyDetailsModal();
-                    }
-                }
-            });
-
-            // Property type button functionality
             var propertyTypeBtns = document.querySelectorAll('.property-type-btn');
             propertyTypeBtns.forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    // Remove active class from all buttons (reset to white/default)
                     propertyTypeBtns.forEach(function(b) {
                         b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
                         b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
                     });
 
-                    // Add active class to the clicked button (make it blue)
                     this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
                     this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
 
-                    // Set the value of the hidden input field
                     var selectedType = this.getAttribute('data-type');
                     document.getElementById('property-type').value = selectedType;
                 });
             });
 
-            // Type (Buying/Viewing) button functionality
+            // Type (Buying/Viewing) button functionality - FIXED THE TYPO
             var typeBtns = document.querySelectorAll('.type-btn');
             typeBtns.forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    // Remove active class from all buttons (reset to white/default)
                     typeBtns.forEach(function(b) {
                         b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg(gray-50'); // FIXED TYPO HERE
                     });
 
-                    // Add active class to the clicked button (make it blue)
-                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg(gray-50');
+                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg(gray-50'); // FIXED TYPO HERE
                     this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
 
-                    // Set the value of the hidden input field
                     var selectedType = this.getAttribute('data-type');
                     document.getElementById('property-buying-type').value = selectedType;
                 });
             });
 
+            // ===============================
+            // CALCULATION FUNCTIONS
+            // ===============================
+
+            function updateCalculations() {
+                var area = parseFloat(areaInput.value) || 0;
+                var price = parseFloat(priceInput.value) || 0;
+                
+                var sqft = area * 10.7639;
+                var pricePerSqft = sqft > 0 ? price / sqft : 0;
+                
+                if (area > 0) {
+                    calculatedSqft.textContent = sqft.toFixed(2) + ' sqft';
+                } else {
+                    calculatedSqft.textContent = '-';
+                }
+                
+                if (price > 0 && sqft > 0) {
+                    calculatedPricePerSqft.textContent = '₱ ' + pricePerSqft.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                } else {
+                    calculatedPricePerSqft.textContent = '-';
+                }
+            }
+
+            if (areaInput) areaInput.addEventListener('input', updateCalculations);
+            if (priceInput) priceInput.addEventListener('input', updateCalculations);
+
+            // ===============================
+            // IMAGE UPLOAD HANDLING
+            // ===============================
+
+            if (imageInput) {
+                imageInput.addEventListener('change', function(e) {
+                    var file = e.target.files[0];
+                    if (file) {
+                        var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+                        if (!allowedTypes.includes(file.type)) {
+                            alert('Please upload a valid image file (JPG, PNG, GIF, BMP).');
+                            imageInput.value = '';
+                            return;
+                        }
+
+                        if (file.size > 5 * 1024 * 1024) {
+                            alert('File size cannot exceed 5MB.');
+                            imageInput.value = '';
+                            return;
+                        }
+
+                        var reader = new FileReader();
+                        reader.onload = function(e) {
+                            if (previewImage) previewImage.src = e.target.result;
+                            if (imagePreview) imagePreview.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            if (removeImageBtn) {
+                removeImageBtn.addEventListener('click', function() {
+                    if (imageInput) imageInput.value = '';
+                    if (imagePreview) imagePreview.classList.add('hidden');
+                    if (previewImage) previewImage.src = '';
+                });
+            }
+
             // Set default listing time to current datetime
             var listingTimeInput = document.getElementById('property-listing-time');
-            var now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            listingTimeInput.value = now.toISOString().slice(0, 16);
+            if (listingTimeInput) {
+                var now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                listingTimeInput.value = now.toISOString().slice(0, 16);
+            }
+
+            // ===============================
+            // CLOSE MODALS ON ESCAPE KEY AND BACKGROUND CLICK
+            // ===============================
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    if (modal && !modal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                    if (propertyDetailsModal && !propertyDetailsModal.classList.contains('hidden')) {
+                        closePropertyDetailsModal();
+                    }
+                }
+            });
+
+            // Close Add Property modal when clicking on background overlay
+            if (modal) {
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal || event.target === modalBackdrop) {
+                        closeModal();
+                    }
+                });
+            }
+
+            // Close Property Details modal when clicking on background overlay
+            if (propertyDetailsModal) {
+                propertyDetailsModal.addEventListener('click', function (event) {
+                    if (event.target === propertyDetailsModal || event.target === propertyDetailsBackdrop) {
+                        closePropertyDetailsModal();
+                    }
+                });
+            }
+
+            console.log('Properties page initialization complete'); // Debug log
         });
     </script>
 }

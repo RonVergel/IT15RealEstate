@@ -1,13 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateCRM.Models
 {
-    public class Contact  // Changed from "Contacts" to "Contact"
+    public class Lead
     {
         public int Id { get; set; }
         
-        [Required]  // Add this back for Name
-        [Display(Name = "Contact Name")]
+        [Required]
+        [Display(Name = "Lead Name")]
         [StringLength(100, ErrorMessage = "Name cannot exceed 100 characters")]
         public string Name { get; set; } = string.Empty;
         
@@ -24,10 +24,6 @@ namespace RealEstateCRM.Models
         [Display(Name = "Phone Number")]
         public string Phone { get; set; } = string.Empty;
         
-        [Required]
-        [Display(Name = "Contact Type")]
-        public string Type { get; set; } = string.Empty; // "Agent", "Client", or "Lead"
-        
         [Display(Name = "Date Created")]
         public DateTime DateCreated { get; set; } = DateTime.Now;
         
@@ -40,5 +36,13 @@ namespace RealEstateCRM.Models
         
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
+        
+        // Optional: Track if this lead was converted from a contact
+        [Display(Name = "Original Contact ID")]
+        public int? OriginalContactId { get; set; }
+        
+        [Display(Name = "Lead Source")]
+        [StringLength(50)]
+        public string? LeadSource { get; set; } = "Manual"; // "Manual", "Converted", "Website", etc.
     }
 }

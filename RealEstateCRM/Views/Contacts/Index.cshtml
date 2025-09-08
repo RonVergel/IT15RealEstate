@@ -1,4 +1,5 @@
-﻿@{
+﻿@model List<RealEstateCRM.Models.Contact>
+@{
     Layout = "_Layout";
     ViewData["Title"] = "Contacts";
 }
@@ -6,11 +7,11 @@
 <div class="flex items-center justify-between mb-6">
     <h1 class="font-semibold text-2xl">Contacts</h1>
 
-    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+    <button id="add-contact-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
         Add Contact
     </button>
 </div>
-
+    
 <!-- Search / controls (keeps your existing row) -->
 <div class="flex items-center justify-between mb-6 gap-4">
     <div class="flex-1 max-w-2xl">
@@ -50,17 +51,45 @@
     </div>
 </div>
 
-<!-- Contacts table: fixed layout + explicit column sizes for consistent spacing -->
+<!-- Success/Error Toast Notification -->
+<div id="toast-notification" class="fixed top-4 right-4 z-[10000] transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
+        <div class="flex items-center gap-3">
+            <div id="toast-icon" class="flex-shrink-0">
+                <!-- Success icon -->
+                <svg id="toast-success-icon" class="h-6 w-6 text-green-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <!-- Error icon -->
+                <svg id="toast-error-icon" class="h-6 w-6 text-red-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+            </div>
+            <button id="toast-close" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Contacts table: Updated with all required columns -->
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 table-fixed">
             <colgroup>
                 <col style="width:48px" />  <!-- checkbox -->
-                <col style="width:260px" /> <!-- name -->
+                <col style="width:200px" /> <!-- name -->
                 <col style="width:96px" />  <!-- type -->
-                <col style="width:320px" /> <!-- email -->
-                <col style="width:160px" /> <!-- phone -->
+                <col style="width:220px" /> <!-- email -->
+                <col style="width:140px" /> <!-- phone -->
+                <col style="width:120px" /> <!-- date created -->
                 <col style="width:140px" /> <!-- last contacted -->
+                <col style="width:200px" /> <!-- notes -->
                 <col style="width:56px" />  <!-- actions -->
             </colgroup>
 
@@ -73,136 +102,17 @@
                     <th class="px-4 py-3">Type</th>
                     <th class="px-4 py-3">Email</th>
                     <th class="px-4 py-3">Phone</th>
+                    <th class="px-4 py-3">Date Created</th>
                     <th class="px-4 py-3">Last Contacted</th>
+                    <th class="px-4 py-3">Notes</th>
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
 
             <tbody class="bg-white divide-y divide-gray-100">
-                <!-- Sample row 1 -->
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 align-top">
-                        <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="flex items-center gap-3">
-                            <img src="~/assets/images/avatar-placeholder.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium text-gray-900 truncate">John Kerl Parantar</div>
-                                <div class="text-xs text-gray-500 truncate">Primary buyer</div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Buyer</span>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">parantar@gmail.com</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">0999 888 9999</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-500 truncate">1 month ago</div>
-                    </td>
-
-                    <td class="px-4 py-4 text-right">
-                        <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-
-                <!-- Sample row 2 -->
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 align-top">
-                        <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="flex items-center gap-3">
-                            <img src="~/assets/images/avatar-placeholder-2.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium text-gray-900 truncate">Maria Lopez</div>
-                                <div class="text-xs text-gray-500 truncate">Owner / seller</div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Owner</span>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">maria.lopez@example.com</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">0917 555 1212</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-500 truncate">2 weeks ago</div>
-                    </td>
-
-                    <td class="px-4 py-4 text-right">
-                        <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 align-top">
-                        <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="flex items-center gap-3">
-                            <img src="~/assets/images/avatar-placeholder-2.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium text-gray-900 truncate">Miguel Andrei</div>
-                                <div class="text-xs text-gray-500 truncate">Owner / seller</div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Owner</span>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">maria.lopez@example.com</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-700 truncate">0917 555 1212</div>
-                    </td>
-
-                    <td class="px-4 py-4 align-top">
-                        <div class="text-sm text-gray-500 truncate">2 weeks ago</div>
-                    </td>
-
-                    <td class="px-4 py-4 text-right">
-                        <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-
-                @foreach (var contact in (Model ?? Enumerable.Empty<RealEstateCRM.Models.Contact>()))
+                @foreach (var contact in Model)
                 {
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
                         <td class="px-4 py-4 align-top">
                             <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
                         </td>
@@ -212,17 +122,41 @@
                                 <img src="~/assets/images/avatar-placeholder.png" alt="avatar" class="h-8 w-8 rounded-full object-cover flex-shrink-0" />
                                 <div class="min-w-0">
                                     <div class="text-sm font-medium text-gray-900 truncate">@contact.Name</div>
-                                    <div class="text-xs text-gray-500 truncate">Profile</div>
+                                    <div class="text-xs text-gray-500 truncate">@(contact.Agent ?? "No Agent")</div>
                                 </div>
                             </div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Buyer</span>
+                            @{
+                                var badgeClass = contact.Type switch
+                                {
+                                    "Agent" => "bg-blue-100 text-blue-700 border-blue-200",
+                                    "Client" => "bg-green-100 text-green-700 border-green-200",
+                                    "Lead" => "bg-yellow-100 text-yellow-700 border-yellow-200",
+                                    _ => "bg-gray-100 text-gray-700 border-gray-200"
+                                };
+                            }
+                            <div class="relative">
+                                <button class="contact-type-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border @badgeClass cursor-pointer hover:shadow-sm transition-all duration-200 group"
+                                        data-contact-id="@contact.Id"
+                                        data-current-type="@contact.Type"
+                                        title="Click to change contact type">
+                                    <span class="contact-type-text">@contact.Type</span>
+                                    <svg class="ml-1 h-3 w-3 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                    <!-- Loading spinner (hidden by default) -->
+                                    <svg class="contact-type-loading ml-1 h-3 w-3 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-700 truncate">@contact.Email</div>
+                            <div class="text-sm text-gray-700 truncate">@(contact.Email ?? "No Email")</div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
@@ -230,11 +164,66 @@
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-500 truncate">1 month ago</div>
+                            <div class="text-sm text-gray-500 truncate">
+                                @contact.DateCreated.ToString("MMM dd, yyyy")
+                            </div>
+                        </td>
+
+                        <!-- Editable Last Contacted Column -->
+                        <td class="px-4 py-4 align-top">
+                            <div class="last-contacted-container" data-contact-id="@contact.Id">
+                                <!-- Display Mode -->
+                                <div class="last-contacted-display cursor-pointer text-sm text-gray-500 truncate hover:text-blue-600 transition-colors duration-150" 
+                                     title="Click to edit last contacted date">
+                                    @if (contact.LastContacted.HasValue)
+                                    {
+                                        @contact.LastContacted.Value.ToString("MMM dd, yyyy")
+                                    }
+                                    else
+                                    {
+                                        <span class="text-gray-400">Never</span>
+                                    }
+                                    <svg class="inline-block ml-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                    </svg>
+                                </div>
+                                
+                                <!-- Edit Mode (Hidden by default) -->
+                                <div class="last-contacted-edit hidden">
+                                    <div class="flex items-center gap-2">
+                                        <input type="date" 
+                                               class="last-contacted-input text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 w-28"
+                                               value="@(contact.LastContacted?.ToString("yyyy-MM-dd") ?? "")" />
+                                        <button class="last-contacted-save p-1 text-green-600 hover:text-green-800">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="last-contacted-cancel p-1 text-red-600 hover:text-red-800">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-4 align-top">
+                            <div class="text-sm text-gray-700 truncate" title="@(contact.Notes ?? "No notes")">
+                                @if (!string.IsNullOrEmpty(contact.Notes))
+                                {
+                                    @(contact.Notes.Length > 30 ? contact.Notes.Substring(0, 30) + "..." : contact.Notes)
+                                }
+                                else
+                                {
+                                    <span class="text-gray-400 italic">No notes</span>
+                                }
+                            </div>
                         </td>
 
                         <td class="px-4 py-4 text-right">
-                            <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100">
+                            <button class="p-1 rounded-full text-gray-500 hover:bg-gray-100 transition-colors duration-150">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
                                 </svg>
@@ -245,12 +234,598 @@
                 @if (!(Model?.Any() ?? false))
                 {
                     <tr>
-                        <!--<td class="px-4 py-8 text-center text-sm text-gray-500" colspan="7">No contacts yet.</td> -->
+                        <td class="px-4 py-8 text-center text-sm text-gray-500" colspan="9">No contacts yet.</td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- FLOATING DROPDOWN OVERLAY (positioned outside table) -->
+<div id="contact-type-dropdown-overlay" class="hidden fixed z-[9999] pointer-events-none">
+    <div class="w-28 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden pointer-events-auto">
+        <div class="py-1">
+            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150 flex items-center gap-2" data-type="Agent">
+                <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                Agent
+            </button>
+            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-green-50 hover:text-green-700 transition-colors duration-150 flex items-center gap-2" data-type="Client">
+                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                Client
+            </button>
+            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-yellow-50 hover:text-yellow-700 transition-colors duration-150 flex items-center gap-2" data-type="Lead">
+                <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+                Lead
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div id="add-contact-modal" class="fixed inset-0 z-[9999] hidden opacity-0 transition-opacity duration-300 ease-out" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;">
+    <!-- Background overlay -->
+    <div class="absolute inset-0 transition-all duration-300 ease-out" id="contact-modal-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
+
+    <!-- Modal content container -->
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+        <!-- Modal dialog -->
+        <div class="relative bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="contact-modal-content">
+            <!-- Close button -->
+            <div class="absolute top-4 right-4 z-10">
+                <button id="close-contact-modal-btn" class="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors duration-200" aria-label="Close">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal content -->
+            <div class="overflow-y-auto max-h-[90vh]">
+                <div class="p-8">
+                    <h3 class="text-xl font-semibold text-gray-900 text-center mb-6">Add New Contact</h3>
+
+                    <form asp-controller="Contacts" asp-action="CreateContact" method="post" id="contact-form" class="space-y-4">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Name -->
+                        <div>
+                            <label for="contact-name" class="block text-sm font-medium text-gray-700 mb-1">
+                                Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="contact-name" name="Name" required 
+                                   placeholder="e.g., John Doe"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Agent -->
+                        <div>
+                            <label for="contact-agent" class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                            <input type="text" id="contact-agent" name="Agent" 
+                                   placeholder="e.g., Rheniel Penional"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="contact-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="contact-email" name="Email" 
+                                   placeholder="e.g., john.doe@example.com"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Phone Number -->
+                        <div>
+                            <label for="contact-phone" class="block text-sm font-medium text-gray-700 mb-1">
+                                Phone Number <span class="text-red-500">*</span>
+                            </label>
+                            <input type="tel" id="contact-phone" name="Phone" required 
+                                   placeholder="e.g., 0999 888 9999"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Type -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                Type <span class="text-red-500">*</span>
+                            </label>
+                            <div class="flex gap-2 flex-wrap">
+                                <button type="button" class="contact-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Agent">
+                                    Agent
+                                </button>
+                                <button type="button" class="contact-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Client">
+                                    Client
+                                </button>
+                                <button type="button" class="contact-type-btn px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 bg-white text-gray-700 border-gray-300 hover:bg-gray-50" data-type="Lead">
+                                    Lead
+                                </button>
+                            </div>
+                            <input type="hidden" name="Type" id="contact-type" value="" required />
+                        </div>
+
+                        <!-- Last Contacted -->
+                        <div>
+                            <label for="contact-last-contacted" class="block text-sm font-medium text-gray-700 mb-1">Last Contacted</label>
+                            <input type="date" id="contact-last-contacted" name="LastContacted" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <p class="text-xs text-gray-500 mt-1">Leave blank if never contacted</p>
+                        </div>
+
+                        <!-- Notes -->
+                        <div>
+                            <label for="contact-notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                            <textarea id="contact-notes" name="Notes" rows="3" 
+                                      placeholder="Add any notes about this contact..."
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"></textarea>
+                        </div>
+
+                        <div class="flex gap-3 pt-6">
+                            <button type="button" id="cancel-contact-btn" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-lg hover:bg-gray-300">
+                                Cancel
+                            </button>
+                            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-lg hover:bg-blue-700">
+                                Add Contact
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ===============================
+            // TOAST NOTIFICATION SYSTEM
+            // ===============================
+            
+            // Enhanced Toast notification system
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast-notification');
+                const messageEl = document.getElementById('toast-message');
+                const successIcon = document.getElementById('toast-success-icon');
+                const errorIcon = document.getElementById('toast-error-icon');
+
+                // Set message
+                messageEl.textContent = message;
+
+                // Show appropriate icon
+                if (type === 'success') {
+                    successIcon.classList.remove('hidden');
+                    errorIcon.classList.add('hidden');
+                } else {
+                    successIcon.classList.add('hidden');
+                    errorIcon.classList.remove('hidden');
+                }
+
+                // Show toast
+                toast.classList.remove('translate-x-full');
+                toast.classList.add('translate-x-0');
+
+                // Auto hide after 3 seconds
+                setTimeout(() => {
+                    hideToast();
+                }, 3000);
+            }
+
+            function hideToast() {
+                const toast = document.getElementById('toast-notification');
+                toast.classList.remove('translate-x-0');
+                toast.classList.add('translate-x-full');
+            }
+
+            // Toast close button
+            document.getElementById('toast-close').addEventListener('click', hideToast);
+
+            // Check for success message from TempData
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <text>
+                showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
+                </text>
+            }
+
+            const addContactBtn = document.getElementById('add-contact-btn');
+            const contactModal = document.getElementById('add-contact-modal');
+            const contactModalBackdrop = document.getElementById('contact-modal-backdrop');
+            const contactModalContent = document.getElementById('contact-modal-content');
+            const closeContactModalBtn = document.getElementById('close-contact-modal-btn');
+            const cancelContactBtn = document.getElementById('cancel-contact-btn');
+
+            function openContactModal() {
+                contactModal.classList.remove('hidden');
+                contactModal.offsetHeight;
+                setTimeout(function() {
+                    contactModal.classList.remove('opacity-0');
+                    contactModal.classList.add('opacity-100');
+                    contactModalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+                    contactModalContent.classList.remove('scale-95');
+                    contactModalContent.classList.add('scale-100');
+                }, 10);
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeContactModal() {
+                contactModal.classList.remove('opacity-100');
+                contactModal.classList.add('opacity-0');
+                contactModalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
+                contactModalContent.classList.remove('scale-100');
+                contactModalContent.classList.add('scale-95');
+                setTimeout(function() {
+                    contactModal.classList.add('hidden');
+                    resetContactModal();
+                }, 300);
+                document.body.style.overflow = '';
+            }
+
+            function resetContactModal() {
+                const form = document.getElementById('contact-form');
+                if (form) form.reset();
+                
+                // Reset type buttons
+                const typeBtns = document.querySelectorAll('.contact-type-btn');
+                typeBtns.forEach(function(btn) {
+                    btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                    btn.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                });
+                
+                document.getElementById('contact-type').value = '';
+            }
+
+            // Event listeners
+            addContactBtn.addEventListener('click', openContactModal);
+            closeContactModalBtn.addEventListener('click', closeContactModal);
+            cancelContactBtn.addEventListener('click', closeContactModal);
+
+            // Close modal when clicking on background overlay
+            contactModal.addEventListener('click', function (event) {
+                if (event.target === contactModal || event.target === contactModalBackdrop) {
+                    closeContactModal();
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !contactModal.classList.contains('hidden')) {
+                    closeContactModal();
+                }
+            });
+
+            // Contact type button functionality
+            const contactTypeBtns = document.querySelectorAll('.contact-type-btn');
+            contactTypeBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    contactTypeBtns.forEach(function(b) {
+                        b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                    });
+
+                    // Add active class to the clicked button
+                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
+                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+
+                    // Set the value of the hidden input field
+                    const selectedType = this.getAttribute('data-type');
+                    document.getElementById('contact-type').value = selectedType;
+                });
+            });
+
+            // ===============================
+            // INLINE LAST CONTACTED EDITING
+            // ===============================
+            
+            // Handle clicking on Last Contacted display to edit
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.last-contacted-display')) {
+                    const container = e.target.closest('.last-contacted-container');
+                    const display = container.querySelector('.last-contacted-display');
+                    const edit = container.querySelector('.last-contacted-edit');
+                    
+                    // Hide display, show edit
+                    display.classList.add('hidden');
+                    edit.classList.remove('hidden');
+                    
+                    // Focus the input
+                    const input = edit.querySelector('.last-contacted-input');
+                    input.focus();
+                }
+            });
+
+            // Handle save button click
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.last-contacted-save')) {
+                    const container = e.target.closest('.last-contacted-container');
+                    const contactId = container.getAttribute('data-contact-id');
+                    const input = container.querySelector('.last-contacted-input');
+                    const newDate = input.value;
+                    
+                    // Send AJAX request to update last contacted
+                    fetch('/Contacts/UpdateLastContacted', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            'contactId': contactId,
+                            'lastContacted': newDate,
+                            '__RequestVerificationToken': getAntiForgeryToken()
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update the display text
+                            const display = container.querySelector('.last-contacted-display');
+                            if (newDate) {
+                                const dateObj = new Date(newDate);
+                                const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                });
+                                display.innerHTML = `${formattedDate} <svg class="inline-block ml-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
+                            } else {
+                                display.innerHTML = `<span class="text-gray-400">Never</span> <svg class="inline-block ml-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
+                            }
+                            
+                            // Hide edit, show display
+                            const edit = container.querySelector('.last-contacted-edit');
+                            edit.classList.add('hidden');
+                            display.classList.remove('hidden');
+                            
+                            showToast(data.message, 'success');
+                        } else {
+                            showToast('Error: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('An error occurred while updating the last contacted date', 'error');
+                    });
+                }
+            });
+
+            // Handle cancel button click
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.last-contacted-cancel')) {
+                    const container = e.target.closest('.last-contacted-container');
+                    const display = container.querySelector('.last-contacted-display');
+                    const edit = container.querySelector('.last-contacted-edit');
+                    
+                    // Hide edit, show display
+                    edit.classList.add('hidden');
+                    display.classList.remove('hidden');
+                }
+            });
+
+            // Handle Enter key to save
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.classList.contains('last-contacted-input')) {
+                    const saveBtn = e.target.closest('.last-contacted-edit').querySelector('.last-contacted-save');
+                    saveBtn.click();
+                }
+                // Handle Escape key to cancel
+                if (e.key === 'Escape' && e.target.classList.contains('last-contacted-input')) {
+                    const cancelBtn = e.target.closest('.last-contacted-edit').querySelector('.last-contacted-cancel');
+                    cancelBtn.click();
+                }
+            });
+
+            // ===============================
+            // FLOATING DROPDOWN SYSTEM
+            // ===============================
+            
+            const dropdownOverlay = document.getElementById('contact-type-dropdown-overlay');
+            let currentActiveBadge = null;
+
+            // Function to get badge class for contact type
+            function getBadgeClass(type) {
+                switch(type) {
+                    case 'Agent': return 'bg-blue-100 text-blue-700 border-blue-200';
+                    case 'Client': return 'bg-green-100 text-green-700 border-green-200';
+                    case 'Lead': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+                    default: return 'bg-gray-100 text-gray-700 border-gray-200';
+                }
+            }
+
+            // Function to get anti-forgery token
+            function getAntiForgeryToken() {
+                return document.querySelector('input[name="__RequestVerificationToken"]').value;
+            }
+
+            // Enhanced Toast notification system
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast-notification');
+                const messageEl = document.getElementById('toast-message');
+                const successIcon = document.getElementById('toast-success-icon');
+                const errorIcon = document.getElementById('toast-error-icon');
+
+                // Set message
+                messageEl.textContent = message;
+
+                // Show appropriate icon
+                if (type === 'success') {
+                    successIcon.classList.remove('hidden');
+                    errorIcon.classList.add('hidden');
+                } else {
+                    successIcon.classList.add('hidden');
+                    errorIcon.classList.remove('hidden');
+                }
+
+                // Show toast
+                toast.classList.remove('translate-x-full');
+                toast.classList.add('translate-x-0');
+
+                // Auto hide after 3 seconds
+                setTimeout(() => {
+                    hideToast();
+                }, 3000);
+            }
+
+            function hideToast() {
+                const toast = document.getElementById('toast-notification');
+                toast.classList.remove('translate-x-0');
+                toast.classList.add('translate-x-full');
+            }
+
+            // Toast close button
+            document.getElementById('toast-close').addEventListener('click', hideToast);
+
+            // Position floating dropdown
+            function positionDropdown(badge) {
+                const rect = badge.getBoundingClientRect();
+                const dropdownHeight = 100; // Approximate height
+                const viewportHeight = window.innerHeight;
+                
+                let top = rect.bottom + window.scrollY + 4; // 4px gap
+                let left = rect.left + window.scrollX;
+                
+                // Check if dropdown would go off bottom of viewport
+                if (rect.bottom + dropdownHeight > viewportHeight) {
+                    top = rect.top + window.scrollY - dropdownHeight - 4; // Position above
+                }
+                
+                // Check if dropdown would go off right edge
+                const dropdownWidth = 112; // 28 * 4 = w-28
+                if (left + dropdownWidth > window.innerWidth) {
+                    left = window.innerWidth - dropdownWidth - 8;
+                }
+                
+                dropdownOverlay.style.top = top + 'px';
+                dropdownOverlay.style.left = left + 'px';
+            }
+
+            // Show floating dropdown
+            function showDropdown(badge) {
+                currentActiveBadge = badge;
+                positionDropdown(badge);
+                dropdownOverlay.classList.remove('hidden');
+            }
+
+            // Hide floating dropdown
+            function hideDropdown() {
+                dropdownOverlay.classList.add('hidden');
+                currentActiveBadge = null;
+            }
+
+            // Handle contact type badge clicks
+            document.addEventListener('click', function(e) {
+                // Close dropdown when clicking outside
+                if (!e.target.closest('.contact-type-badge') && !e.target.closest('#contact-type-dropdown-overlay')) {
+                    hideDropdown();
+                    return;
+                }
+
+                // Handle badge clicks
+                if (e.target.closest('.contact-type-badge')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const badge = e.target.closest('.contact-type-badge');
+                    
+                    if (currentActiveBadge === badge) {
+                        hideDropdown();
+                    } else {
+                        showDropdown(badge);
+                    }
+                }
+
+                // Handle type option clicks
+                if (e.target.closest('.type-option')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (!currentActiveBadge) return;
+                    
+                    const option = e.target.closest('.type-option');
+                    const newType = option.getAttribute('data-type');
+                    const badge = currentActiveBadge;
+                    const contactId = badge.getAttribute('data-contact-id');
+                    const currentType = badge.getAttribute('data-current-type');
+                    
+                    // Don't do anything if the type is the same
+                    if (newType === currentType) {
+                        hideDropdown();
+                        return;
+                    }
+                    
+                    // Enhanced loading state
+                    const textSpan = badge.querySelector('.contact-type-text');
+                    const arrowIcon = badge.querySelector('svg:not(.contact-type-loading)');
+                    const loadingIcon = badge.querySelector('.contact-type-loading');
+                    
+                    badge.style.pointerEvents = 'none';
+                    arrowIcon.classList.add('hidden');
+                    loadingIcon.classList.remove('hidden');
+                    hideDropdown();
+                    
+                    // Send AJAX request to update contact type
+                    fetch('/Contacts/UpdateContactType', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            'contactId': contactId,
+                            'newType': newType,
+                            '__RequestVerificationToken': getAntiForgeryToken()
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.shouldRedirect && data.redirectUrl) {
+                                // Show success message and redirect to Leads
+                                showToast(`Contact moved to ${newType}s`, 'success');
+                                setTimeout(() => {
+                                    window.location.href = data.redirectUrl;
+                                }, 1000);
+                            } else {
+                                // Update the badge text and styling
+                                textSpan.textContent = newType;
+                                
+
+                                // Update badge classes with enhanced styling
+                                badge.className = 'contact-type-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer hover:shadow-sm transition-all duration-200 group ' + getBadgeClass(newType);
+                                
+                                // Update data attribute
+                                badge.setAttribute('data-current-type', newType);
+                                
+                                // Show success toast
+                                showToast(`Contact type updated to ${newType}`, 'success');
+                            }
+                        } else {
+                            showToast('Error: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('An error occurred while updating the contact type', 'error');
+                    })
+                    .finally(() => {
+                        // Restore badge state
+                        badge.style.pointerEvents = 'auto';
+                        arrowIcon.classList.remove('hidden');
+                        loadingIcon.classList.add('hidden');
+                    });
+                }
+            });
+
+            // Close dropdown when pressing Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideDropdown();
+                }
+            });
+
+            // Close dropdown and reposition on scroll/resize
+            window.addEventListener('scroll', hideDropdown);
+            window.addEventListener('resize', hideDropdown);
+        });
+    </script>
+}
 
 
