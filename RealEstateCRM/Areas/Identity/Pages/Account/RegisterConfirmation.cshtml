@@ -1,0 +1,35 @@
+﻿@page
+@model RegisterConfirmationModel
+@{
+    ViewData["Title"] = "Register confirmation";
+    Layout = "/Views/Shared/_AuthLayout.cshtml";
+}
+
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-lg text-center bg-white p-8 md:p-12 rounded-3xl shadow-lg">
+        
+        <!-- Checkmark Icon -->
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+            <svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+
+        <h1 class="text-3xl md:text-[28px] font-semibold text-neutral-900 mt-6">
+            Please check your email
+        </h1>
+
+        <p class="text-neutral-600 mt-4">
+            A confirmation link has been sent to your email address. Please click the link to activate your account.
+        </p>
+
+        <div class="mt-8">
+            <a href="/" class="w-full h-12 inline-flex items-center justify-center rounded-full bg-neutral-900 text-white font-medium hover:bg-neutral-800 transition px-8">
+                Return to Home
+            </a>
+        </div>
+
+       
+    </div>
+</div>
+

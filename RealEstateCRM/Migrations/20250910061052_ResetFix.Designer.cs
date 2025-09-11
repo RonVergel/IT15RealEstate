@@ -12,8 +12,8 @@ using RealEstateCRM.Data;
 namespace RealEstateCRM.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250908130650_AddLeadsTable")]
-    partial class AddLeadsTable
+    [Migration("20250910061052_ResetFix")]
+    partial class ResetFix
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

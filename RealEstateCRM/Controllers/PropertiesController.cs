@@ -3,9 +3,11 @@ using RealEstateCRM.Data;
 using RealEstateCRM.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RealEstateCRM.Controllers
 {
+    [Authorize]
     public class PropertiesController : Controller
     {
         private readonly AppDbContext _context;

@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Controllers
 {
+    [Authorize]
     public class DealsController : Controller
     {
         private readonly AppDbContext _context;
