@@ -103,8 +103,23 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                         values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
                         protocol: Request.Scheme);
 
-                    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                    // Create a professional HTML email body
+                    var emailBody = $@"
+                        <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                            <div style='max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
+                                <h2 style='text-align: center; color: #0056b3;'>Welcome to Real Estate CRM!</h2>
+                                <p>Thank you for registering. Please confirm your email address to complete your registration and activate your account.</p>
+                                <div style='text-align: center; margin: 30px 0;'>
+                                    <a href='{HtmlEncoder.Default.Encode(callbackUrl)}' style='background-color: #0056b3; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Confirm Your Account</a>
+                                </div>
+                                <p>If you are having trouble with the button above, please copy and paste the URL below into your web browser:</p>
+                                <p style='word-break: break-all; font-size: 12px;'><a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>{HtmlEncoder.Default.Encode(callbackUrl)}</a></p>
+                                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'/>
+                                <p style='font-size: 12px; color: #888;'>If you did not create this account, no further action is required.</p>
+                            </div>
+                        </div>";
+
+                    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email for Real Estate CRM", emailBody);
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {
