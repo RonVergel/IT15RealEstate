@@ -3,75 +3,72 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - RealEstateCRM</title>
-    <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
+    <title>@ViewData["Title"] - Homey</title>
+    <link rel="stylesheet" href="~/css/app.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="bg-gray-100 flex flex-col min-h-screen">
-    <div class="flex min-h-screen">
+<body class="bg-gray-100 font-sans antialiased">
+    <div class="flex h-screen bg-gray-50">
         <!-- Sidebar -->
-        <aside style="width: 248px;" class="bg-white border-r border-gray-200 flex flex-col py-8">
-            <!-- Logo at top-left -->
-            <div class="px-4">
-                <img src="~/assets/images/Homey_transparent.png"
-                     alt="Homey Logo"
-                     style="width: 101px; height: 101px;"
-                     class="object-contain self-start mb-6" />
+        <aside class="w-64 flex-shrink-0 bg-white border-r border-gray-200">
+            <div class="p-6">
+                <a asp-controller="Dashboard" asp-action="Index" class="flex items-center gap-2">
+                    <img src="@Url.Content("~/assets/images/logo.png")" alt="Homey Logo" class="h-8 w-auto" />
+                    <span class="font-bold text-xl text-gray-800">Homey</span>
+                </a>
             </div>
-
-            @{
-                var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-                Func<string, string> getNavLinkClass = (controller) =>
-                {
-                    var baseClasses = "font-medium px-4 py-3"; // Increased vertical padding from py-2 to py-3
-                    if (string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Active state: light blue background, blue text, and a right border highlight
-                        return $"py-3 bg-blue-50 text-blue-600 font-semibold border-r-4 border-blue-600 {baseClasses}";
-                    }
-                    // Inactive state
-                    return $"text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md {baseClasses}";
-                };
-            }
-
-            <!-- Nav -->
-            <nav class="flex flex-col gap-6 mt-6">
-                <a class="@getNavLinkClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
-                <a class="@getNavLinkClass("Properties")" asp-controller="Properties" asp-action="Index">Properties</a>
-                <a class="@getNavLinkClass("Deals")" asp-controller="Deals" asp-action="Index">Deals</a>
-                <a class="@getNavLinkClass("Contacts")" asp-controller="Contacts" asp-action="Index">Contacts</a>
-                <a class="@getNavLinkClass("Leads")" asp-controller="Leads" asp-action="Index">Leads</a>
-                
-                
+            <nav class="mt-4 px-4">
+                <a asp-controller="Dashboard" asp-action="Index" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    Dashboard
+                </a>
+                <a asp-controller="Properties" asp-action="Index" class="flex items-center gap-3 px-4 py-2.5 mt-1 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    Properties
+                </a>
+                <a asp-controller="Deals" asp-action="Index" class="flex items-center gap-3 px-4 py-2.5 mt-1 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"></path></svg>
+                    Deals
+                </a>
+                <a asp-controller="Contacts" asp-action="Index" class="flex items-center gap-3 px-4 py-2.5 mt-1 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Contacts
+                </a>
+                <a asp-controller="Leads" asp-action="Index" class="flex items-center gap-3 px-4 py-2.5 mt-1 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    Leads
+                </a>
             </nav>
         </aside>
 
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col">
-            <!-- Top Bar -->
-            <header class="w-full bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-                <!-- Search -->
-                <div class="flex-1 max-w-lg">
-                    <input type="text"
-                           placeholder="Search Properties, Leads, and more"
-                           class="w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                </div>
-
-                <!-- User Dropdown -->
-                <div class="flex items-center gap-4 ml-6">
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white border-b border-gray-200">
+                <div class="flex items-center justify-between p-4">
+                    <!-- Search bar -->
+                    <div class="relative w-full max-w-md">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" placeholder="Search Properties, Leads, and more" class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <!-- User menu -->
                     <partial name="_LoginPartial" />
                 </div>
             </header>
 
-            <!-- Page Body -->
-            <main class="flex-1 px-8 py-6 bg-gray-50">
+            <!-- Page content -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto">
                 @RenderBody()
             </main>
         </div>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -59,7 +59,7 @@
                          data-deal-id="@deal.Id">
                         @if (deal.Property != null)
                         {
-                            <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                            <img src="@(string.IsNullOrEmpty(deal.Property.ImagePath) ? placeholder : Url.Content(deal.Property.ImagePath))" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
                             <div class="flex justify-between items-center">
                                 <h4 class="font-bold text-sm">@deal.Property.Title</h4>
                                 <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">
@@ -125,7 +125,7 @@
                          data-deal-id="@deal.Id">
                         @if (deal.Property != null)
                         {
-                            <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                            <img src="@(string.IsNullOrEmpty(deal.Property.ImagePath) ? placeholder : Url.Content(deal.Property.ImagePath))" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
                             <div class="flex justify-between items-center">
                                 <h4 class="font-bold text-sm">@deal.Property.Title</h4>
                                 <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">
@@ -191,7 +191,7 @@
                          data-deal-id="@deal.Id">
                         @if (deal.Property != null)
                         {
-                            <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                            <img src="@(string.IsNullOrEmpty(deal.Property.ImagePath) ? placeholder : Url.Content(deal.Property.ImagePath))" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
                             <div class="flex justify-between items-center">
                                 <h4 class="font-bold text-sm">@deal.Property.Title</h4>
                                 <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">
@@ -257,7 +257,7 @@
                          data-deal-id="@deal.Id">
                         @if (deal.Property != null)
                         {
-                            <img src="@placeholder" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
+                            <img src="@(string.IsNullOrEmpty(deal.Property.ImagePath) ? placeholder : Url.Content(deal.Property.ImagePath))" alt="Property" class="w-full h-32 object-cover rounded-md mb-3" />
                             <div class="flex justify-between items-center">
                                 <h4 class="font-bold text-sm">@deal.Property.Title</h4>
                                 <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">

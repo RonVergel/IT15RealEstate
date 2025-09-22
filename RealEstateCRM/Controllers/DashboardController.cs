@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Models;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RealEstateCRM.Controllers
 {
@@ -18,6 +20,12 @@ namespace RealEstateCRM.Controllers
 
         public async Task<IActionResult> Index()
         {
+            var pipelineData = await _context.Deals
+                .GroupBy(d => d.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .OrderBy(x => x.Status)
+                .ToListAsync();
+
             var dashboardData = new DashboardViewModel
             {
                 // Get total count of properties
@@ -89,7 +97,11 @@ namespace RealEstateCRM.Controllers
                     .Where(l => l.IsActive)
                     .OrderByDescending(l => l.DateCreated)
                     .Take(5)
-                    .ToListAsync()
+                    .ToListAsync(),
+                
+                // Deal Pipeline Chart Data
+                DealStatusLabels = pipelineData.Select(p => p.Status).ToList(),
+                DealsPerStatus = pipelineData.Select(p => p.Count).ToList()
             };
 
             return View(dashboardData);
@@ -123,5 +135,12 @@ namespace RealEstateCRM.Controllers
         public List<Deal> RecentDeals { get; set; } = new();
         public List<Contact> RecentContacts { get; set; } = new();
         public List<Lead> RecentLeads { get; set; } = new();
+        
+        // Properties for Analytics & Reporting page
+        public decimal TotalSalesVolume { get; set; }
+        public decimal AverageDealValue { get; set; }
+        public int NewLeadsLast30Days { get; set; }
+        public List<string> DealStatusLabels { get; set; } = new();
+        public List<int> DealsPerStatus { get; set; } = new();
     }
 }

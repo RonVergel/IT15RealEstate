@@ -1,0 +1,130 @@
+@model RealEstateCRM.Controllers.ReportsViewModel
+@{
+    ViewData["Title"] = "Analytics & Reporting";
+}
+
+<!-- Header -->
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">@ViewData["Title"]</h1>
+        <p class="text-gray-500">Key metrics and performance overview.</p>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="mb-8">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">Performance (Last 30 Days)</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Total Sales Volume -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <p class="text-gray-500 text-sm">Total Sales Volume</p>
+            <p class="text-3xl font-bold">@Model.TotalSalesVolume.ToString("C")</p>
+        </div>
+
+        <!-- Closed Deals -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <p class="text-gray-500 text-sm">Closed Deals</p>
+            <p class="text-3xl font-bold">@Model.ClosedDealsCount</p>
+        </div>
+
+        <!-- Average Deal Value -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <p class="text-gray-500 text-sm">Average Deal Value</p>
+            <p class="text-3xl font-bold">@Model.AverageDealValue.ToString("C")</p>
+        </div>
+
+        <!-- New Leads -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <p class="text-gray-500 text-sm">New Leads</p>
+            <p class="text-3xl font-bold">@Model.NewLeadsCount</p>
+        </div>
+
+        <!-- Avg. Days on Market -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <p class="text-gray-500 text-sm">Avg. Days on Market</p>
+            <p class="text-3xl font-bold">@Model.AvgDaysOnMarket.ToString("0")</p>
+        </div>
+
+        <!-- Total Listings Value -->
+        <div class="bg-white p-6 rounded-lg shadow-sm">
+            <p class="text-gray-500 text-sm">Total Listings Value</p>
+            <p class="text-3xl font-bold">@Model.TotalListingsValue.ToString("C")</p>
+        </div>
+    </div>
+</div>
+
+<!-- Deal Pipeline Chart -->
+<div class="mb-8">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">Deal Pipeline Overview</h2>
+        <a href="@Url.Action("ExportDealPipeline", "Analytics")" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+            Export Pipeline (CSV)
+        </a>
+    </div>
+    <div class="bg-white p-6 rounded-lg shadow-sm">
+        <canvas id="dealPipelineChart"></canvas>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Deal Pipeline Chart
+            fetch('/api/analytics/deal-pipeline')
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById('dealPipelineChart').getContext('2d');
+                    const labels = data.map(d => d.stageName);
+                    const dealCounts = data.map(d => d.dealCount);
+                    const totalValues = data.map(d => d.totalValue);
+
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Number of Deals',
+                                    data: dealCounts,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1 // Ensure y-axis has integer steps
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y;
+                                            }
+                                            return label;
+                                        },
+                                        afterLabel: function(context) {
+                                            const value = totalValues[context.dataIndex];
+                                            return 'Total Value: ' + new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+        });
+    </script>
+}
