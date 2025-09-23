@@ -84,9 +84,12 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                     return Page();
                 }
 
-                // Set lockoutOnFailure to true to enable account lockout.
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
-                
+                // If we found a user by email, use their UserName for sign-in.
+                // This covers the case where UserName != Email (Register sets UserName separately).
+                var signInName = user?.UserName ?? Input.Email;
+
+                var result = await _signInManager.PasswordSignInAsync(signInName, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
@@ -102,12 +105,11 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                     ModelState.AddModelError(string.Empty, "This account has been locked out due to multiple failed login attempts. Please try again later.");
                     return Page();
                 }
-                else
-                {
-                    // Keep a generic message for invalid credentials to prevent user enumeration.
-                    ModelState.AddModelError(string.Empty, "Invalid email or password.");
-                    return Page();
-                }
+
+                // Generic failure (don't reveal which part failed)
+                _logger.LogWarning("Invalid login attempt for {Email}", Input.Email);
+                ModelState.AddModelError(string.Empty, "Invalid email or password.");
+                return Page();
             }
 
             // If we got this far, something failed, redisplay form

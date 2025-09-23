@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
@@ -10,10 +11,12 @@ namespace RealEstateCRM.Controllers
     public class DealsController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public DealsController(AppDbContext context)
+        public DealsController(AppDbContext context, UserManager<IdentityUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         public async Task<IActionResult> Index()
@@ -51,6 +54,38 @@ namespace RealEstateCRM.Controllers
                 .ToListAsync();
 
             return Json(properties);
+        }
+
+        // New: return users that are in the "Agent" role
+        [HttpGet]
+        public async Task<IActionResult> GetAgents()
+        {
+            var agents = await _userManager.GetUsersInRoleAsync("Agent");
+            var result = agents.Select(u => new
+            {
+                id = u.Id,
+                name = string.IsNullOrWhiteSpace(u.UserName) ? u.Email : u.UserName,
+                email = u.Email
+            }).ToList();
+            return Json(result);
+        }
+
+        // New: return clients from Contacts table
+        [HttpGet]
+        public async Task<IActionResult> GetClients()
+        {
+            var clients = await _context.Contacts
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .Select(c => new
+                {
+                    id = c.Id,
+                    name = c.Name,
+                    email = c.Email
+                })
+                .ToListAsync();
+
+            return Json(clients);
         }
 
         // Handle deal creation

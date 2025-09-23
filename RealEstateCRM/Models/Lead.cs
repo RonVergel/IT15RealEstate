@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateCRM.Models
 {
@@ -44,5 +44,14 @@ namespace RealEstateCRM.Models
         [Display(Name = "Lead Source")]
         [StringLength(50)]
         public string? LeadSource { get; set; } = "Manual"; // "Manual", "Converted", "Website", etc.
+
+        // NEW: Occupation and Salary (match Contact)
+        [Display(Name = "Occupation")]
+        [StringLength(100, ErrorMessage = "Occupation cannot exceed 100 characters")]
+        public string? Occupation { get; set; }
+
+        [Display(Name = "Salary (₱)")]
+        [DataType(DataType.Currency)]
+        public decimal? Salary { get; set; }
     }
 }

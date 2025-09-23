@@ -1,0 +1,73 @@
+﻿@model List<RealEstateCRM.Models.Property>
+
+@{
+    ViewData["Title"] = "Pending Assignments";
+    var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
+}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="font-semibold text-2xl">Pending Assignments</h1>
+    <p class="text-sm text-gray-500">Properties assigned to you that require action.</p>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    @if (Model != null && Model.Any())
+    {
+        foreach (var property in Model)
+        {
+            var imageSrc = !string.IsNullOrEmpty(property.ImagePath) ? property.ImagePath : placeholder;
+            <div class="bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200 p-0">
+                <div class="w-full h-40 bg-gray-100">
+                    <img src="@imageSrc" alt="Property image" class="w-full h-full object-cover" />
+                </div>
+
+                <div class="p-4 flex-1 flex flex-col">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-md font-semibold text-gray-900 truncate">@property.Title</h3>
+                            <p class="text-xs text-gray-500 mt-1 truncate">@property.Address</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-bold text-gray-900">₱ @property.Price.ToString("N0")</p>
+                            <span class="text-xs text-gray-600">@property.PropertyType</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 flex items-center gap-4 text-sm text-gray-600">
+                        <div class="flex items-center gap-1.5">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7l1.5-2.5A2 2 0 007 3h10a2 2 0 011.5.5L21 7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21V7h10v14" />
+                            </svg>
+                            <span>@(property.Bedrooms ?? 0)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 10c0 1.38-1.79 2.5-4 2.5S13 11.38 13 10s1.79-2.5 4-2.5 4 1.12 4 2.5z" />
+                            </svg>
+                            <span>@(property.Bathrooms ?? 0)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7h18M7 7v14M17 7v14" />
+                            </svg>
+                            <span>@(property.Area ?? 0) sqm</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex items-center justify-between">
+                        <a asp-controller="Properties" asp-action="Details" asp-route-id="@property.Id" class="text-sm text-blue-600 hover:underline">View</a>
+                        <span class="text-xs text-gray-500">Listed @property.ListingTime.ToShortDateString()</span>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="col-span-full text-center py-16">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No Pending Assignments</h3>
+            <p class="text-sm text-gray-500">You have no properties assigned to you at the moment.</p>
+        </div>
+    }
+</div>

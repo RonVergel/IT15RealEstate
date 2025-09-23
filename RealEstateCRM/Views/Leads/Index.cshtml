@@ -86,7 +86,8 @@
                 <col style="width:96px" />  <!-- type -->
                 <col style="width:320px" /> <!-- email -->
                 <col style="width:160px" /> <!-- phone -->
-                <col style="width:140px" /> <!-- last contacted -->
+                <col style="width:160px" /> <!-- occupation -->
+                <col style="width:140px" /> <!-- salary -->
                 <col style="width:56px" />  <!-- actions -->
             </colgroup>
 
@@ -99,7 +100,8 @@
                     <th class="px-4 py-3">Type</th>
                     <th class="px-4 py-3">Email</th>
                     <th class="px-4 py-3">Phone</th>
-                    <th class="px-4 py-3">Last Contacted</th>
+                    <th class="px-4 py-3">Occupation</th>
+                    <th class="px-4 py-3">Salary</th>
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
@@ -150,14 +152,18 @@
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-500 truncate">
-                                @if (lead.LastContacted.HasValue)
+                            <div class="text-sm text-gray-700 truncate">@(!string.IsNullOrEmpty(lead.Occupation) ? lead.Occupation : "<span class=\"text-gray-400\">—</span>")</div>
+                        </td>
+
+                        <td class="px-4 py-4 align-top">
+                            <div class="text-sm text-gray-700 truncate">
+                                @if (lead.Salary.HasValue)
                                 {
-                                    @lead.LastContacted.Value.ToString("MMM dd, yyyy")
+                                    @($"₱ {lead.Salary.Value:N0}")
                                 }
                                 else
                                 {
-                                    <span>Never</span>
+                                    <span class="text-gray-400">—</span>
                                 }
                             </div>
                         </td>
@@ -174,7 +180,7 @@
                 @if (!(Model?.Any() ?? false))
                 {
                     <tr>
-                        <td class="px-4 py-8 text-center text-sm text-gray-500" colspan="7">No leads yet.</td>
+                        <td class="px-4 py-8 text-center text-sm text-gray-500" colspan="8">No leads yet.</td>
                     </tr>
                 }
             </tbody>
@@ -182,17 +188,66 @@
     </div>
 </div>
 
+@* PAGINATION: Show previous / page numbers / next and an item range *@
+@{
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 10;
+    var totalCount = ViewBag.TotalCount as int? ?? 0;
+
+    var startItem = totalCount == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+    var endItem = totalCount == 0 ? 0 : Math.Min(totalCount, currentPage * pageSize);
+
+    var start = Math.Max(1, currentPage - 2);
+    var end = Math.Min(totalPages, currentPage + 2);
+    if (currentPage <= 2) { end = Math.Min(totalPages, 5); }
+    if (currentPage > totalPages - 2) { start = Math.Max(1, totalPages - 4); }
+}
+
+@if (totalPages > 1)
+{
+    <div class="mt-6 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div class="text-sm text-gray-600">
+            Showing <span class="font-medium">@startItem</span> - <span class="font-medium">@endItem</span> of <span class="font-medium">@totalCount</span>
+        </div>
+
+        <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <a asp-action="Index" asp-controller="Leads" asp-route-page="@(currentPage - 1)"
+               class="px-3 py-2 rounded-l-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(currentPage <= 1 ? "opacity-50 pointer-events-none" : "")"
+               aria-disabled="@(currentPage <= 1)">
+                Previous
+            </a>
+
+            @for (int p = start; p <= end; p++)
+            {
+                if (p == currentPage)
+                {
+                    <span class="px-3 py-2 border-t border-b border-gray-200 bg-blue-600 text-white text-sm font-medium">@p</span>
+                }
+                else
+                {
+                    <a asp-action="Index" asp-controller="Leads" asp-route-page="@p" class="px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">@p</a>
+                }
+            }
+
+            <a asp-action="Index" asp-controller="Leads" asp-route-page="@(currentPage + 1)"
+               class="px-3 py-2 rounded-r-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(currentPage >= totalPages ? "opacity-50 pointer-events-none" : "")"
+               aria-disabled="@(currentPage >= totalPages)">
+                Next
+            </a>
+        </nav>
+    </div>
+}
+
 <!-- FLOATING DROPDOWN OVERLAY (positioned outside table) -->
 <div id="lead-type-dropdown-overlay" class="hidden fixed z-[9999] pointer-events-none">
     <div class="w-28 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden pointer-events-auto">
         <div class="py-1">
-            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-blue-50 hover:text-blue-700 transition-colors duration-150 flex items-center gap-2" data-type="Agent">
-                <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                Agent
-            </button>
-            <button type="button" class="type-option w-full text-left px-3 py-2 text-xs hover:bg-green-50 hover:text-green-700 transition-colors duration-150 flex items-center gap-2" data-type="Client">
-                <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                Client
+            <button type="button"
+                    class="type-option w-full text-left px-3 py-2 text-xs hover:bg-gray-50 hover:text-gray-800 transition-colors duration-150 flex items-center gap-2"
+                    data-type="Contact">
+                <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                Contact
             </button>
         </div>
     </div>
@@ -234,12 +289,13 @@
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                         </div>
 
-                        <!-- Agent -->
+                        <!-- Agent (now a dropdown populated from DB) -->
                         <div>
                             <label for="lead-agent" class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
-                            <input type="text" id="lead-agent" name="Agent" 
-                                   placeholder="e.g., Rheniel Penional"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <select id="lead-agent" name="Agent" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="">-- Select an agent (optional) --</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Choose an agent from the list or leave blank.</p>
                         </div>
 
                         <!-- Email -->
@@ -257,6 +313,22 @@
                             </label>
                             <input type="tel" id="lead-phone" name="Phone" required 
                                    placeholder="e.g., 0999 888 9999"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Occupation -->
+                        <div>
+                            <label for="lead-occupation" class="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
+                            <input type="text" id="lead-occupation" name="Occupation"
+                                   placeholder="e.g., Software Engineer"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+
+                        <!-- Salary -->
+                        <div>
+                            <label for="lead-salary" class="block text-sm font-medium text-gray-700 mb-1">Salary (₱)</label>
+                            <input type="number" id="lead-salary" name="Salary" min="0" step="0.01"
+                                   placeholder="e.g., 45000"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                         </div>
 
@@ -328,6 +400,42 @@
                 </text>
             }
 
+            // ===============================
+            // AGENTS: fetch & populate (reused from Properties page)
+            // ===============================
+            async function fetchAgents(query) {
+                try {
+                    const url = '/Properties/GetAgents' + (query ? '?q=' + encodeURIComponent(query) : '');
+                    const res = await fetch(url, { credentials: 'same-origin' });
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    if (Array.isArray(data)) return data;
+                    if (data && Array.isArray(data.agents)) return data.agents;
+                    return [];
+                } catch (err) {
+                    console.error('Error fetching agents:', err);
+                    return [];
+                }
+            }
+
+            function populateAgentsList(list) {
+                const sel = document.getElementById('lead-agent');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- Select an agent (optional) --</option>';
+                list.forEach(a => {
+                    const opt = document.createElement('option');
+                    // assume agent object has 'name' property as used elsewhere
+                    opt.value = a.name || a;
+                    opt.textContent = a.name || a;
+                    sel.appendChild(opt);
+                });
+            }
+
+            async function loadInitialAgents() {
+                const agents = await fetchAgents('');
+                populateAgentsList(agents);
+            }
+
             const addLeadBtn = document.getElementById('add-lead-btn');
             const leadModal = document.getElementById('add-lead-modal');
             const leadModalBackdrop = document.getElementById('lead-modal-backdrop');
@@ -336,6 +444,9 @@
             const cancelLeadBtn = document.getElementById('cancel-lead-btn');
 
             function openLeadModal() {
+                // load agents each time modal opens to get fresh list
+                loadInitialAgents();
+
                 leadModal.classList.remove('hidden');
                 leadModal.offsetHeight;
                 setTimeout(function() {
@@ -364,6 +475,9 @@
             function resetLeadModal() {
                 const form = document.getElementById('lead-form');
                 if (form) form.reset();
+                // reset select placeholder if present
+                const sel = document.getElementById('lead-agent');
+                if (sel) sel.selectedIndex = 0;
             }
 
             // Event listeners
@@ -404,7 +518,8 @@
 
             // Function to get anti-forgery token
             function getAntiForgeryToken() {
-                return document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+                return tokenEl ? tokenEl.value : '';
             }
 
             // Show floating dropdown
@@ -466,83 +581,67 @@
                     }
                 }
 
-                // Handle type option clicks
+                // Handle type option clicks - now only "Contact"
                 if (e.target.closest('.type-option')) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     if (!currentActiveBadge) return;
-                    
+
                     const option = e.target.closest('.type-option');
-                    const newType = option.getAttribute('data-type');
+                    const choice = option.getAttribute('data-type'); // "Contact"
                     const badge = currentActiveBadge;
                     const leadId = badge.getAttribute('data-contact-id');
-                    const currentType = badge.getAttribute('data-current-type');
-                    
-                    // Don't do anything if the type is the same
-                    if (newType === currentType) {
-                        hideDropdown();
-                        return;
-                    }
-                    
-                    // Enhanced loading state
-                    const textSpan = badge.querySelector('.lead-type-text');
+
+                    // Loading state
+                    const textSpan = badge.querySelector('.lead-type-text') || badge.querySelector('.lead-type-text');
                     const arrowIcon = badge.querySelector('svg:not(.lead-type-loading)');
                     const loadingIcon = badge.querySelector('.lead-type-loading');
-                    
+
                     badge.style.pointerEvents = 'none';
-                    arrowIcon.classList.add('hidden');
-                    loadingIcon.classList.remove('hidden');
+                    if (arrowIcon) arrowIcon.classList.add('hidden');
+                    if (loadingIcon) loadingIcon.classList.remove('hidden');
                     hideDropdown();
-                    
-                    // Send AJAX request to update lead type
-                    fetch('/Leads/UpdateLeadType', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: new URLSearchParams({
-                            'leadId': leadId,
-                            'newType': newType,
-                            '__RequestVerificationToken': getAntiForgeryToken()
+
+                    if (choice === 'Contact') {
+                        // Call ConvertToContact endpoint
+                        fetch('/Leads/ConvertToContact', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({
+                                'leadId': leadId,
+                                '__RequestVerificationToken': getAntiForgeryToken()
+                            })
                         })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (data.shouldRedirect && data.redirectUrl) {
-                                // Show success message and redirect
-                                showToast(`Lead moved to ${newType === 'Agent' ? 'Agents' : 'Clients'}`, 'success');
-                                setTimeout(() => {
-                                    window.location.href = data.redirectUrl;
-                                }, 1000);
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast(data.message || 'Converted to Contact', 'success');
+                                if (data.shouldRedirect && data.redirectUrl) {
+                                    setTimeout(() => window.location.href = data.redirectUrl, 700);
+                                } else {
+                                    // fallback: reload to reflect changes
+                                    setTimeout(() => location.reload(), 700);
+                                }
                             } else {
-                                // Update the badge text and styling
-                                textSpan.textContent = newType;
-                                
-                                // Update badge classes with enhanced styling
-                                badge.className = 'lead-type-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border cursor-pointer hover:shadow-sm transition-all duration-200 group ' + getBadgeClass(newType);
-                                
-                                // Update data attribute
-                                badge.setAttribute('data-current-type', newType);
-                                
-                                // Show success toast
-                                showToast(`Lead type updated to ${newType}`, 'success');
+                                showToast('Error: ' + (data.message || 'Conversion failed'), 'error');
                             }
-                        } else {
-                            showToast('Error: ' + data.message, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showToast('An error occurred while updating the lead type', 'error');
-                    })
-                    .finally(() => {
-                        // Restore badge state
+                        })
+                        .catch(err => {
+                            console.error('Error converting lead:', err);
+                            showToast('An error occurred while converting the lead', 'error');
+                        })
+                        .finally(() => {
+                            badge.style.pointerEvents = 'auto';
+                            if (arrowIcon) arrowIcon.classList.remove('hidden');
+                            if (loadingIcon) loadingIcon.classList.add('hidden');
+                        });
+                    } else {
+                        // No other choices — keep safe fallback
                         badge.style.pointerEvents = 'auto';
-                        arrowIcon.classList.remove('hidden');
-                        loadingIcon.classList.add('hidden');
-                    });
+                        if (arrowIcon) arrowIcon.classList.remove('hidden');
+                        if (loadingIcon) loadingIcon.classList.add('hidden');
+                    }
                 }
             });
 

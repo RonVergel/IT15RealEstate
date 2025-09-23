@@ -1,0 +1,53 @@
+@model List<RealEstateCRM.Controllers.AgentViewModel>
+
+@{
+    ViewData["Title"] = "Manage Agents";
+}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="font-semibold text-2xl">Manage Agents</h1>
+    <a asp-controller="Admin" asp-action="Index" class="px-3 py-2 text-sm bg-white border rounded-md text-gray-700 hover:bg-gray-50">Refresh</a>
+</div>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="bg-white p-6 rounded shadow-sm text-gray-600">
+        No agents found.
+    </div>
+}
+else
+{
+    <div class="bg-white rounded shadow-sm overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr class="text-left text-sm text-gray-600">
+                    <th class="px-4 py-3">Email</th>
+                    <th class="px-4 py-3">Username</th>
+                    <th class="px-4 py-3">Email Confirmed</th>
+                    <th class="px-4 py-3">Lockout</th>
+                    <th class="px-4 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm text-gray-700 divide-y divide-gray-100">
+                @foreach (var agent in Model)
+                {
+                    <tr>
+                        <td class="px-4 py-3">@agent.Email</td>
+                        <td class="px-4 py-3">@agent.UserName</td>
+                        <td class="px-4 py-3">@((agent.EmailConfirmed) ? "Yes" : "No")</td>
+                        <td class="px-4 py-3">@((agent.LockoutEnd.HasValue) ? agent.LockoutEnd.Value.LocalDateTime.ToString("g") : "-")</td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <form method="post" asp-controller="Admin" asp-action="PromoteToBroker" onsubmit="return confirm('Promote this user to Broker?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="email" value="@agent.Email" />
+                                    <button type="submit" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Promote to Broker</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

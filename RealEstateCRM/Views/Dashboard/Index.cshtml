@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using RealEstateCRM.Data
 @using RealEstateCRM.Models
+@using System.Text.Json
 @model RealEstateCRM.Controllers.DashboardViewModel
 
 @{
@@ -11,13 +12,39 @@
 
 <div class="space-y-8">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Agency Dashboard</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Agency Dashboard</h1>
             <p class="text-gray-600 mt-1">Overview of your real estate business</p>
         </div>
         <div class="text-sm text-gray-500">
             Last updated: @DateTime.Now.ToString("MMM dd, yyyy HH:mm")
+        </div>
+    </div>
+
+    <!-- Success/Error Toast Notification (top-right, matches other pages) -->
+    <div id="toast-notification" class="fixed top-4 right-4 z-[10000] transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
+            <div class="flex items-center gap-3">
+                <div id="toast-icon" class="flex-shrink-0">
+                    <!-- Success icon -->
+                    <svg id="toast-success-icon" class="h-6 w-6 text-green-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <!-- Error icon -->
+                    <svg id="toast-error-icon" class="h-6 w-6 text-red-600 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+                </div>
+                <button id="toast-close" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close notification">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -158,6 +185,18 @@
         </div>
     </div>
 
+    <!-- Average Client Salary (Monthly) -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Average Client Salary (Last 12 months)</h3>
+            <div class="text-sm text-gray-500">Monthly average — clients only</div>
+        </div>
+
+        <div>
+            <canvas id="avgSalaryChart" width="800" height="240"></canvas>
+        </div>
+    </div>
+
     <!-- Recent Activity Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Recent Properties -->
@@ -256,7 +295,7 @@
                                 </div>
                                 <div>
                                     <div class="font-medium text-gray-900">@contact.Name</div>
-                                    <div class="text-sm text-gray-500">@contact.Type</div>
+                                    <div class="text-sm text-gray-500">@(contact.Type ?? "Unknown")</div>
                                 </div>
                             </div>
                             <div class="text-xs text-gray-500">
@@ -311,53 +350,201 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
+    <!-- New: Preferred Property Type by Occupation -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a href="/Properties" class="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group">
-                <div class="text-center">
-                    <div class="w-8 h-8 bg-blue-600 rounded-lg mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                    </div>
-                    <div class="text-sm font-medium text-blue-900">Add Property</div>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Preferred Property Type by Occupation</h3>
+            <div class="text-sm text-gray-500">Top occupations (by matches)</div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            <div>
+                <label class="block text-sm text-gray-600 mb-2">Select Occupation</label>
+                <select id="occupation-select" class="w-full border rounded px-3 py-2 text-sm">
+                    @if (Model.PreferredPropertyTypesByOccupation != null && Model.PreferredPropertyTypesByOccupation.Any())
+                    {
+                        var first = true;
+                        foreach (var s in Model.PreferredPropertyTypesByOccupation)
+                        {
+                            if (first)
+                            {
+                                <option value="@s.Occupation" selected>@s.Occupation (@s.Total)</option>
+                            }
+                            else
+                            {
+                                <option value="@s.Occupation">@s.Occupation (@s.Total)</option>
+                            }
+                            first = false;
+                        }
+                    }
+                    else
+                    {
+                        <option disabled selected>No data available</option>
+                    }
+                </select>
+
+                <div class="mt-4 text-sm text-gray-600">
+                    These counts are derived from Deals (client name matches) and Properties (agent matches) for contacts/leads grouped by occupation.
                 </div>
-            </a>
-            
-            <a href="/Deals" class="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors group">
-                <div class="text-center">
-                    <div class="w-8 h-8 bg-green-600 rounded-lg mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                    </div>
-                    <div class="text-sm font-medium text-green-900">Add Deal</div>
-                </div>
-            </a>
-            
-            <a href="/Contacts" class="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group">
-                <div class="text-center">
-                    <div class="w-8 h-8 bg-purple-600 rounded-lg mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                    </div>
-                    <div class="text-sm font-medium text-purple-900">Add Contact</div>
-                </div>
-            </a>
-            
-            <a href="/Leads" class="flex items-center justify-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors group">
-                <div class="text-center">
-                    <div class="w-8 h-8 bg-yellow-600 rounded-lg mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                    </div>
-                    <div class="text-sm font-medium text-yellow-900">Add Lead</div>
-                </div>
-            </a>
+            </div>
+
+            <div class="md:col-span-2">
+                <canvas id="occupationChart" width="400" height="180"></canvas>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Toast notification logic (matches other views)
+            const toast = document.getElementById('toast-notification');
+            const messageEl = document.getElementById('toast-message');
+            const successIcon = document.getElementById('toast-success-icon');
+            const errorIcon = document.getElementById('toast-error-icon');
+            const closeBtn = document.getElementById('toast-close');
+
+            function showToast(message, type = 'success') {
+                if (!toast) return;
+                messageEl.textContent = message || '';
+                if (type === 'success') {
+                    successIcon.classList.remove('hidden');
+                    errorIcon.classList.add('hidden');
+                } else {
+                    successIcon.classList.add('hidden');
+                    errorIcon.classList.remove('hidden');
+                }
+
+                toast.classList.remove('translate-x-full');
+                toast.classList.add('translate-x-0');
+
+                setTimeout(() => {
+                    hideToast();
+                }, 3000);
+            }
+
+            function hideToast() {
+                if (!toast) return;
+                toast.classList.remove('translate-x-0');
+                toast.classList.add('translate-x-full');
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', hideToast);
+
+            // Show server-provided message (TempData)
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <text>
+                showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
+                </text>
+            }
+
+            // Prepare occupation stats from server model
+            const occStats = @Html.Raw(JsonSerializer.Serialize(Model.PreferredPropertyTypesByOccupation ?? new List<RealEstateCRM.Controllers.OccupationPropertyTypeStat>()));
+
+            function getStatForOccupation(occupation) {
+                if (!occStats || !occStats.length) return { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
+                const found = occStats.find(o => o.Occupation === occupation);
+                if (!found) return { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
+                return {
+                    Residential: found.Residential || 0,
+                    Commercial: found.Commercial || 0,
+                    RawLand: found.RawLand || 0,
+                    Other: found.Other || 0
+                };
+            }
+
+            // Initialize occupation chart
+            const ctx = document.getElementById('occupationChart').getContext('2d');
+            const defaultOcc = (occStats && occStats.length) ? occStats[0].Occupation : null;
+            const initial = defaultOcc ? getStatForOccupation(defaultOcc) : { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
+
+            const occupationChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Residential', 'Commercial', 'Raw Land', 'Other'],
+                    datasets: [{
+                        label: defaultOcc ? `Preferred Types — ${defaultOcc}` : 'Preferred Types',
+                        data: [initial.Residential, initial.Commercial, initial.RawLand, initial.Other],
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#9CA3AF']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            precision: 0
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false }
+                    }
+                }
+            });
+
+            const select = document.getElementById('occupation-select');
+            if (select) {
+                select.addEventListener('change', function () {
+                    const occ = this.value;
+                    const s = getStatForOccupation(occ);
+                    occupationChart.data.datasets[0].data = [s.Residential, s.Commercial, s.RawLand, s.Other];
+                    occupationChart.data.datasets[0].label = `Preferred Types — ${occ}`;
+                    occupationChart.update();
+                });
+            }
+
+            // =========================
+            // Average Client Salary Chart (monthly)
+            // =========================
+            const salaryLabels = @Html.Raw(JsonSerializer.Serialize(Model.AvgClientSalaryLabels ?? new List<string>()));
+            const salaryValues = @Html.Raw(JsonSerializer.Serialize(Model.AvgClientSalaryValues ?? new List<decimal>()));
+
+            (function renderSalaryChart() {
+                const ctxSalary = document.getElementById('avgSalaryChart').getContext('2d');
+                const data = {
+                    labels: salaryLabels,
+                    datasets: [{
+                        label: 'Avg Salary (₱)',
+                        data: salaryValues,
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37,99,235,0.12)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3
+                    }]
+                };
+
+                const options = {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value === 0) return '₱0';
+                                    return '₱' + Number(value).toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const v = context.parsed.y ?? 0;
+                                    return 'Avg Salary: ₱ ' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                        }
+                    }
+                };
+
+                new Chart(ctxSalary, { type: 'line', data, options });
+            })();
+        });
+    </script>
+}

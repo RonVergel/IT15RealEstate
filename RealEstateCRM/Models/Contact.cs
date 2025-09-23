@@ -26,7 +26,7 @@ namespace RealEstateCRM.Models
         
         [Required]
         [Display(Name = "Contact Type")]
-        public string Type { get; set; } = string.Empty; // "Agent", "Client", or "Lead"
+        public string Type { get; set; } = string.Empty; // "Contact", or "Lead"
         
         [Display(Name = "Date Created")]
         public DateTime DateCreated { get; set; } = DateTime.Now;
@@ -40,5 +40,14 @@ namespace RealEstateCRM.Models
         
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
+
+        // NEW: Occupation and Salary
+        [Display(Name = "Occupation")]
+        [StringLength(100, ErrorMessage = "Occupation cannot exceed 100 characters")]
+        public string? Occupation { get; set; }
+
+        [Display(Name = "Salary (₱)")]
+        [DataType(DataType.Currency)]
+        public decimal? Salary { get; set; }
     }
 }

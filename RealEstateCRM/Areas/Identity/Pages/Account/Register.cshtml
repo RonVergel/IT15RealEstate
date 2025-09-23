@@ -2,7 +2,7 @@
 @model RegisterModel
 @{
     Layout = "/Views/Shared/_AuthLayout.cshtml";
-    ViewData["Title"] = "Register";
+    ViewData["Title"] = "Create Agent Account";
 }
 
 <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
@@ -19,19 +19,29 @@
 
         <!-- Auth panel -->
         <div class="bg-white p-8 md:p-12">
-            <h1 class="text-3xl md:text-[28px] font-semibold text-center text-neutral-900">Create Account</h1>
-            <p class="text-center text-sm text-neutral-500 mt-2">Join us and start managing your properties</p>
+            <h1 class="text-3xl md:text-[28px] font-semibold text-center text-neutral-900">Create Agent Account</h1>
+            <p class="text-center text-sm text-neutral-500 mt-2">Only admins can create agent accounts</p>
 
             <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="mt-10 space-y-6">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-4" role="alert"></div>
                 
                 <div>
+                    <label asp-for="Input.UserName" class="block text-sm font-medium text-neutral-700">Username</label>
+                    <input asp-for="Input.UserName"
+                           class="mt-2 w-full border-0 border-b border-neutral-300 focus:border-neutral-900 focus:ring-0 py-2 placeholder-neutral-400"
+                           autocomplete="username"
+                           aria-required="true"
+                           placeholder="desired-username" />
+                    <span asp-validation-for="Input.UserName" class="text-danger text-sm"></span>
+                </div>
+
+                <div>
                     <label asp-for="Input.Email" class="block text-sm font-medium text-neutral-700">Email</label>
                     <input asp-for="Input.Email" 
                            class="mt-2 w-full border-0 border-b border-neutral-300 focus:border-neutral-900 focus:ring-0 py-2 placeholder-neutral-400"
-                           autocomplete="username" 
+                           autocomplete="email" 
                            aria-required="true" 
-                           placeholder="you@example.com" />
+                           placeholder="agent@example.com" />
                     <span asp-validation-for="Input.Email" class="text-danger text-sm"></span>
                 </div>
 
@@ -57,37 +67,14 @@
                     <span asp-validation-for="Input.Password" class="text-danger text-sm"></span>
                 </div>
 
-                <div>
-                    <label asp-for="Input.ConfirmPassword" class="block text-sm font-medium text-neutral-700">Confirm Password</label>
-                    <div class="relative mt-2">
-                        <input asp-for="Input.ConfirmPassword" 
-                               type="password" 
-                               id="confirmPassword"
-                               class="w-full border-0 border-b border-neutral-300 focus:border-neutral-900 focus:ring-0 py-2 pr-10 placeholder-neutral-400"
-                               autocomplete="new-password" 
-                               aria-required="true" 
-                               placeholder="••••••••" />
-                        <button type="button" id="toggleConfirmPassword"
-                                class="absolute inset-y-0 right-0 flex items-center text-neutral-500 hover:text-neutral-700"
-                                aria-label="Toggle confirm password visibility">
-                            <svg id="eyeIconConfirm" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke-width="2"/>
-                                <circle cx="12" cy="12" r="3" stroke-width="2"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <span asp-validation-for="Input.ConfirmPassword" class="text-danger text-sm"></span>
-                </div>
-
                 <button id="registerSubmit" type="submit"
                         class="w-full h-12 rounded-full bg-neutral-900 text-white font-medium hover:bg-neutral-800 transition">
-                    Create Account
+                    Create Agent Account
                 </button>
 
                 <div class="mt-6 space-y-2 text-center text-sm text-neutral-500">
                     <p>
-                        Already have an account?
-                        <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="text-neutral-900 hover:underline ml-1">Sign In</a>
+                        This page is restricted to administrators.
                     </p>
                 </div>
             </form>
@@ -139,21 +126,6 @@
                     const show = pwd.type === 'password';
                     pwd.type = show ? 'text' : 'password';
                     icon.innerHTML = show
-                        ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke-width="2"/><path d="M4 4l16 16" stroke-width="2"/>'
-                        : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke-width="2"/>';
-                });
-            }
-
-            // Confirm password field
-            const confirmPwd = document.getElementById('confirmPassword');
-            const toggleConfirm = document.getElementById('toggleConfirmPassword');
-            const iconConfirm = document.getElementById('eyeIconConfirm');
-            
-            if (confirmPwd && toggleConfirm && iconConfirm) {
-                toggleConfirm.addEventListener('click', function () {
-                    const show = confirmPwd.type === 'password';
-                    confirmPwd.type = show ? 'text' : 'password';
-                    iconConfirm.innerHTML = show
                         ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke-width="2"/><path d="M4 4l16 16" stroke-width="2"/>'
                         : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke-width="2"/>';
                 });

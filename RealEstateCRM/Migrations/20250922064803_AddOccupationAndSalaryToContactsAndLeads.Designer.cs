@@ -12,8 +12,8 @@ using RealEstateCRM.Data;
 namespace RealEstateCRM.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250910061052_ResetFix")]
-    partial class ResetFix
+    [Migration("20250922064803_AddOccupationAndSalaryToContactsAndLeads")]
+    partial class AddOccupationAndSalaryToContactsAndLeads
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -260,9 +260,16 @@ namespace RealEstateCRM.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("Occupation")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Salary")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -357,12 +364,19 @@ namespace RealEstateCRM.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("Occupation")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int?>("OriginalContactId")
                         .HasColumnType("int");
 
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Salary")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 

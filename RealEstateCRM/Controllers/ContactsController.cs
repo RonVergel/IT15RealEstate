@@ -19,22 +19,39 @@ namespace RealEstateCRM.Controllers
             _logger = logger;
         }
 
-        // GET: /Contacts/Index - Exclude contacts with Type = "Lead"
-        public async Task<IActionResult> Index()
+        // GET: /Contacts/Index?page=1 - Exclude contacts with Type = "Lead" (paged)
+        public async Task<IActionResult> Index(int page = 1)
         {
+            const int pageSize = 10;
             try
             {
+                var totalCount = await _db.Contacts.Where(c => c.IsActive && c.Type != "Lead").CountAsync();
+                var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+                page = Math.Max(1, Math.Min(page, totalPages));
+
                 var contacts = await _db.Contacts
                     .Where(c => c.IsActive && c.Type != "Lead")
                     .OrderByDescending(c => c.DateCreated)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
+
+                _logger.LogInformation($"Retrieved {contacts.Count} contacts for page {page} of {totalPages}");
                 
-                _logger.LogInformation($"Retrieved {contacts.Count} contacts (excluding leads)");
+                ViewBag.CurrentPage = page;
+                ViewBag.TotalPages = totalPages;
+                ViewBag.PageSize = pageSize;
+                ViewBag.TotalCount = totalCount;
+
                 return View(contacts);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving contacts");
+                ViewBag.CurrentPage = 1;
+                ViewBag.TotalPages = 1;
+                ViewBag.PageSize = pageSize;
+                ViewBag.TotalCount = 0;
                 return View(new List<Contact>());
             }
         }
@@ -44,23 +61,24 @@ namespace RealEstateCRM.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateContact(Contact contact)
         {
+            const int pageSize = 10;
             if (ModelState.IsValid)
             {
                 try
                 {
                     contact.DateCreated = DateTime.Now;
                     contact.IsActive = true;
-                    
+
                     _db.Contacts.Add(contact);
                     var saveResult = await _db.SaveChangesAsync();
-                    
+
                     if (saveResult > 0)
                     {
                         _logger.LogInformation($"Contact '{contact.Name}' created successfully with ID {contact.Id} and Type '{contact.Type}'");
-                        
+
                         // Set success message in TempData
                         TempData["SuccessMessage"] = "Contact Added";
-                        
+
                         return RedirectToAction(nameof(Index));
                     }
                     else
@@ -84,12 +102,22 @@ namespace RealEstateCRM.Controllers
                 }
             }
 
-            // If we got this far, something failed, redisplay form with validation errors
+            // If we got this far, something failed — display first page with validation errors
+            var totalCount = await _db.Contacts.Where(c => c.IsActive && c.Type != "Lead").CountAsync();
+            var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+            var page = 1;
             var contacts = await _db.Contacts
                 .Where(c => c.IsActive && c.Type != "Lead")
                 .OrderByDescending(c => c.DateCreated)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
-            
+
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalCount = totalCount;
+
             return View("Index", contacts);
         }
 
@@ -136,7 +164,7 @@ namespace RealEstateCRM.Controllers
                 // Special handling for converting to Lead - move to Leads table
                 if (newType == "Lead")
                 {
-                    // Create new lead from contact data
+                    // Create new lead from contact data (include Occupation and Salary)
                     var lead = new Lead
                     {
                         Name = contact.Name,
@@ -148,24 +176,27 @@ namespace RealEstateCRM.Controllers
                         Notes = contact.Notes,
                         IsActive = true,
                         OriginalContactId = contact.Id,
-                        LeadSource = "Converted"
+                        LeadSource = "Converted",
+                        // Preserve occupation and salary when converting to Lead
+                        Occupation = contact.Occupation,
+                        Salary = contact.Salary
                     };
 
                     // Add the lead to the Leads table
                     _db.Leads.Add(lead);
-                    
+
                     // Remove the contact from the Contacts table
                     _db.Contacts.Remove(contact);
 
                     var saveResult = await _db.SaveChangesAsync();
-                    
+
                     if (saveResult > 0)
                     {
                         await transaction.CommitAsync();
                         _logger.LogInformation($"Successfully converted contact '{contact.Name}' (ID: {contactId}) to lead (ID: {lead.Id})");
-                        
-                        return Json(new { 
-                            success = true, 
+
+                        return Json(new {
+                            success = true,
                             message = $"Contact '{contact.Name}' has been converted to a lead",
                             leadId = lead.Id,
                             shouldRedirect = true,
@@ -185,14 +216,14 @@ namespace RealEstateCRM.Controllers
                     contact.Type = newType;
                     _db.Contacts.Update(contact);
                     var saveResult = await _db.SaveChangesAsync();
-                    
+
                     if (saveResult > 0)
                     {
                         await transaction.CommitAsync();
                         _logger.LogInformation($"Successfully updated contact '{contact.Name}' (ID: {contactId}) type from '{oldType}' to '{newType}' in database");
-                        
-                        return Json(new { 
-                            success = true, 
+
+                        return Json(new {
+                            success = true,
                             message = $"Contact type updated successfully from {oldType} to {newType}",
                             shouldRedirect = false,
                             oldType = oldType,
@@ -254,20 +285,20 @@ namespace RealEstateCRM.Controllers
 
                 // Update the LastContacted date
                 contact.LastContacted = newLastContacted;
-                
+
                 _db.Contacts.Update(contact);
                 var saveResult = await _db.SaveChangesAsync();
-                
+
                 if (saveResult > 0)
                 {
-                    var message = newLastContacted.HasValue 
+                    var message = newLastContacted.HasValue
                         ? $"Last contacted date updated to {newLastContacted.Value:MMM dd, yyyy}"
                         : "Last contacted date cleared";
-                        
+
                     _logger.LogInformation($"Successfully updated LastContacted for contact '{contact.Name}' (ID: {contactId})");
-                    
-                    return Json(new { 
-                        success = true, 
+
+                    return Json(new {
+                        success = true,
                         message = message,
                         lastContacted = newLastContacted?.ToString("MMM dd, yyyy")
                     });
@@ -297,8 +328,8 @@ namespace RealEstateCRM.Controllers
                     return Json(new { found = false, message = "Contact not found" });
                 }
 
-                return Json(new { 
-                    found = true, 
+                return Json(new {
+                    found = true,
                     id = contact.Id,
                     name = contact.Name,
                     type = contact.Type,

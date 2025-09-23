@@ -10,7 +10,7 @@
 <body class="bg-gray-100 flex flex-col min-h-screen">
     <div class="flex min-h-screen">
         <!-- Sidebar -->
-        <aside style="width: 248px;" class="bg-white border-r border-gray-200 flex flex-col py-8">
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col py-8 hidden md:flex fixed md:relative z-10 md:z-auto h-full md:h-auto">
             <!-- Logo at top-left -->
             <div class="px-4">
                 <img src="~/assets/images/Homey_transparent.png"
@@ -20,6 +20,7 @@
             </div>
 
             @{
+
                 var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
                 Func<string, string> getNavLinkClass = (controller) =>
                 {
@@ -37,21 +38,43 @@
             <!-- Nav -->
             <nav class="flex flex-col gap-6 mt-6">
                 <a class="@getNavLinkClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
-                <a class="@getNavLinkClass("Properties")" asp-controller="Properties" asp-action="Index">Properties</a>
+
+                @* Show "Pending Assignments" only for Agent users who are NOT also Brokers.
+                   This prevents Broker/Admin users (who may also be in Agent role) from seeing the Agent-only link. *@
+                @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Agent") && !User.IsInRole("Broker"))
+                {
+                    <a class="@getNavLinkClass("Properties")" asp-controller="PendingAssignments" asp-action="Index">Pending Assignments</a>
+                }
+                else
+                {
+                    <a class="@getNavLinkClass("Properties")" asp-controller="Properties" asp-action="Index">Properties</a>
+                }
+
                 <a class="@getNavLinkClass("Deals")" asp-controller="Deals" asp-action="Index">Deals</a>
-                <a class="@getNavLinkClass("Contacts")" asp-controller="Contacts" asp-action="Index">Contacts</a>
                 <a class="@getNavLinkClass("Leads")" asp-controller="Leads" asp-action="Index">Leads</a>
+                <a class="@getNavLinkClass("Contacts")" asp-controller="Contacts" asp-action="Index">Contacts</a>
                 
-                
+
+                @* Show Manage Agents only for users in Broker role *@
+                @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
+                {
+                    <a class="@getNavLinkClass("Admin")" asp-controller="Admin" asp-action="Index">Manage Agents</a>
+                }
             </nav>
         </aside>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col">
             <!-- Top Bar -->
-            <header class="w-full bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+            <header class="w-full bg-white border-b border-gray-200 px-4 md:px-6 py-3 flex items-center justify-between">
+                <!-- Hamburger Menu for Mobile -->
+                <button id="sidebarToggle" class="md:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
                 <!-- Search -->
-                <div class="flex-1 max-w-lg">
+                <div class="flex-1 max-w-lg ml-4 md:ml-0">
                     <input type="text"
                            placeholder="Search Properties, Leads, and more"
                            class="w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -64,7 +87,7 @@
             </header>
 
             <!-- Page Body -->
-            <main class="flex-1 px-8 py-6 bg-gray-50">
+            <main class="flex-1 px-4 sm:px-6 md:px-8 py-6 bg-gray-50">
                 @RenderBody()
             </main>
         </div>
@@ -72,6 +95,11 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.querySelector('aside').classList.toggle('hidden');
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -69,7 +69,7 @@
             </div>
             <button id="toast-close" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
         </div>
@@ -103,7 +103,7 @@
                  data-property-type="@property.PropertyType"
                  data-property-buying-type="@(property.Type ?? "")"
                  data-property-status="@(property.ListingStatus ?? "Unknown")"
-                 data-property-listing-time="@property.ListingTime.ToString("yyyy-MM-dd HH:mm")"
+                 data-property-listing-time="@property.ListingTime.ToString("yyyy-MM-ddTHH:mm")"
                  data-property-days-market="@(property.DaysOnMarket ?? 0)"
                  data-property-price-per-sqft="@(property.PricePerSQFT ?? 0)"
                  data-property-link="@(property.PropertyLink ?? "")"
@@ -171,6 +171,61 @@
     }
 </div>
 
+@* PAGINATION: Show previous / page numbers / next and an item range *@
+@{
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 10;
+    var totalCount = ViewBag.TotalCount as int? ?? 0;
+
+    var startItem = totalCount == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+    var endItem = totalCount == 0 ? 0 : Math.Min(totalCount, currentPage * pageSize);
+
+    // page range (show up to 5 pages centered on current)
+    var start = Math.Max(1, currentPage - 2);
+    var end = Math.Min(totalPages, currentPage + 2);
+    if (currentPage <= 2) { end = Math.Min(totalPages, 5); }
+    if (currentPage > totalPages - 2) { start = Math.Max(1, totalPages - 4); }
+}
+
+@if (totalPages > 1)
+{
+    <div class="mt-6 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div class="text-sm text-gray-600">
+            Showing <span class="font-medium">@startItem</span> - <span class="font-medium">@endItem</span> of <span class="font-medium">@totalCount</span>
+        </div>
+
+        <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            @* Previous *@
+            <a asp-action="Index" asp-controller="Properties" asp-route-page="@(currentPage - 1)"
+               class="px-3 py-2 rounded-l-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(currentPage <= 1 ? "opacity-50 pointer-events-none" : "")"
+               aria-disabled="@(currentPage <= 1)">
+                Previous
+            </a>
+
+            @* Page numbers *@
+            @for (int p = start; p <= end; p++)
+            {
+                if (p == currentPage)
+                {
+                    <span class="px-3 py-2 border-t border-b border-gray-200 bg-blue-600 text-white text-sm font-medium">@p</span>
+                }
+                else
+                {
+                    <a asp-action="Index" asp-controller="Properties" asp-route-page="@p" class="px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">@p</a>
+                }
+            }
+
+            @* Next *@
+            <a asp-action="Index" asp-controller="Properties" asp-route-page="@(currentPage + 1)"
+               class="px-3 py-2 rounded-r-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(currentPage >= totalPages ? "opacity-50 pointer-events-none" : "")"
+               aria-disabled="@(currentPage >= totalPages)">
+                Next
+            </a>
+        </nav>
+    </div>
+}
+
 <!-- Property Details Modal -->
 <!-- Property Details Modal -->
 <div id="property-details-modal" class="fixed inset-0 z-[9999] hidden opacity-0 transition-opacity duration-300 ease-out" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;">
@@ -217,8 +272,21 @@
 
                 <!-- Property Information -->
                 <div class="p-6 space-y-6">
+                    <!-- Anti-forgery token specifically for this modal (renders hidden input) -->
+                    @Html.AntiForgeryToken()
+
                     <!-- Hidden property ID for updates -->
                     <input type="hidden" id="modal-property-id" />
+
+                    <!-- Editable Image input (only visible in edit mode) -->
+                    <div class="editable-field">
+                        <label class="text-sm text-gray-600 block mb-1 edit-mode hidden">Change Image</label>
+                        <input type="file" id="edit-property-image" name="ImageFile" accept="image/*" class="edit-mode hidden block mb-2" />
+                        <div id="edit-image-preview-container" class="edit-mode hidden">
+                            <img id="edit-image-preview" class="w-full h-40 object-cover rounded border border-gray-200" alt="New image preview" />
+                            <button type="button" id="remove-edit-image" class="mt-2 px-3 py-1 text-xs bg-red-100 text-red-700 rounded">Remove</button>
+                        </div>
+                    </div>
 
                     <!-- Basic Info -->
                     <div>
@@ -437,7 +505,7 @@
             <div class="p-8">
                 <h3 class="text-xl font-semibold text-gray-900 text-center mb-6">Add New Property</h3>
 
-                <form asp-controller="Properties" asp-action="Index" method="post" enctype="multipart/form-data" class="space-y-4">
+                <form asp-controller="Properties" asp-action="Create" method="post" enctype="multipart/form-data" class="space-y-4">
                     @Html.AntiForgeryToken()
                     
                     <!-- Property Image Upload -->
@@ -588,12 +656,17 @@
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
                     </div>
 
-                    <!-- Agent -->
+                    <!-- Agent (Dropdown populated from DB) -->
                     <div>
                         <label for="property-agent" class="block text-sm font-medium text-gray-700 mb-1">Assigned Agent</label>
-                        <input type="text" id="property-agent" name="Agent" 
-                               placeholder="e.g., Rheniel Penional"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        <div class="relative">
+                            <!-- Replace free-text datalist with a select dropdown populated from server via JS -->
+                            <select id="property-agent" name="Agent" autocomplete="off"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200">
+                                <option value="">-- Select an agent (optional) --</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Choose an agent from the list or leave blank.</p>
+                        </div>
                     </div>
 
                     <!-- Description -->
@@ -621,8 +694,8 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            console.log('DOM Content Loaded - Initializing Properties page...'); // Debug log
-            
+            console.log('DOM Content Loaded - Initializing Properties page...');
+
             var addPropertyBtn = document.getElementById('add-property-btn');
             var closeModalBtn = document.getElementById('close-modal-btn');
             var cancelModalBtn = document.getElementById('cancel-modal-btn');
@@ -630,26 +703,12 @@
             var modalBackdrop = document.getElementById('modal-backdrop');
             var modalContent = document.getElementById('modal-content');
 
-            // Debug - Check if elements exist
-            console.log('Add Property Button:', addPropertyBtn);
-            console.log('Modal:', modal);
-
-            // Property Details Modal Elements
-            var propertyDetailsModal = document.getElementById('property-details-modal');
-            var propertyDetailsBackdrop = document.getElementById('property-details-backdrop');
-            var propertyDetailsContent = document.getElementById('property-details-content');
-            var closePropertyDetailsBtn = document.getElementById('close-property-details-btn');
-
-            // Edit Mode Elements
-            var editModeBtn = document.getElementById('edit-mode-btn');
-            var saveChangesBtn = document.getElementById('save-changes-btn');
-            var cancelEditBtn = document.getElementById('cancel-edit-btn');
-
             // Image upload elements
             var imageInput = document.getElementById('property-image');
             var imagePreview = document.getElementById('image-preview');
             var previewImage = document.getElementById('preview-image');
             var removeImageBtn = document.getElementById('remove-image');
+            var currentImageObjectUrl = null;
 
             // Calculation elements
             var areaInput = document.getElementById('property-area');
@@ -657,18 +716,71 @@
             var calculatedSqft = document.getElementById('calculated-sqft');
             var calculatedPricePerSqft = document.getElementById('calculated-price-per-sqft');
 
-            // Edit Mode State
+            // Agent dropdown elements
+            var agentInput = document.getElementById('property-agent'); // now a select
+            var agentsCache = []; // optional cache
+
+            // Edit Mode State (for details modal)
             let isEditMode = false;
             let originalPropertyData = {};
 
+            @* server placeholder var remains *@
             @{
                 var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
             }
 
             // ===============================
+            // Helper: debounce
+            // ===============================
+            function debounce(fn, wait) {
+                let t;
+                return function() {
+                    const args = arguments;
+                    clearTimeout(t);
+                    t = setTimeout(() => fn.apply(this, args), wait);
+                };
+            }
+
+            // ===============================
+            // Agents fetching & select population
+            // ===============================
+            async function fetchAgents(query) {
+                try {
+                    const url = '/Properties/GetAgents' + (query ? '?q=' + encodeURIComponent(query) : '');
+                    const res = await fetch(url, { credentials: 'same-origin' });
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    if (!Array.isArray(data)) {
+                        return Array.isArray(data.agents) ? data.agents : [];
+                    }
+                    return data;
+                } catch (err) {
+                    console.error('Error fetching agents:', err);
+                    return [];
+                }
+            }
+
+            function populateAgentsList(list) {
+                if (!agentInput) return;
+                // reset options, keep an empty placeholder
+                agentInput.innerHTML = '<option value="">-- Select an agent (optional) --</option>';
+                list.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.name;
+                    opt.textContent = a.name;
+                    agentInput.appendChild(opt);
+                });
+            }
+
+            async function loadInitialAgents() {
+                const agents = await fetchAgents('');
+                agentsCache = agents;
+                populateAgentsList(agents);
+            }
+
+            // ===============================
             // TOAST NOTIFICATION SYSTEM
             // ===============================
-            
             function showToast(message, type = 'success') {
                 const toast = document.getElementById('toast-notification');
                 const messageEl = document.getElementById('toast-message');
@@ -712,605 +824,893 @@
             // ===============================
             // MODAL FUNCTIONS - ADD PROPERTY MODAL
             // ===============================
-
             function openModal() {
-                console.log('Opening Add Property modal...'); // Debug log
-                
-                if (!modal) {
-                    console.error('Modal element not found!');
-                    return;
-                }
+                if (!modal) return;
+                loadInitialAgents();
 
-                // Simple, reliable approach
+                // Reset preview and calculations when opening
+                resetImagePreview();
+                computeCalculatedValues();
+
                 modal.style.display = 'flex';
                 modal.classList.remove('hidden', 'opacity-0');
                 modal.classList.add('opacity-100');
-                
+
                 if (modalBackdrop) {
                     modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
                 }
-                
+
                 if (modalContent) {
                     modalContent.classList.remove('scale-95');
                     modalContent.classList.add('scale-100');
                 }
 
                 document.body.style.overflow = 'hidden';
-                console.log('Modal should now be visible');
             }
 
             function closeModal() {
-                console.log('Closing Add Property modal...');
-                
                 if (!modal) return;
 
                 modal.classList.add('opacity-0');
                 modal.classList.remove('opacity-100');
-                
+
                 if (modalBackdrop) {
                     modalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
                 }
-                
+
                 if (modalContent) {
                     modalContent.classList.add('scale-95');
                     modalContent.classList.remove('scale-100');
                 }
 
-                setTimeout(function() {
+                setTimeout(function () {
                     modal.classList.add('hidden');
                     modal.style.display = 'none';
                 }, 300);
 
                 document.body.style.overflow = '';
-                
-                // Reset form and image preview
+
+                // Reset form and UI
                 const form = document.querySelector('form');
                 if (form) form.reset();
-                if (imagePreview) imagePreview.classList.add('hidden');
-                if (previewImage) previewImage.src = '';
-                
-                // Reset calculations display
-                if (calculatedSqft) calculatedSqft.textContent = '-';
-                if (calculatedPricePerSqft) calculatedPricePerSqft.textContent = '-';
+                resetImagePreview();
+                computeCalculatedValues(); // update displays to default
             }
 
             // ===============================
-            // PROPERTY DETAILS MODAL FUNCTIONS
+            // IMAGE PREVIEW HANDLERS
             // ===============================
+            function showPreviewContainer() {
+                if (!imagePreview) return;
+                imagePreview.classList.remove('hidden');
+                imagePreview.style.display = 'block';
+            }
+            function hidePreviewContainer() {
+                if (!imagePreview) return;
+                imagePreview.classList.add('hidden');
+                imagePreview.style.display = 'none';
+            }
 
-            function openPropertyDetailsModal(propertyCard) {
-                console.log('Opening Property Details modal...'); // Debug log
-                
-                // Store property ID for editing
-                const propertyId = propertyCard.dataset.propertyId;
-                document.getElementById('modal-property-id').value = propertyId;
-                
-                // Extract data from the property card
-                var title = propertyCard.dataset.propertyTitle;
-                var address = propertyCard.dataset.propertyAddress;
-                var price = propertyCard.dataset.propertyPrice;
-                var area = propertyCard.dataset.propertyArea;
-                var sqft = propertyCard.dataset.propertySqft;
-                var bedrooms = propertyCard.dataset.propertyBedrooms;
-                var bathrooms = propertyCard.dataset.propertyBathrooms;
-                var propertyType = propertyCard.dataset.propertyType;
-                var buyingType = propertyCard.dataset.propertyBuyingType;
-                var status = propertyCard.dataset.propertyStatus;
-                var listingTime = propertyCard.dataset.propertyListingTime;
-                var daysOnMarket = propertyCard.dataset.propertyDaysMarket;
-                var pricePerSqft = propertyCard.dataset.propertyPricePerSqft;
-                var propertyLink = propertyCard.dataset.propertyLink;
-                var agent = propertyCard.dataset.propertyAgent;
-                var description = propertyCard.dataset.propertyDescription;
-                var imageSrc = propertyCard.dataset.propertyImage;
+            function resetImagePreview() {
+                if (imageInput) imageInput.value = '';
+                if (previewImage) {
+                    previewImage.src = '';
+                    previewImage.alt = '';
+                }
+                if (currentImageObjectUrl) {
+                    try { URL.revokeObjectURL(currentImageObjectUrl); } catch (e) {}
+                    currentImageObjectUrl = null;
+                }
+                hidePreviewContainer();
+            }
 
-                // Populate modal content
-                document.getElementById('modal-property-title').textContent = title;
-                document.getElementById('modal-property-name').textContent = title;
-                document.getElementById('modal-property-address').textContent = address;
-                document.getElementById('modal-property-bed-bath').textContent = bedrooms + ' 🛏️ ' + bathrooms + ' 🛁';
-                document.getElementById('modal-property-area').textContent = area + ' sqm';
-                document.getElementById('modal-area-display').textContent = area; // For editing
-                document.getElementById('modal-property-description').textContent = description || 'No description available.';
-                document.getElementById('modal-property-type').textContent = propertyType;
-                document.getElementById('modal-property-status').textContent = status;
-                document.getElementById('modal-property-price').textContent = '₱ ' + parseFloat(price).toLocaleString();
-                document.getElementById('modal-property-buying-type').textContent = buyingType || 'Not specified';
-                document.getElementById('modal-days-on-market').textContent = daysOnMarket || '0';
-                document.getElementById('modal-price-per-sqft').textContent = '₱ ' + parseFloat(pricePerSqft || 0).toLocaleString();
-                document.getElementById('modal-sqft').textContent = parseFloat(sqft || 0).toFixed(2);
-                document.getElementById('modal-bedrooms').textContent = bedrooms || '0';
-                document.getElementById('modal-bathrooms').textContent = bathrooms || '0';
-                
-                // Set property image
-                document.getElementById('modal-property-image').src = imageSrc;
-                
-                // Format and display listing date
-                if (listingTime) {
-                    var date = new Date(listingTime);
-                    document.getElementById('modal-listing-date').textContent = date.toLocaleDateString();
-                } else {
-                    document.getElementById('modal-listing-date').textContent = 'Not specified';
+            function handleImageSelected(e) {
+                var file = (e.target && e.target.files && e.target.files[0]) || null;
+                if (!file) {
+                    resetImagePreview();
+                    return;
                 }
 
-                // Agent information
-                if (agent && agent !== 'null' && agent !== '') {
-                    var initials = agent.split(' ').map(name => name.charAt(0)).join('').toUpperCase();
-                    document.getElementById('modal-agent-initials').textContent = initials;
-                    document.getElementById('modal-agent-name').textContent = agent;
-                } else {
-                    document.getElementById('modal-agent-initials').textContent = 'NA';
-                    document.getElementById('modal-agent-name').textContent = 'No Agent Assigned';
+                var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+                if (allowedTypes.indexOf(file.type) === -1) {
+                    showToast('Please upload a valid image file (JPG, PNG, GIF, BMP).', 'error');
+                    resetImagePreview();
+                    return;
                 }
 
-                // Property link
-                var linkElement = document.getElementById('modal-property-link');
-                if (propertyLink && propertyLink !== 'null' && propertyLink !== '') {
-                    linkElement.href = propertyLink;
-                    document.getElementById('property-link-text').textContent = 'View Property Details';
-                } else {
-                    linkElement.href = '#';
-                    document.getElementById('property-link-text').textContent = 'No Link';
+                var maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    showToast('File size cannot exceed 5MB.', 'error');
+                    resetImagePreview();
+                    return;
                 }
 
-                // Reset edit mode
-                exitEditMode();
+                try {
+                    if (currentImageObjectUrl) {
+                        try { URL.revokeObjectURL(currentImageObjectUrl); } catch (e) {}
+                        currentImageObjectUrl = null;
+                    }
+                    var objectUrl = URL.createObjectURL(file);
+                    currentImageObjectUrl = objectUrl;
+                    if (previewImage) {
+                        previewImage.src = objectUrl;
+                        previewImage.alt = file.name || 'Preview';
+                        showPreviewContainer();
+                        previewImage.onload = function () {
+                            if (currentImageObjectUrl) {
+                                try { URL.revokeObjectURL(currentImageObjectUrl); } catch (e) {}
+                                currentImageObjectUrl = null;
+                            }
+                            previewImage.onload = null;
+                        };
+                    }
+                } catch (err) {
+                    var reader = new FileReader();
+                    reader.onload = function (ev) {
+                        if (previewImage) {
+                            previewImage.src = ev.target.result;
+                            previewImage.alt = file.name || 'Preview';
+                            showPreviewContainer();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
 
-                // Show modal
-                propertyDetailsModal.classList.remove('hidden');
-                propertyDetailsModal.offsetHeight; // Force reflow
+            if (imageInput) {
+                imageInput.addEventListener('change', handleImageSelected);
+            }
+            document.addEventListener('change', function (e) {
+                if (e.target && e.target.id === 'property-image') {
+                    handleImageSelected(e);
+                }
+            });
+            if (removeImageBtn) {
+                removeImageBtn.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    resetImagePreview();
+                });
+            }
 
-                setTimeout(function() {
-                    propertyDetailsModal.classList.remove('opacity-0');
-                    propertyDetailsModal.classList.add('opacity-100');
-                    propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+            // ===============================
+            // CALCULATIONS: SQFT and Price Per SQFT
+            // ===============================
+            function computeCalculatedValues() {
+                // Default display values
+                if (!calculatedSqft) return;
+                if (!calculatedPricePerSqft) return;
+
+                var areaVal = areaInput ? parseFloat(areaInput.value) : NaN;
+                var priceVal = priceInput ? parseFloat(priceInput.value) : NaN;
+
+                // compute SQFT (1 sqm = 10.7639 sqft)
+                if (!isNaN(areaVal) && areaVal > 0) {
+                    var sqft = areaVal * 10.7639;
+                    // display with 2 decimals
+                    calculatedSqft.textContent = sqft.toFixed(2);
+                } else {
+                    calculatedSqft.textContent = '-';
+                }
+
+                // compute Price Per SQFT
+                if (!isNaN(priceVal) && priceVal > 0 && !isNaN(areaVal) && areaVal > 0) {
+                    var sqftForCalc = areaVal * 10.7639;
+                    if (sqftForCalc > 0) {
+                        var pricePerSqft = priceVal / sqftForCalc;
+                        // Format with currency and 2 decimals
+                        try {
+                            calculatedPricePerSqft.textContent = '₱ ' + pricePerSqft.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        } catch (e) {
+                            calculatedPricePerSqft.textContent = '₱ ' + pricePerSqft.toFixed(2);
+                        }
+                    } else {
+                        calculatedPricePerSqft.textContent = '-';
+                    }
+                } else {
+                    calculatedPricePerSqft.textContent = '-';
+                }
+            }
+
+            // Listen for input changes
+            if (areaInput) {
+                areaInput.addEventListener('input', computeCalculatedValues);
+            }
+            if (priceInput) {
+                priceInput.addEventListener('input', computeCalculatedValues);
+            }
+
+            // Ensure values are computed when modal opens or on page load
+            hidePreviewContainer();
+            computeCalculatedValues();
+
+            // ===============================
+            // PRESSABLES FIX: property-type and type buttons (single-select, keyboard accessible)
+            // ===============================
+            (function wirePressables() {
+                var propTypeBtns = Array.from(document.querySelectorAll('.property-type-btn'));
+                var typeBtns = Array.from(document.querySelectorAll('.type-btn'));
+                var propTypeInput = document.getElementById('property-type');
+                var buyingTypeInput = document.getElementById('property-buying-type');
+
+                function normalizeText(btn) {
+                    return (btn.dataset.type || btn.textContent || '').trim();
+                }
+
+                function applySelected(buttons, clicked, inputElem) {
+                    var isActive = clicked.classList.contains('bg-blue-600');
+                    if (isActive) {
+                        // toggle off
+                        clicked.classList.remove('bg-blue-600','text-white');
+                        clicked.classList.add('bg-white','text-gray-700');
+                        clicked.setAttribute('aria-pressed','false');
+                        if (inputElem) inputElem.value = '';
+                        return;
+                    }
+
+                    // single-select: clear others, mark clicked
+                    buttons.forEach(b => {
+                        b.classList.remove('bg-blue-600','text-white');
+                        b.classList.add('bg-white','text-gray-700');
+                        b.setAttribute('aria-pressed','false');
+                    });
+                    clicked.classList.add('bg-blue-600','text-white');
+                    clicked.classList.remove('bg-white','text-gray-700');
+                    clicked.setAttribute('aria-pressed','true');
+
+                    if (inputElem) inputElem.value = normalizeText(clicked);
+                }
+
+                function attach(buttons, inputElem) {
+                    buttons.forEach(btn => {
+                        // ensure accessibility attributes
+                        btn.setAttribute('role','button');
+                        btn.setAttribute('tabindex','0');
+                        if (!btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed','false');
+
+                        btn.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            applySelected(buttons, this, inputElem);
+                        });
+
+                        // support keyboard activation (Enter/Space)
+                        btn.addEventListener('keydown', function (e) {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                applySelected(buttons, this, inputElem);
+                            }
+                        });
+                    });
+                }
+
+                function initFromInput(buttons, inputElem) {
+                    if (!inputElem || !inputElem.value) return;
+                    var val = inputElem.value.trim().toLowerCase();
+                    if (!val) return;
+                    buttons.forEach(b => {
+                        var t = normalizeText(b).toLowerCase();
+                        if (t === val) {
+                            b.classList.add('bg-blue-600','text-white');
+                            b.classList.remove('bg-white','text-gray-700');
+                            b.setAttribute('aria-pressed','true');
+                        } else {
+                            b.classList.remove('bg-blue-600','text-white');
+                            b.classList.add('bg-white','text-gray-700');
+                            b.setAttribute('aria-pressed','false');
+                        }
+                    });
+                }
+
+                // Attach handlers
+                if (propTypeBtns.length) attach(propTypeBtns, propTypeInput);
+                if (typeBtns.length) attach(typeBtns, buyingTypeInput);
+
+                // Initialize visuals from hidden inputs (if any)
+                initFromInput(propTypeBtns, propTypeInput);
+                initFromInput(typeBtns, buyingTypeInput);
+            })();
+
+            // ===============================
+            // PROPERTY DETAILS PREVIEW (BRING BACK PREVIEW FUNCTIONALITY)
+            // ===============================
+            const propertyDetailsModal = document.getElementById('property-details-modal');
+            const propertyDetailsBackdrop = document.getElementById('property-details-backdrop');
+            const propertyDetailsContent = document.getElementById('property-details-content');
+            const closePropertyDetailsBtn = document.getElementById('close-property-details-btn');
+            const editModeBtn = document.getElementById('edit-mode-btn');
+            const saveChangesBtn = document.getElementById('save-changes-btn');
+            const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+            // New elements for editing image in modal
+            const editImageInput = document.getElementById('edit-property-image');
+            const editImagePreview = document.getElementById('edit-image-preview');
+            const editImagePreviewContainer = document.getElementById('edit-image-preview-container');
+            const removeEditImageBtn = document.getElementById('remove-edit-image');
+
+            function formatCurrency(val) {
+                if (val == null || val === '') return '₱ 0';
+                try {
+                    return '₱ ' + parseFloat(val).toLocaleString();
+                } catch {
+                    return '₱ ' + val;
+                }
+            }
+
+            function getInitials(name) {
+                if (!name) return '';
+                return name.split(' ').map(s => s[0]).join('').substring(0,2).toUpperCase();
+            }
+
+            function openPropertyDetailsModal(card) {
+                if (!card || !propertyDetailsModal) return;
+
+                // Save original model for cancel
+                originalPropertyData = { ...card.dataset };
+
+                // Populate modal fields
+                const ds = card.dataset;
+
+                document.getElementById('modal-property-title').textContent = ds.propertyTitle || 'Property Details';
+                document.getElementById('modal-property-image').src = ds.propertyImage || '@placeholder';
+                document.getElementById('modal-property-id').value = ds.propertyId || '';
+
+                document.getElementById('modal-property-name').textContent = ds.propertyTitle || '';
+                document.getElementById('edit-property-name').value = ds.propertyTitle || '';
+
+                document.getElementById('modal-property-address').textContent = ds.propertyAddress || '';
+                document.getElementById('edit-property-address').value = ds.propertyAddress || '';
+
+                const bed = ds.propertyBedrooms || '0';
+                const bath = ds.propertyBathrooms || '0';
+                document.getElementById('modal-property-bed-bath').textContent = `${bed} 🛏️ ${bath} 🛁`;
+                document.getElementById('modal-bedrooms').textContent = bed;
+                document.getElementById('modal-bathrooms').textContent = bath;
+                document.getElementById('edit-bedrooms').value = bed;
+                document.getElementById('edit-bathrooms').value = bath;
+
+                const area = ds.propertyArea || '0';
+                const sqft = ds.propertySqft || '0';
+                document.getElementById('modal-area-display').textContent = area;
+                document.getElementById('modal-sqft').textContent = sqft;
+                document.getElementById('edit-property-area').value = area;
+
+                const price = ds.propertyPrice || '0';
+                document.getElementById('modal-property-price').textContent = formatCurrency(price);
+                document.getElementById('edit-property-price').value = price;
+
+                document.getElementById('modal-property-description').textContent = ds.propertyDescription || 'No description';
+                document.getElementById('edit-property-description').value = ds.propertyDescription || '';
+
+                document.getElementById('modal-property-type').textContent = ds.propertyType || '';
+                document.getElementById('edit-property-type').value = ds.propertyType || '';
+                const typeEl = document.getElementById('edit-property-type');
+                if (typeEl) {
+                    for (let i = 0; i < typeEl.options.length; i++) {
+                        if (typeEl.options[i].value === ds.propertyType) typeEl.selectedIndex = i;
+                    }
+                }
+
+                document.getElementById('modal-property-status').textContent = ds.propertyStatus || '';
+                const statusEl = document.getElementById('edit-property-status');
+                if (statusEl) {
+                    for (let i = 0; i < statusEl.options.length; i++) {
+                        if (statusEl.options[i].value === ds.propertyStatus) statusEl.selectedIndex = i;
+                    }
+                }
+
+                document.getElementById('modal-property-buying-type').textContent = ds.propertyBuyingType || '';
+                const buyTypeEl = document.getElementById('edit-property-buying-type');
+                if (buyTypeEl) {
+                    for (let i = 0; i < buyTypeEl.options.length; i++) {
+                        if (buyTypeEl.options[i].value === ds.propertyBuyingType) buyTypeEl.selectedIndex = i;
+                    }
+                }
+
+                document.getElementById('modal-days-on-market').textContent = ds.propertyDaysMarket || '0';
+                document.getElementById('modal-price-per-sqft').textContent = ds.propertyPricePerSqft ? '₱ ' + ds.propertyPricePerSqft : '-';
+
+                // Listing date (card stores "yyyy-MM-ddTHH:mm")
+                try {
+                    const rawListing = ds.propertyListingTime || '';
+                    if (rawListing) {
+                        // show year in view-mode
+                        const dtView = new Date(rawListing);
+                        if (!isNaN(dtView)) {
+                            document.getElementById('modal-listing-date').textContent = dtView.getFullYear();
+                        } else {
+                            document.getElementById('modal-listing-date').textContent = rawListing;
+                        }
+
+                        // set datetime-local input
+                        const dtEdit = new Date(rawListing);
+                        if (!isNaN(dtEdit)) {
+                            // convert to ISO local (slice ensures "yyyy-MM-ddTHH:mm")
+                            document.getElementById('edit-listing-date').value = dtEdit.toISOString().slice(0,16);
+                        } else {
+                            document.getElementById('edit-listing-date').value = '';
+                        }
+                    } else {
+                        document.getElementById('modal-listing-date').textContent = '';
+                        document.getElementById('edit-listing-date').value = '';
+                    }
+                } catch (e) {
+                    document.getElementById('modal-listing-date').textContent = '';
+                    document.getElementById('edit-listing-date').value = '';
+                }
+
+                // Agent
+                const agentName = ds.propertyAgent || '';
+                document.getElementById('modal-agent-name').textContent = agentName || 'Unknown';
+                document.getElementById('edit-agent-name').value = agentName || '';
+                document.getElementById('modal-agent-initials').textContent = getInitials(agentName);
+
+                // Link
+                const link = ds.propertyLink || '#';
+                const linkEl = document.getElementById('modal-property-link');
+                if (linkEl) {
+                    linkEl.href = link || '#';
+                    document.getElementById('property-link-text').textContent = link ? 'View Property Details' : 'No Link';
+                }
+                if (document.getElementById('edit-property-link')) {
+                    document.getElementById('edit-property-link').value = link || '';
+                }
+
+                // Clear edit image input/preview when opening
+                if (editImageInput) {
+                    editImageInput.value = '';
+                    if (editImagePreview) editImagePreview.src = '';
+                    if (editImagePreviewContainer) editImagePreviewContainer.classList.add('hidden');
+                }
+
+                // Show view-mode fields and hide edit fields by default
+                exitEditModeUI();
+
+                // Show the modal
+                propertyDetailsModal.classList.remove('hidden', 'opacity-0');
+                propertyDetailsModal.classList.add('opacity-100');
+                if (propertyDetailsBackdrop) propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+                if (propertyDetailsContent) {
                     propertyDetailsContent.classList.remove('scale-95');
                     propertyDetailsContent.classList.add('scale-100');
-                }, 10);
-
+                }
                 document.body.style.overflow = 'hidden';
             }
 
             function closePropertyDetailsModal() {
-                console.log('Closing Property Details modal...');
-                
-                // Exit edit mode if active
-                exitEditMode();
-                
-                propertyDetailsModal.classList.remove('opacity-100');
+                if (!propertyDetailsModal) return;
                 propertyDetailsModal.classList.add('opacity-0');
-                propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
-                propertyDetailsContent.classList.remove('scale-100');
-                propertyDetailsContent.classList.add('scale-95');
-
-                setTimeout(function() {
+                propertyDetailsModal.classList.remove('opacity-100');
+                if (propertyDetailsBackdrop) propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
+                if (propertyDetailsContent) {
+                    propertyDetailsContent.classList.add('scale-95');
+                    propertyDetailsContent.classList.remove('scale-100');
+                }
+                setTimeout(function () {
                     propertyDetailsModal.classList.add('hidden');
                 }, 300);
-
                 document.body.style.overflow = '';
+                // reset edit mode state
+                exitEditModeUI();
             }
 
-            // ===============================
-            // PROPERTY EDIT FUNCTIONALITY
-            // ===============================
-
-            function enableEditMode() {
-                console.log('Enabling edit mode...');
+            function enterEditModeUI() {
                 isEditMode = true;
-                
-                // Store original data for cancel functionality
-                storeOriginalData();
-                
-                // Show edit controls, hide view controls
                 document.querySelectorAll('.view-mode').forEach(el => el.classList.add('hidden'));
                 document.querySelectorAll('.edit-mode').forEach(el => el.classList.remove('hidden'));
-                
-                // Show save/cancel buttons, hide edit button
-                editModeBtn.classList.add('hidden');
-                saveChangesBtn.classList.remove('hidden');
-                cancelEditBtn.classList.remove('hidden');
-                
-                // Populate edit fields with current values
-                populateEditFields();
+                if (editModeBtn) editModeBtn.classList.add('hidden');
+                if (saveChangesBtn) saveChangesBtn.classList.remove('hidden');
+                if (cancelEditBtn) cancelEditBtn.classList.remove('hidden');
             }
 
-            function exitEditMode() {
-                console.log('Exiting edit mode...');
+            function exitEditModeUI() {
                 isEditMode = false;
-                
-                // Show view controls, hide edit controls
-                document.querySelectorAll('.edit-mode').forEach(el => el.classList.add('hidden'));
                 document.querySelectorAll('.view-mode').forEach(el => el.classList.remove('hidden'));
-                
-                // Show edit button, hide save/cancel buttons
-                editModeBtn.classList.remove('hidden');
-                saveChangesBtn.classList.add('hidden');
-                cancelEditBtn.classList.add('hidden');
+                document.querySelectorAll('.edit-mode').forEach(el => el.classList.add('hidden'));
+                if (editModeBtn) editModeBtn.classList.remove('hidden');
+                if (saveChangesBtn) saveChangesBtn.classList.add('hidden');
+                if (cancelEditBtn) cancelEditBtn.classList.add('hidden');
             }
 
-            function cancelEditMode() {
-                console.log('Cancelling edit mode...');
-                
-                // Restore original values
-                restoreOriginalData();
-                
-                // Exit edit mode
-                exitEditMode();
-            }
-
-            function storeOriginalData() {
-                originalPropertyData = {
-                    id: document.getElementById('modal-property-id').value,
-                    title: document.getElementById('modal-property-name').textContent,
-                    address: document.getElementById('modal-property-address').textContent,
-                    description: document.getElementById('modal-property-description').textContent,
-                    propertyType: document.getElementById('modal-property-type').textContent,
-                    status: document.getElementById('modal-property-status').textContent,
-                    price: document.getElementById('modal-property-price').textContent.replace(/[₱,]/g, '').trim(),
-                    buyingType: document.getElementById('modal-property-buying-type').textContent,
-                    listingDate: document.getElementById('modal-listing-date').textContent,
-                    area: document.getElementById('modal-area-display').textContent,
-                    bedrooms: document.getElementById('modal-bedrooms').textContent,
-                    bathrooms: document.getElementById('modal-bathrooms').textContent,
-                    agent: document.getElementById('modal-agent-name').textContent,
-                    propertyLink: document.getElementById('modal-property-link').href
-                };
-            }
-
-            function populateEditFields() {
-                document.getElementById('edit-property-name').value = document.getElementById('modal-property-name').textContent;
-                document.getElementById('edit-property-address').value = document.getElementById('modal-property-address').textContent;
-                document.getElementById('edit-property-description').value = document.getElementById('modal-property-description').textContent;
-                document.getElementById('edit-property-type').value = document.getElementById('modal-property-type').textContent;
-                document.getElementById('edit-property-status').value = document.getElementById('modal-property-status').textContent;
-                
-                // Handle price (remove currency symbols and commas)
-                const priceText = document.getElementById('modal-property-price').textContent.replace(/[₱,]/g, '').trim();
-                document.getElementById('edit-property-price').value = priceText;
-                
-                document.getElementById('edit-property-buying-type').value = document.getElementById('modal-property-buying-type').textContent;
-                document.getElementById('edit-property-area').value = document.getElementById('modal-area-display').textContent;
-                document.getElementById('edit-bedrooms').value = document.getElementById('modal-bedrooms').textContent;
-                document.getElementById('edit-bathrooms').value = document.getElementById('modal-bathrooms').textContent;
-                document.getElementById('edit-agent-name').value = document.getElementById('modal-agent-name').textContent;
-                
-                // Handle property link
-                const currentLink = document.getElementById('modal-property-link').href;
-                if (currentLink && currentLink !== '#' && currentLink !== window.location.href + '#') {
-                    document.getElementById('edit-property-link').value = currentLink;
-                } else {
-                    document.getElementById('edit-property-link').value = '';
-                }
-                
-                // Handle listing date - convert from display format to datetime-local format
-                const listingDateText = document.getElementById('modal-listing-date').textContent;
-                if (listingDateText && listingDateText !== 'Not specified') {
-                    try {
-                        const date = new Date(listingDateText);
-                        if (!isNaN(date.getTime())) {
-                            const isoString = date.toISOString().slice(0, 16);
-                            document.getElementById('edit-listing-date').value = isoString;
-                        }
-                    } catch (e) {
-                        console.warn('Could not parse listing date:', listingDateText);
-                    }
-                }
-            }
-
-            function restoreOriginalData() {
-                document.getElementById('modal-property-name').textContent = originalPropertyData.title;
-                document.getElementById('modal-property-address').textContent = originalPropertyData.address;
-                document.getElementById('modal-property-description').textContent = originalPropertyData.description;
-                document.getElementById('modal-property-type').textContent = originalPropertyData.propertyType;
-                document.getElementById('modal-property-status').textContent = originalPropertyData.status;
-                document.getElementById('modal-property-price').textContent = '₱ ' + parseFloat(originalPropertyData.price).toLocaleString();
-                document.getElementById('modal-property-buying-type').textContent = originalPropertyData.buyingType;
-                document.getElementById('modal-area-display').textContent = originalPropertyData.area;
-                document.getElementById('modal-bedrooms').textContent = originalPropertyData.bedrooms;
-                document.getElementById('modal-bathrooms').textContent = originalPropertyData.bathrooms;
-                document.getElementById('modal-agent-name').textContent = originalPropertyData.agent;
-                document.getElementById('modal-property-link').href = originalPropertyData.propertyLink;
-                document.getElementById('modal-listing-date').textContent = originalPropertyData.listingDate;
-            }
-
-            function savePropertyChanges() {
-                console.log('Saving property changes...');
-                
-                const propertyId = document.getElementById('modal-property-id').value;
-                
-                // Collect form data
-                const formData = new FormData();
-                formData.append('Id', propertyId);
-                formData.append('Title', document.getElementById('edit-property-name').value);
-                formData.append('Address', document.getElementById('edit-property-address').value);
-                formData.append('Description', document.getElementById('edit-property-description').value);
-                formData.append('PropertyType', document.getElementById('edit-property-type').value);
-                formData.append('ListingStatus', document.getElementById('edit-property-status').value);
-                formData.append('Price', document.getElementById('edit-property-price').value);
-                formData.append('Type', document.getElementById('edit-property-buying-type').value);
-                formData.append('Area', document.getElementById('edit-property-area').value);
-                formData.append('Bedrooms', document.getElementById('edit-bedrooms').value);
-                formData.append('Bathrooms', document.getElementById('edit-bathrooms').value);
-                formData.append('Agent', document.getElementById('edit-agent-name').value);
-                formData.append('PropertyLink', document.getElementById('edit-property-link').value);
-                
-                // Get listing time
-                const listingTime = document.getElementById('edit-listing-date').value;
-                if (listingTime) {
-                    formData.append('ListingTime', listingTime);
-                }
-                
-                // Add anti-forgery token
-                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-                formData.append('__RequestVerificationToken', token);
-                
-                // Show loading state
-                const originalText = saveChangesBtn.innerHTML;
-                saveChangesBtn.innerHTML = '<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-                saveChangesBtn.disabled = true;
-                
-                // Send update request
-                fetch('/Properties/UpdateProperty', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    saveChangesBtn.innerHTML = originalText;
-                    saveChangesBtn.disabled = false;
-                    
-                    if (data.success) {
-                        // Update the view with new values
-                        updateDisplayValues();
-                        
-                        // Exit edit mode
-                        exitEditMode();
-                        
-                        // Show success message
-                        showToast('Property updated successfully!', 'success');
-                        
-                        // Optionally refresh the page to update the card display
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        showToast('Error: ' + (data.message || 'Unknown error occurred'), 'error');
-                    }
-                })
-                .catch(error => {
-                    saveChangesBtn.innerHTML = originalText;
-                    saveChangesBtn.disabled = false;
-                    console.error('Error:', error);
-                    showToast('Error updating property', 'error');
+            // Attach click handlers to property cards
+            function wirePropertyCards() {
+                const cards = Array.from(document.querySelectorAll('.property-card'));
+                cards.forEach(card => {
+                    // open preview on click (ignore clicks on interactive controls inside card)
+                    card.addEventListener('click', function (e) {
+                        // if clicking a button or link inside a card, don't open modal
+                        const tag = e.target.tagName.toLowerCase();
+                        if (['a','button','input','svg','path'].includes(tag)) return;
+                        openPropertyDetailsModal(card);
+                    });
                 });
             }
 
-            function updateDisplayValues() {
-                // Update display values with edited data
-                document.getElementById('modal-property-name').textContent = document.getElementById('edit-property-name').value;
-                document.getElementById('modal-property-address').textContent = document.getElementById('edit-property-address').value;
-                document.getElementById('modal-property-description').textContent = document.getElementById('edit-property-description').value;
-                document.getElementById('modal-property-type').textContent = document.getElementById('edit-property-type').value;
-                document.getElementById('modal-property-status').textContent = document.getElementById('edit-property-status').value;
-                
-                const price = parseFloat(document.getElementById('edit-property-price').value);
-                document.getElementById('modal-property-price').textContent = '₱ ' + price.toLocaleString();
-                
-                document.getElementById('modal-property-buying-type').textContent = document.getElementById('edit-property-buying-type').value;
-                document.getElementById('modal-area-display').textContent = document.getElementById('edit-property-area').value;
-                document.getElementById('modal-bedrooms').textContent = document.getElementById('edit-bedrooms').value;
-                document.getElementById('modal-bathrooms').textContent = document.getElementById('edit-bathrooms').value;
-                document.getElementById('modal-agent-name').textContent = document.getElementById('edit-agent-name').value;
-                
-                const link = document.getElementById('edit-property-link').value;
-                document.getElementById('modal-property-link').href = link || '#';
-                document.getElementById('property-link-text').textContent = link ? 'View Property Details' : 'No Link';
-                
-                // Update bed-bath display
-                const bedrooms = document.getElementById('edit-bedrooms').value || '0';
-                const bathrooms = document.getElementById('edit-bathrooms').value || '0';
-                document.getElementById('modal-property-bed-bath').textContent = `${bedrooms} 🛏️ ${bathrooms} 🛁`;
-                
-                // Update area display
-                const area = document.getElementById('edit-property-area').value || '0';
-                document.getElementById('modal-property-area').textContent = `${area} sqm`;
+            // New: edit-image preview handlers
+            if (editImageInput) {
+                editImageInput.addEventListener('change', function (e) {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) {
+                        if (editImagePreview) editImagePreview.src = '';
+                        if (editImagePreviewContainer) editImagePreviewContainer.classList.add('hidden');
+                        return;
+                    }
+
+                    const allowed = ['image/jpeg','image/jpg','image/png','image/gif','image/bmp'];
+                    if (allowed.indexOf(file.type) === -1) {
+                        showToast('Please upload a valid image file (JPG, PNG, GIF, BMP).', 'error');
+                        editImageInput.value = '';
+                        return;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                        showToast('File size cannot exceed 5MB.', 'error');
+                        editImageInput.value = '';
+                        return;
+                    }
+                    try {
+                        const url = URL.createObjectURL(file);
+                        if (editImagePreview) editImagePreview.src = url;
+                        if (editImagePreviewContainer) editImagePreviewContainer.classList.remove('hidden');
+                    } catch (err) {
+                        const reader = new FileReader();
+                        reader.onload = function (ev) {
+                            if (editImagePreview) editImagePreview.src = ev.target.result;
+                            if (editImagePreviewContainer) editImagePreviewContainer.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+            if (removeEditImageBtn) {
+                removeEditImageBtn.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    if (editImageInput) editImageInput.value = '';
+                    if (editImagePreview) editImagePreview.src = '';
+                    if (editImagePreviewContainer) editImagePreviewContainer.classList.add('hidden');
+                });
             }
 
-            // ===============================
-            // EVENT LISTENERS - MAIN FIX AREA
-            // ===============================
+            // Save changes (multipart POST to UpdateProperty to support image upload)
+            async function savePropertyChanges() {
+                const id = parseInt(document.getElementById('modal-property-id').value, 10) || 0;
+                const title = document.getElementById('edit-property-name').value;
+                const address = document.getElementById('edit-property-address').value;
+                const description = document.getElementById('edit-property-description').value;
+                const priceVal = document.getElementById('edit-property-price').value;
+                const areaVal = document.getElementById('edit-property-area').value;
+                const bedroomsVal = document.getElementById('edit-bedrooms').value;
+                const bathroomsVal = document.getElementById('edit-bathrooms').value;
+                const propertyType = document.getElementById('edit-property-type') ? document.getElementById('edit-property-type').value : null;
+                const listingStatus = document.getElementById('edit-property-status') ? document.getElementById('edit-property-status').value : null;
+                const propertyLink = document.getElementById('edit-property-link') ? document.getElementById('edit-property-link').value : null;
+                const agent = document.getElementById('edit-agent-name') ? document.getElementById('edit-agent-name').value : null;
+                const typeVal = document.getElementById('edit-property-buying-type') ? document.getElementById('edit-property-buying-type').value : null;
 
-            // Add Property Modal Event Listeners
+                // Listing date - read from datetime-local input (value like "yyyy-MM-ddTHH:mm")
+                const listingDateEl = document.getElementById('edit-listing-date');
+                let listingIso = null;
+                if (listingDateEl && listingDateEl.value) {
+                    try {
+                        const dt = new Date(listingDateEl.value);
+                        if (!isNaN(dt)) listingIso = dt.toISOString();
+                    } catch {}
+                }
+
+                // Build FormData for multipart POST (includes file if present)
+                const formData = new FormData();
+                // Antiforgery token from the modal (we rendered one inside modal via @Html.AntiForgeryToken())
+                const tokenInput = propertyDetailsModal ? propertyDetailsModal.querySelector('input[name="__RequestVerificationToken"]') : null;
+                if (tokenInput) formData.append('__RequestVerificationToken', tokenInput.value);
+
+                formData.append('Id', id);
+                if (title !== null) formData.append('Title', title);
+                if (address !== null) formData.append('Address', address);
+                if (description !== null) formData.append('Description', description);
+                if (priceVal) formData.append('Price', priceVal);
+                if (areaVal) formData.append('Area', areaVal);
+                if (bedroomsVal) formData.append('Bedrooms', bedroomsVal);
+                if (bathroomsVal) formData.append('Bathrooms', bathroomsVal);
+                if (propertyType !== null) formData.append('PropertyType', propertyType);
+                if (typeVal !== null) formData.append('Type', typeVal);
+                if (listingStatus !== null) formData.append('ListingStatus', listingStatus);
+                if (listingIso) formData.append('ListingTime', listingIso);
+                if (propertyLink !== null) formData.append('PropertyLink', propertyLink);
+                if (agent !== null) formData.append('Agent', agent);
+
+                // Attach file if provided
+                if (editImageInput && editImageInput.files && editImageInput.files.length > 0) {
+                    formData.append('ImageFile', editImageInput.files[0]);
+                }
+
+                try {
+                    const res = await fetch('/Properties/UpdateProperty', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && (data.success === true || data.success == 'true')) {
+                            showToast(data.message || 'Property updated', 'success');
+
+                            // Update UI locally: reflect basic fields and new image path (if server returned it)
+                            // The UpdateProperty action doesn't currently return the property; but controller sets TempData and returns Json.
+                            // We'll refresh the card image if server saved and returned ImagePath via Location header or message (not available).
+                            // Best-effort: if an image was uploaded, fetch the property's latest data and update UI.
+                            if (editImageInput && editImageInput.files && editImageInput.files.length > 0) {
+                                // fetch latest property data
+                                try {
+                                    const propRes = await fetch('/Properties/GetProperty?id=' + encodeURIComponent(id));
+                                    if (propRes.ok) {
+                                        const propData = await propRes.json();
+                                        if (propData && propData.success && propData.property) {
+                                            updateCardAndModalAfterSave({
+                                                Id: id,
+                                                Title: title,
+                                                Address: address,
+                                                Description: description,
+                                                Price: priceVal ? Number(priceVal) : null,
+                                                Area: areaVal ? Number(areaVal) : null,
+                                                Bedrooms: bedroomsVal ? parseInt(bedroomsVal, 10) : null,
+                                                Bathrooms: bathroomsVal ? parseInt(bathroomsVal, 10) : null,
+                                                PropertyType: propertyType,
+                                                ListingStatus: listingStatus,
+                                                PropertyLink: propertyLink,
+                                                Agent: agent,
+                                                Type: typeVal,
+                                                ListingTime: listingIso,
+                                                imagePath: propData.property.imagePath
+                                            });
+                                        } else {
+                                            // fallback: update card with local values and clear preview
+                                            updateCardAndModalAfterSave({
+                                                Id: id,
+                                                Title: title,
+                                                Address: address,
+                                                Description: description,
+                                                Price: priceVal ? Number(priceVal) : null,
+                                                Area: areaVal ? Number(areaVal) : null,
+                                                Bedrooms: bedroomsVal ? parseInt(bedroomsVal, 10) : null,
+                                                Bathrooms: bathroomsVal ? parseInt(bathroomsVal, 10) : null,
+                                                PropertyType: propertyType,
+                                                ListingStatus: listingStatus,
+                                                PropertyLink: propertyLink,
+                                                Agent: agent,
+                                                Type: typeVal,
+                                                ListingTime: listingIso
+                                            });
+                                        }
+                                    }
+                                } catch (e) {
+                                    // ignore fetch error; still update local card
+                                    updateCardAndModalAfterSave({
+                                        Id: id,
+                                        Title: title,
+                                        Address: address,
+                                        Description: description,
+                                        Price: priceVal ? Number(priceVal) : null,
+                                        Area: areaVal ? Number(areaVal) : null,
+                                        Bedrooms: bedroomsVal ? parseInt(bedroomsVal, 10) : null,
+                                        Bathrooms: bathroomsVal ? parseInt(bathroomsVal, 10) : null,
+                                        PropertyType: propertyType,
+                                        ListingStatus: listingStatus,
+                                        PropertyLink: propertyLink,
+                                        Agent: agent,
+                                        Type: typeVal,
+                                        ListingTime: listingIso
+                                    });
+                                }
+                            } else {
+                                updateCardAndModalAfterSave({
+                                    Id: id,
+                                    Title: title,
+                                    Address: address,
+                                    Description: description,
+                                    Price: priceVal ? Number(priceVal) : null,
+                                    Area: areaVal ? Number(areaVal) : null,
+                                    Bedrooms: bedroomsVal ? parseInt(bedroomsVal, 10) : null,
+                                    Bathrooms: bathroomsVal ? parseInt(bathroomsVal, 10) : null,
+                                    PropertyType: propertyType,
+                                    ListingStatus: listingStatus,
+                                    PropertyLink: propertyLink,
+                                    Agent: agent,
+                                    Type: typeVal,
+                                    ListingTime: listingIso
+                                });
+                            }
+
+                            exitEditModeUI();
+                            return;
+                        } else {
+                            const msg = (data && data.message) ? data.message : 'Failed to update property';
+                            showToast(msg, 'error');
+                            exitEditModeUI();
+                            return;
+                        }
+                    } else {
+                        showToast('Server returned an error when updating property', 'error');
+                        exitEditModeUI();
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Save failed', err);
+                    showToast('An error occurred while saving. Try again.', 'error');
+                    exitEditModeUI();
+                }
+            }
+
+            function updateCardAndModalAfterSave(prop) {
+                // prop may be server response or the payload; normalize keys
+                const id = prop.id || prop.Id || document.getElementById('modal-property-id').value;
+
+                const title = prop.title ?? prop.Title ?? '';
+                const address = prop.address ?? prop.Address ?? '';
+                const description = prop.description ?? prop.Description ?? '';
+                const price = prop.price ?? prop.Price ?? 0;
+                const area = (prop.area ?? prop.Area) ?? 0;
+                const bedrooms = (prop.bedrooms ?? prop.Bedrooms) ?? 0;
+                const bathrooms = (prop.bathrooms ?? prop.Bathrooms) ?? 0;
+                const propertyType = prop.propertyType ?? prop.PropertyType ?? '';
+                const typeVal = prop.type ?? prop.Type ?? '';
+                const listingStatus = prop.listingStatus ?? prop.ListingStatus ?? '';
+                const listingTime = prop.listingTime ?? prop.ListingTime ?? null;
+                const pricePerSQFT = prop.pricePerSQFT ?? prop.pricePerSqft ?? null;
+                const daysOnMarket = prop.daysOnMarket ?? prop.DaysOnMarket ?? null;
+                const propertyLink = prop.propertyLink ?? prop.PropertyLink ?? '';
+                const agent = prop.agent ?? prop.Agent ?? '';
+
+                // Update modal fields
+                document.getElementById('modal-property-name').textContent = title;
+                document.getElementById('edit-property-name').value = title;
+
+                document.getElementById('modal-property-address').textContent = address;
+                document.getElementById('edit-property-address').value = address;
+
+                document.getElementById('modal-property-description').textContent = description;
+                if (document.getElementById('edit-property-description')) document.getElementById('edit-property-description').value = description;
+
+                document.getElementById('modal-property-price').textContent = formatCurrency(price);
+                if (document.getElementById('edit-property-price')) document.getElementById('edit-property-price').value = price;
+
+                document.getElementById('modal-area-display').textContent = area;
+                if (document.getElementById('edit-property-area')) document.getElementById('edit-property-area').value = area;
+
+                document.getElementById('modal-bedrooms').textContent = bedrooms;
+                if (document.getElementById('edit-bedrooms')) document.getElementById('edit-bedrooms').value = bedrooms;
+
+                document.getElementById('modal-bathrooms').textContent = bathrooms;
+                if (document.getElementById('edit-bathrooms')) document.getElementById('edit-bathrooms').value = bathrooms;
+
+                document.getElementById('modal-property-type').textContent = propertyType;
+                if (document.getElementById('edit-property-type')) document.getElementById('edit-property-type').value = propertyType;
+
+                document.getElementById('modal-property-buying-type').textContent = typeVal;
+                if (document.getElementById('edit-property-buying-type')) document.getElementById('edit-property-buying-type').value = typeVal;
+
+                document.getElementById('modal-property-status').textContent = listingStatus;
+                if (document.getElementById('edit-property-status')) document.getElementById('edit-property-status').value = listingStatus;
+
+                if (listingTime) {
+                    try {
+                        const dt = new Date(listingTime);
+                        if (!isNaN(dt)) {
+                            document.getElementById('modal-listing-date').textContent = dt.getFullYear();
+                            if (document.getElementById('edit-listing-date')) {
+                                document.getElementById('edit-listing-date').value = dt.toISOString().slice(0,16);
+                            }
+                        } else {
+                            document.getElementById('modal-listing-date').textContent = listingTime;
+                        }
+                    } catch {}
+                    // ensure card dataset is updated (store datetime-local friendly)
+                    const card = document.querySelector(`.property-card[data-property-id="${id}"]`);
+                    if (card) {
+                        try {
+                            const dt = new Date(listingTime);
+                            if (!isNaN(dt)) {
+                                card.dataset.propertyListingTime = dt.toISOString().slice(0,16);
+                            } else {
+                                card.dataset.propertyListingTime = listingTime;
+                            }
+                        } catch {}
+                    }
+                }
+
+                if (pricePerSQFT != null) {
+                    document.getElementById('modal-price-per-sqft').textContent = '₱ ' + Number(pricePerSQFT).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+
+                if (daysOnMarket != null) {
+                    document.getElementById('modal-days-on-market').textContent = daysOnMarket;
+                }
+
+                document.getElementById('modal-agent-name').textContent = agent || 'Unknown';
+                if (document.getElementById('edit-agent-name')) document.getElementById('edit-agent-name').value = agent || '';
+                document.getElementById('modal-agent-initials').textContent = getInitials(agent || '');
+
+                const linkEl = document.getElementById('modal-property-link');
+                if (linkEl) {
+                    linkEl.href = propertyLink || '#';
+                    document.getElementById('property-link-text').textContent = propertyLink ? 'View Property Details' : 'No Link';
+                }
+                if (document.getElementById('edit-property-link')) document.getElementById('edit-property-link').value = propertyLink || '';
+
+                // Update the card in list if exists
+                const card = document.querySelector(`.property-card[data-property-id="${id}"]`);
+                if (card) {
+                    card.dataset.propertyTitle = title || card.dataset.propertyTitle;
+                    card.dataset.propertyAddress = address || card.dataset.propertyAddress;
+                    card.dataset.propertyDescription = description || card.dataset.propertyDescription;
+                    card.dataset.propertyPrice = price ?? card.dataset.propertyPrice;
+                    card.dataset.propertyAgent = agent ?? card.dataset.propertyAgent;
+                    card.dataset.propertyArea = area ?? card.dataset.propertyArea;
+                    card.dataset.propertyBedrooms = bedrooms ?? card.dataset.propertyBedrooms;
+                    card.dataset.propertyBathrooms = bathrooms ?? card.dataset.propertyBathrooms;
+                    card.dataset.propertyType = propertyType || card.dataset.propertyType;
+                    card.dataset.propertyBuyingType = typeVal || card.dataset.propertyBuyingType;
+                    card.dataset.propertyStatus = listingStatus || card.dataset.propertyStatus;
+                    if (listingTime) card.dataset.propertyListingTime = listingTime;
+                    if (pricePerSQFT != null) card.dataset.propertyPricePerSqft = pricePerSQFT;
+                    if (daysOnMarket != null) card.dataset.propertyDaysMarket = daysOnMarket;
+                    if (prop.imagePath) {
+                        card.dataset.propertyImage = prop.imagePath;
+                        const img = card.querySelector('img');
+                        if (img) img.src = prop.imagePath;
+                        // also update the modal main image
+                        const modalImg = document.getElementById('modal-property-image');
+                        if (modalImg) modalImg.src = prop.imagePath;
+                    }
+
+                    // update visible parts
+                    const titleEl = card.querySelector('h3');
+                    if (titleEl) titleEl.textContent = title || titleEl.textContent;
+                    const addrEl = card.querySelector('p');
+                    if (addrEl) addrEl.textContent = address || addrEl.textContent;
+                    const priceNode = card.querySelector('.mt-auto p') || card.querySelector('.mt-auto');
+                    if (priceNode) priceNode.textContent = formatCurrency(price);
+                }
+            }
+
+            // Wire up property details modal buttons
+            if (closePropertyDetailsBtn) closePropertyDetailsBtn.addEventListener('click', closePropertyDetailsModal);
+            if (propertyDetailsBackdrop) propertyDetailsBackdrop.addEventListener('click', closePropertyDetailsModal);
+            if (editModeBtn) editModeBtn.addEventListener('click', function (e) { e.preventDefault(); enterEditModeUI(); });
+            if (cancelEditBtn) cancelEditBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                // revert edits from originalPropertyData
+                if (originalPropertyData && Object.keys(originalPropertyData).length) {
+                    openPropertyDetailsModal({ dataset: originalPropertyData }); // repopulates modal from saved dataset
+                }
+                exitEditModeUI();
+            });
+            if (saveChangesBtn) saveChangesBtn.addEventListener('click', function (e) { e.preventDefault(); savePropertyChanges(); });
+
+            // Attach click handlers to property cards now
+            wirePropertyCards();
+
+            // ===============================
+            // EVENT LISTENERS - MAIN AREA (modal open/close wiring)
+            // ===============================
             if (addPropertyBtn) {
-                addPropertyBtn.addEventListener('click', function(e) {
-                    console.log('Add Property button clicked!'); // Debug log
+                addPropertyBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     openModal();
                 });
-                console.log('Add Property button listener attached');
-            } else {
-                console.error('Add Property button not found! Check if ID "add-property-btn" exists');
             }
 
             if (closeModalBtn) {
-                closeModalBtn.addEventListener('click', function(e) {
+                closeModalBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     closeModal();
                 });
             }
 
             if (cancelModalBtn) {
-                cancelModalBtn.addEventListener('click', function(e) {
+                cancelModalBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     closeModal();
                 });
             }
 
-            // Property Details Modal Event Listeners
-            if (closePropertyDetailsBtn) {
-                closePropertyDetailsBtn.addEventListener('click', closePropertyDetailsModal);
-            }
-
-            // Edit Mode Event Listeners
-            if (editModeBtn) {
-                editModeBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    enableEditMode();
-                });
-            }
-
-            if (saveChangesBtn) {
-                saveChangesBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    savePropertyChanges();
-                });
-            }
-
-            if (cancelEditBtn) {
-                cancelEditBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    cancelEditMode();
-                });
-            }
-
-            // Property card click handlers
-            var propertyCards = document.querySelectorAll('.property-card');
-            console.log('Found property cards:', propertyCards.length); // Debug log
-            
-            propertyCards.forEach(function(card) {
-                card.addEventListener('click', function() {
-                    console.log('Property card clicked!'); // Debug log
-                    openPropertyDetailsModal(this);
-                });
-            });
-
-            // ===============================
-            // PROPERTY TYPE BUTTON FUNCTIONALITY - FIXED
-            // ===============================
-
-            var propertyTypeBtns = document.querySelectorAll('.property-type-btn');
-            propertyTypeBtns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    propertyTypeBtns.forEach(function(b) {
-                        b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
-                    });
-
-                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
-                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-
-                    var selectedType = this.getAttribute('data-type');
-                    document.getElementById('property-type').value = selectedType;
-                });
-            });
-
-            // Type (Buying/Viewing) button functionality - FIXED THE TYPO
-            var typeBtns = document.querySelectorAll('.type-btn');
-            typeBtns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    typeBtns.forEach(function(b) {
-                        b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg(gray-50'); // FIXED TYPO HERE
-                    });
-
-                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg(gray-50'); // FIXED TYPO HERE
-                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-
-                    var selectedType = this.getAttribute('data-type');
-                    document.getElementById('property-buying-type').value = selectedType;
-                });
-            });
-
-            // ===============================
-            // CALCULATION FUNCTIONS
-            // ===============================
-
-            function updateCalculations() {
-                var area = parseFloat(areaInput.value) || 0;
-                var price = parseFloat(priceInput.value) || 0;
-                
-                var sqft = area * 10.7639;
-                var pricePerSqft = sqft > 0 ? price / sqft : 0;
-                
-                if (area > 0) {
-                    calculatedSqft.textContent = sqft.toFixed(2) + ' sqft';
-                } else {
-                    calculatedSqft.textContent = '-';
-                }
-                
-                if (price > 0 && sqft > 0) {
-                    calculatedPricePerSqft.textContent = '₱ ' + pricePerSqft.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                } else {
-                    calculatedPricePerSqft.textContent = '-';
-                }
-            }
-
-            if (areaInput) areaInput.addEventListener('input', updateCalculations);
-            if (priceInput) priceInput.addEventListener('input', updateCalculations);
-
-            // ===============================
-            // IMAGE UPLOAD HANDLING
-            // ===============================
-
-            if (imageInput) {
-                imageInput.addEventListener('change', function(e) {
-                    var file = e.target.files[0];
-                    if (file) {
-                        var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
-                        if (!allowedTypes.includes(file.type)) {
-                            alert('Please upload a valid image file (JPG, PNG, GIF, BMP).');
-                            imageInput.value = '';
-                            return;
-                        }
-
-                        if (file.size > 5 * 1024 * 1024) {
-                            alert('File size cannot exceed 5MB.');
-                            imageInput.value = '';
-                            return;
-                        }
-
-                        var reader = new FileReader();
-                        reader.onload = function(e) {
-                            if (previewImage) previewImage.src = e.target.result;
-                            if (imagePreview) imagePreview.classList.remove('hidden');
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-
-            if (removeImageBtn) {
-                removeImageBtn.addEventListener('click', function() {
-                    if (imageInput) imageInput.value = '';
-                    if (imagePreview) imagePreview.classList.add('hidden');
-                    if (previewImage) previewImage.src = '';
-                });
-            }
-
-            // Set default listing time to current datetime
-            var listingTimeInput = document.getElementById('property-listing-time');
-            if (listingTimeInput) {
-                var now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                listingTimeInput.value = now.toISOString().slice(0, 16);
-            }
-
-            // ===============================
-            // CLOSE MODALS ON ESCAPE KEY AND BACKGROUND CLICK
-            // ===============================
-
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') {
-                    if (modal && !modal.classList.contains('hidden')) {
-                        closeModal();
-                    }
-                    if (propertyDetailsModal && !propertyDetailsModal.classList.contains('hidden')) {
-                        closePropertyDetailsModal();
-                    }
-                }
-            });
-
-            // Close Add Property modal when clicking on background overlay
             if (modal) {
                 modal.addEventListener('click', function (event) {
                     if (event.target === modal || event.target === modalBackdrop) {
@@ -1319,16 +1719,8 @@
                 });
             }
 
-            // Close Property Details modal when clicking on background overlay
-            if (propertyDetailsModal) {
-                propertyDetailsModal.addEventListener('click', function (event) {
-                    if (event.target === propertyDetailsModal || event.target === propertyDetailsBackdrop) {
-                        closePropertyDetailsModal();
-                    }
-                });
-            }
-
-            console.log('Properties page initialization complete'); // Debug log
+            // Other page initialization (property details modal, edit etc.) remains unchanged
+            console.log('Properties page initialization complete');
         });
     </script>
 }
