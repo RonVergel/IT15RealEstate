@@ -22,6 +22,12 @@ namespace RealEstateCRM.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
+            var pipelineData = await _context.Deals
+                .GroupBy(d => d.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .OrderBy(x => x.Status)
+                .ToListAsync();
+
             var dashboardData = new DashboardViewModel
             {
                 // Get total count of properties
@@ -93,7 +99,11 @@ namespace RealEstateCRM.Controllers
                     .Where(l => l.IsActive)
                     .OrderByDescending(l => l.DateCreated)
                     .Take(5)
-                    .ToListAsync()
+                    .ToListAsync(),
+                
+                // Deal Pipeline Chart Data
+                DealStatusLabels = pipelineData.Select(p => p.Status).ToList(),
+                DealsPerStatus = pipelineData.Select(p => p.Count).ToList()
             };
 
             // =========================

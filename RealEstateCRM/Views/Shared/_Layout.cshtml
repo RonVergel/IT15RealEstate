@@ -3,12 +3,15 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - RealEstateCRM</title>
-    <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
+    <title>@ViewData["Title"] - Homey</title>
+    <link rel="stylesheet" href="~/css/app.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="bg-gray-100 flex flex-col min-h-screen">
-    <div class="flex min-h-screen">
+<body class="bg-gray-100 font-sans antialiased">
+    <div class="flex h-screen bg-gray-50">
         <!-- Sidebar -->
         <aside class="w-64 bg-white border-r border-gray-200 flex flex-col py-8 hidden md:flex fixed md:relative z-10 md:z-auto h-full md:h-auto">
             <!-- Logo at top-left -->
