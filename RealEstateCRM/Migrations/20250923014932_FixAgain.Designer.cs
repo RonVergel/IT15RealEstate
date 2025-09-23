@@ -12,13 +12,8 @@ using RealEstateCRM.Data;
 namespace RealEstateCRM.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-<<<<<<<< HEAD:RealEstateCRM/Migrations/20250922064803_AddOccupationAndSalaryToContactsAndLeads.Designer.cs
-    [Migration("20250922064803_AddOccupationAndSalaryToContactsAndLeads")]
-    partial class AddOccupationAndSalaryToContactsAndLeads
-========
-    [Migration("20250922153802_fix")]
-    partial class fix
->>>>>>>> 0d0d84407474234ddb5992a88ecf5de9fc06f691:RealEstateCRM/Migrations/20250922153802_fix.Designer.cs
+    [Migration("20250923014932_FixAgain")]
+    partial class FixAgain
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

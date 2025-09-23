@@ -270,6 +270,10 @@ namespace RealEstateCRM.Controllers
         // New: average client salary series (monthly)
         public List<string> AvgClientSalaryLabels { get; set; } = new();
         public List<decimal> AvgClientSalaryValues { get; set; } = new();
+
+        // Deal pipeline chart data (labels and counts)
+        public List<string> DealStatusLabels { get; set; } = new();
+        public List<int> DealsPerStatus { get; set; } = new();
     }
 
     // Simple DTO for occupation -> property type counts

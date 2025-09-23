@@ -1,4 +1,4 @@
-﻿﻿@using Microsoft.AspNetCore.Authorization
+﻿@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Mvc
 @using Microsoft.EntityFrameworkCore
 @using RealEstateCRM.Data
@@ -399,152 +399,163 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Toast notification logic (matches other views)
-            const toast = document.getElementById('toast-notification');
-            const messageEl = document.getElementById('toast-message');
-            const successIcon = document.getElementById('toast-success-icon');
-            const errorIcon = document.getElementById('toast-error-icon');
-            const closeBtn = document.getElementById('toast-close');
+            try {
+                // Toast notification logic (matches other views)
+                const toast = document.getElementById('toast-notification');
+                const messageEl = document.getElementById('toast-message');
+                const successIcon = document.getElementById('toast-success-icon');
+                const errorIcon = document.getElementById('toast-error-icon');
+                const closeBtn = document.getElementById('toast-close');
 
-            function showToast(message, type = 'success') {
-                if (!toast) return;
-                messageEl.textContent = message || '';
-                if (type === 'success') {
-                    successIcon.classList.remove('hidden');
-                    errorIcon.classList.add('hidden');
-                } else {
-                    successIcon.classList.add('hidden');
-                    errorIcon.classList.remove('hidden');
+                function showToast(message, type = 'success') {
+                    if (!toast) return;
+                    messageEl.textContent = message || '';
+                    if (type === 'success') {
+                        successIcon.classList.remove('hidden');
+                        errorIcon.classList.add('hidden');
+                    } else {
+                        successIcon.classList.add('hidden');
+                        errorIcon.classList.remove('hidden');
+                    }
+
+                    toast.classList.remove('translate-x-full');
+                    toast.classList.add('translate-x-0');
+
+                    setTimeout(() => {
+                        hideToast();
+                    }, 3000);
                 }
 
-                toast.classList.remove('translate-x-full');
-                toast.classList.add('translate-x-0');
+                function hideToast() {
+                    if (!toast) return;
+                    toast.classList.remove('translate-x-0');
+                    toast.classList.add('translate-x-full');
+                }
 
-                setTimeout(() => {
-                    hideToast();
-                }, 3000);
-            }
+                if (closeBtn) closeBtn.addEventListener('click', hideToast);
 
-            function hideToast() {
-                if (!toast) return;
-                toast.classList.remove('translate-x-0');
-                toast.classList.add('translate-x-full');
-            }
+                // Show server-provided message (TempData)
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <text>
+                    showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
+                    </text>
+                }
 
-            if (closeBtn) closeBtn.addEventListener('click', hideToast);
+                // Prepare occupation stats from server model
+                const occStats = @Html.Raw(JsonSerializer.Serialize(Model.PreferredPropertyTypesByOccupation ?? new List<RealEstateCRM.Controllers.OccupationPropertyTypeStat>()));
 
-            // Show server-provided message (TempData)
-            @if (TempData["SuccessMessage"] != null)
-            {
-                <text>
-                showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
-                </text>
-            }
+                function getStatForOccupation(occupation) {
+                    if (!occStats || !occStats.length) return { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
+                    const found = occStats.find(o => o.Occupation === occupation);
+                    if (!found) return { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
+                    return {
+                        Residential: found.Residential || 0,
+                        Commercial: found.Commercial || 0,
+                        RawLand: found.RawLand || 0,
+                        Other: found.Other || 0
+                    };
+                }
 
-            // Prepare occupation stats from server model
-            const occStats = @Html.Raw(JsonSerializer.Serialize(Model.PreferredPropertyTypesByOccupation ?? new List<RealEstateCRM.Controllers.OccupationPropertyTypeStat>()));
+                // Initialize occupation chart
+                const occCanvas = document.getElementById('occupationChart');
+                if (occCanvas) {
+                    const ctx = occCanvas.getContext('2d');
+                    const defaultOcc = (occStats && occStats.length) ? occStats[0].Occupation : null;
+                    const initial = defaultOcc ? getStatForOccupation(defaultOcc) : { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
 
-            function getStatForOccupation(occupation) {
-                if (!occStats || !occStats.length) return { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
-                const found = occStats.find(o => o.Occupation === occupation);
-                if (!found) return { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
-                return {
-                    Residential: found.Residential || 0,
-                    Commercial: found.Commercial || 0,
-                    RawLand: found.RawLand || 0,
-                    Other: found.Other || 0
-                };
-            }
-
-            // Initialize occupation chart
-            const ctx = document.getElementById('occupationChart').getContext('2d');
-            const defaultOcc = (occStats && occStats.length) ? occStats[0].Occupation : null;
-            const initial = defaultOcc ? getStatForOccupation(defaultOcc) : { Residential: 0, Commercial: 0, RawLand: 0, Other: 0 };
-
-            const occupationChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Residential', 'Commercial', 'Raw Land', 'Other'],
-                    datasets: [{
-                        label: defaultOcc ? `Preferred Types — ${defaultOcc}` : 'Preferred Types',
-                        data: [initial.Residential, initial.Commercial, initial.RawLand, initial.Other],
-                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#9CA3AF']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            precision: 0
+                    const occupationChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Residential', 'Commercial', 'Raw Land', 'Other'],
+                            datasets: [{
+                                label: defaultOcc ? `Preferred Types — ${defaultOcc}` : 'Preferred Types',
+                                data: [initial.Residential, initial.Commercial, initial.RawLand, initial.Other],
+                                backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#9CA3AF']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    precision: 0
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { mode: 'index', intersect: false }
+                            }
                         }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { mode: 'index', intersect: false }
+                    });
+
+                    const select = document.getElementById('occupation-select');
+                    if (select) {
+                        select.addEventListener('change', function () {
+                            const occ = this.value;
+                            const s = getStatForOccupation(occ);
+                            occupationChart.data.datasets[0].data = [s.Residential, s.Commercial, s.RawLand, s.Other];
+                            occupationChart.data.datasets[0].label = `Preferred Types — ${occ}`;
+                            occupationChart.update();
+                        });
                     }
                 }
-            });
 
-            const select = document.getElementById('occupation-select');
-            if (select) {
-                select.addEventListener('change', function () {
-                    const occ = this.value;
-                    const s = getStatForOccupation(occ);
-                    occupationChart.data.datasets[0].data = [s.Residential, s.Commercial, s.RawLand, s.Other];
-                    occupationChart.data.datasets[0].label = `Preferred Types — ${occ}`;
-                    occupationChart.update();
-                });
-            }
+                // =========================
+                // Average Client Salary Chart (monthly)
+                // =========================
+                const salaryLabels = @Html.Raw(JsonSerializer.Serialize(Model.AvgClientSalaryLabels ?? new List<string>()));
+                const salaryValues = @Html.Raw(JsonSerializer.Serialize(Model.AvgClientSalaryValues ?? new List<decimal>()));
 
-            // =========================
-            // Average Client Salary Chart (monthly)
-            // =========================
-            const salaryLabels = @Html.Raw(JsonSerializer.Serialize(Model.AvgClientSalaryLabels ?? new List<string>()));
-            const salaryValues = @Html.Raw(JsonSerializer.Serialize(Model.AvgClientSalaryValues ?? new List<decimal>()));
+                (function renderSalaryChart() {
+                    const canvas = document.getElementById('avgSalaryChart');
+                    if (!canvas) return;
+                    const ctxSalary = canvas.getContext('2d');
+                    const data = {
+                        labels: salaryLabels,
+                        datasets: [{
+                            label: 'Avg Salary (₱)',
+                            data: salaryValues,
+                            borderColor: '#2563EB',
+                            backgroundColor: 'rgba(37,99,235,0.12)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 3
+                        }]
+                    };
 
-            (function renderSalaryChart() {
-                const ctxSalary = document.getElementById('avgSalaryChart').getContext('2d');
-                const data = {
-                    labels: salaryLabels,
-                    datasets: [{
-                        label: 'Avg Salary (₱)',
-                        data: salaryValues,
-                        borderColor: '#2563EB',
-                        backgroundColor: 'rgba(37,99,235,0.12)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3
-                    }]
-                };
-
-                const options = {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    if (value === 0) return '₱0';
-                                    return '₱' + Number(value).toLocaleString();
+                    const options = {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        if (value === 0) return '₱0';
+                                        return '₱' + Number(value).toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const v = context.parsed.y ?? 0;
+                                        return 'Avg Salary: ₱ ' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    }
                                 }
                             }
                         }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const v = context.parsed.y ?? 0;
-                                    return 'Avg Salary: ₱ ' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                }
-                            }
-                        }
-                    }
-                };
+                    };
 
-                new Chart(ctxSalary, { type: 'line', data, options });
-            })();
+                    new Chart(ctxSalary, { type: 'line', data, options });
+                })();
+            } catch (err) {
+                // If something goes wrong during client initialization, log and show a toast so UI isn't silently broken.
+                console.error('Dashboard initialization failed', err);
+                try { showToast('An error occurred initializing the dashboard. Check console for details.', 'error'); } catch {}
+            }
         });
     </script>
 }
