@@ -259,7 +259,7 @@
     <div class="absolute inset-0 transition-all duration-300 ease-out" id="lead-modal-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
 
     <!-- Modal content container -->
-    <div class="relative h-full w-full flex items-center justify-center p-4">
+    <div class="relative h-full w-full flex items-center justify-center p-4" id="lead-modal-overlay">
         <!-- Modal dialog -->
         <div class="relative bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="lead-modal-content">
             <!-- Close button -->
@@ -289,14 +289,7 @@
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                         </div>
 
-                        <!-- Agent (now a dropdown populated from DB) -->
-                        <div>
-                            <label for="lead-agent" class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
-                            <select id="lead-agent" name="Agent" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                <option value="">-- Select an agent (optional) --</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Choose an agent from the list or leave blank.</p>
-                        </div>
+                        <!-- Agent field removed; lead will be attributed to the current user -->
 
                         <!-- Email -->
                         <div>
@@ -400,41 +393,7 @@
                 </text>
             }
 
-            // ===============================
-            // AGENTS: fetch & populate (reused from Properties page)
-            // ===============================
-            async function fetchAgents(query) {
-                try {
-                    const url = '/Properties/GetAgents' + (query ? '?q=' + encodeURIComponent(query) : '');
-                    const res = await fetch(url, { credentials: 'same-origin' });
-                    if (!res.ok) return [];
-                    const data = await res.json();
-                    if (Array.isArray(data)) return data;
-                    if (data && Array.isArray(data.agents)) return data.agents;
-                    return [];
-                } catch (err) {
-                    console.error('Error fetching agents:', err);
-                    return [];
-                }
-            }
-
-            function populateAgentsList(list) {
-                const sel = document.getElementById('lead-agent');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select an agent (optional) --</option>';
-                list.forEach(a => {
-                    const opt = document.createElement('option');
-                    // assume agent object has 'name' property as used elsewhere
-                    opt.value = a.name || a;
-                    opt.textContent = a.name || a;
-                    sel.appendChild(opt);
-                });
-            }
-
-            async function loadInitialAgents() {
-                const agents = await fetchAgents('');
-                populateAgentsList(agents);
-            }
+            // Agent selection removed: leads will be attributed to the current user
 
             const addLeadBtn = document.getElementById('add-lead-btn');
             const leadModal = document.getElementById('add-lead-modal');
@@ -444,9 +403,6 @@
             const cancelLeadBtn = document.getElementById('cancel-lead-btn');
 
             function openLeadModal() {
-                // load agents each time modal opens to get fresh list
-                loadInitialAgents();
-
                 leadModal.classList.remove('hidden');
                 leadModal.offsetHeight;
                 setTimeout(function() {
@@ -475,9 +431,6 @@
             function resetLeadModal() {
                 const form = document.getElementById('lead-form');
                 if (form) form.reset();
-                // reset select placeholder if present
-                const sel = document.getElementById('lead-agent');
-                if (sel) sel.selectedIndex = 0;
             }
 
             // Event listeners
@@ -487,7 +440,8 @@
 
             // Close modal when clicking on background overlay
             leadModal.addEventListener('click', function (event) {
-                if (event.target === leadModal || event.target === leadModalBackdrop) {
+                const overlay = document.getElementById('lead-modal-overlay');
+                if (event.target === leadModal || event.target === leadModalBackdrop || event.target === overlay) {
                     closeLeadModal();
                 }
             });

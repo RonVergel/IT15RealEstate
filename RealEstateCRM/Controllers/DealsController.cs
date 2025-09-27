@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Models;
 using RealEstateCRM.Services.Notifications;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using System.Text;
 
 namespace RealEstateCRM.Controllers
 {
@@ -14,12 +16,16 @@ namespace RealEstateCRM.Controllers
         private readonly AppDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly INotificationService _notifications;
+        private readonly IEmailSender _emailSender;
+        private readonly RealEstateCRM.Services.ContractPdfGenerator _pdfGen;
 
-        public DealsController(AppDbContext context, UserManager<IdentityUser> userManager, INotificationService notifications)
+        public DealsController(AppDbContext context, UserManager<IdentityUser> userManager, INotificationService notifications, IEmailSender emailSender, RealEstateCRM.Services.ContractPdfGenerator pdfGen)
         {
             _context = context;
             _userManager = userManager;
             _notifications = notifications;
+            _emailSender = emailSender;
+            _pdfGen = pdfGen;
         }
 
         public async Task<IActionResult> Index()
@@ -105,6 +111,50 @@ namespace RealEstateCRM.Controllers
             return Json(properties);
         }
 
+        // View-only JSON summary for a deal (used by board modal)
+        [HttpGet]
+        public async Task<IActionResult> DealSummary(int id)
+        {
+            var deal = await _context.Deals.Include(d => d.Property).FirstOrDefaultAsync(d => d.Id == id);
+            if (deal == null) return NotFound();
+
+            string? image = null;
+            if (deal.Property != null)
+            {
+                image = !string.IsNullOrWhiteSpace(deal.Property.ImagePath)
+                    ? Url.Content(deal.Property.ImagePath)
+                    : Url.Content("~/assets/images/property-placeholder.jpg");
+            }
+
+            var payload = new
+            {
+                id = deal.Id,
+                title = string.IsNullOrWhiteSpace(deal.Property?.Title) ? deal.Title : deal.Property!.Title,
+                dealTitle = deal.Title,
+                description = deal.Description,
+                status = deal.Status,
+                agent = deal.AgentName,
+                client = deal.ClientName,
+                offer = deal.OfferAmount,
+                created = deal.CreatedDate,
+                updated = deal.LastUpdated,
+                property = deal.Property == null ? null : new
+                {
+                    id = deal.Property.Id,
+                    title = deal.Property.Title,
+                    address = deal.Property.Address,
+                    price = deal.Property.Price,
+                    type = deal.Property.PropertyType,
+                    bedrooms = deal.Property.Bedrooms ?? 0,
+                    bathrooms = deal.Property.Bathrooms ?? 0,
+                    area = deal.Property.Area ?? 0,
+                    image
+                }
+            };
+
+            return Json(payload);
+        }
+
         // New: return users that are in the "Agent" role
         [HttpGet]
         public async Task<IActionResult> GetAgents()
@@ -155,6 +205,13 @@ namespace RealEstateCRM.Controllers
         {
             if (ModelState.IsValid)
             {
+                // Require a client selection for every new deal
+                if (string.IsNullOrWhiteSpace(request.ClientName))
+                {
+                    TempData["ErrorMessage"] = "Please select a client before creating a deal.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 // Validate offer amount against property price (min 90%, max 100%)
                 var propForValidation = await _context.Properties.FindAsync(request.PropertyId);
                 if (propForValidation == null)
@@ -353,7 +410,7 @@ namespace RealEstateCRM.Controllers
                 deal.DisplayOrder = maxDisplayOrder + 1;
                 deal.LastUpdated = DateTime.UtcNow;
 
-                // If moved into UnderContract, seed default deadlines for calculations if none exist
+                // If moved into UnderContract, seed default deadlines (from AgencySettings) if none exist
                 if (string.Equals(newStatus, "UnderContract", StringComparison.OrdinalIgnoreCase))
                 {
                     var hasDeadlines = await _context.DealDeadlines.AnyAsync(dd => dd.DealId == deal.Id);
@@ -362,17 +419,25 @@ namespace RealEstateCRM.Controllers
                         try
                         {
                             var now = DateTime.UtcNow.Date;
+                            var cfg = await _context.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+                            int insp = cfg?.InspectionDays ?? 7;
+                            int appr = cfg?.AppraisalDays ?? 14;
+                            int loan = cfg?.LoanCommitmentDays ?? 21;
+                            int clos = cfg?.ClosingDays ?? 30;
                             var list = new List<DealDeadline>
                             {
-                                new DealDeadline { DealId = deal.Id, Type = "Inspection", DueDate = now.AddDays(7) },
-                                new DealDeadline { DealId = deal.Id, Type = "Appraisal", DueDate = now.AddDays(14) },
-                                new DealDeadline { DealId = deal.Id, Type = "LoanCommitment", DueDate = now.AddDays(21) },
-                                new DealDeadline { DealId = deal.Id, Type = "Closing", DueDate = now.AddDays(30) }
+                                new DealDeadline { DealId = deal.Id, Type = "Inspection", DueDate = now.AddDays(insp) },
+                                new DealDeadline { DealId = deal.Id, Type = "Appraisal", DueDate = now.AddDays(appr) },
+                                new DealDeadline { DealId = deal.Id, Type = "LoanCommitment", DueDate = now.AddDays(loan) },
+                                new DealDeadline { DealId = deal.Id, Type = "Closing", DueDate = now.AddDays(clos) }
                             };
                             _context.DealDeadlines.AddRange(list);
+                            await _context.SaveChangesAsync();
                         }
                         catch { }
                     }
+                    // Attempt to send contract packet to client
+                    try { await TryEmailContractPacket(deal.Id); } catch { }
                 }
 
                 await _context.SaveChangesAsync();
@@ -504,22 +569,30 @@ namespace RealEstateCRM.Controllers
             deal.LastUpdated = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-
-            // Generate default deadlines
+            
+            // Generate default deadlines (from AgencySettings)
             try
             {
                 var now = DateTime.UtcNow.Date;
+                var cfg = await _context.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+                int insp = cfg?.InspectionDays ?? 7;
+                int appr = cfg?.AppraisalDays ?? 14;
+                int loan = cfg?.LoanCommitmentDays ?? 21;
+                int clos = cfg?.ClosingDays ?? 30;
                 var list = new List<DealDeadline>
                 {
-                    new DealDeadline { DealId = deal.Id, Type = "Inspection", DueDate = now.AddDays(7) },
-                    new DealDeadline { DealId = deal.Id, Type = "Appraisal", DueDate = now.AddDays(14) },
-                    new DealDeadline { DealId = deal.Id, Type = "LoanCommitment", DueDate = now.AddDays(21) },
-                    new DealDeadline { DealId = deal.Id, Type = "Closing", DueDate = now.AddDays(30) }
+                    new DealDeadline { DealId = deal.Id, Type = "Inspection", DueDate = now.AddDays(insp) },
+                    new DealDeadline { DealId = deal.Id, Type = "Appraisal", DueDate = now.AddDays(appr) },
+                    new DealDeadline { DealId = deal.Id, Type = "LoanCommitment", DueDate = now.AddDays(loan) },
+                    new DealDeadline { DealId = deal.Id, Type = "Closing", DueDate = now.AddDays(clos) }
                 };
                 _context.DealDeadlines.AddRange(list);
                 await _context.SaveChangesAsync();
             }
             catch { }
+
+            // Try emailing contract to client as we enter UnderContract via accepted offer
+            try { await TryEmailContractPacket(deal.Id); } catch { }
 
             return Ok();
         }
@@ -544,6 +617,72 @@ namespace RealEstateCRM.Controllers
                 .Select(d => new { d.Id, d.Type, d.DueDate, d.CompletedAtUtc, d.Notes })
                 .ToListAsync();
             return Json(items);
+        }
+
+        // Save or update multiple deadlines for a deal (allows manual date/time edits)
+        public class DeadlineDto
+        {
+            public int? Id { get; set; }
+            public string Type { get; set; } = string.Empty;
+            public DateTime DueDate { get; set; }
+            public string? Notes { get; set; }
+        }
+
+        public class SaveDeadlinesRequest
+        {
+            public int DealId { get; set; }
+            public List<DeadlineDto> Deadlines { get; set; } = new();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveDeadlines([FromBody] SaveDeadlinesRequest req)
+        {
+            if (req == null) return BadRequest("Invalid payload");
+            var deal = await _context.Deals.FindAsync(req.DealId);
+            if (deal == null) return NotFound("Deal not found");
+
+            // Load existing deadlines for the deal once
+            var existing = await _context.DealDeadlines.Where(d => d.DealId == req.DealId).ToListAsync();
+
+            foreach (var incoming in req.Deadlines)
+            {
+                if (incoming == null || string.IsNullOrWhiteSpace(incoming.Type)) continue;
+
+                DealDeadline? target = null;
+
+                if (incoming.Id.HasValue)
+                {
+                    target = existing.FirstOrDefault(d => d.Id == incoming.Id.Value && d.DealId == req.DealId);
+                }
+
+                // If not found by Id, try by unique (DealId + Type)
+                if (target == null)
+                {
+                    target = existing.FirstOrDefault(d => d.Type == incoming.Type);
+                }
+
+                if (target == null)
+                {
+                    target = new DealDeadline
+                    {
+                        DealId = req.DealId,
+                        Type = incoming.Type,
+                        DueDate = incoming.DueDate,
+                        Notes = incoming.Notes
+                    };
+                    _context.DealDeadlines.Add(target);
+                    existing.Add(target);
+                }
+                else
+                {
+                    target.Type = incoming.Type; // allow rename corrections
+                    target.DueDate = incoming.DueDate;
+                    target.Notes = incoming.Notes;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok();
         }
 
         // Mark/unmark a deadline as completed
@@ -571,8 +710,160 @@ namespace RealEstateCRM.Controllers
             deal.Status = "Closed";
             deal.DisplayOrder = maxDisplayOrder + 1;
             deal.LastUpdated = DateTime.UtcNow;
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                deal.ClosedByUserId = user?.Id;
+                deal.ClosedAtUtc = DateTime.UtcNow;
+            }
+            catch { }
             await _context.SaveChangesAsync();
             return Ok();
+        }
+
+        // Build and send a contract email to the client assigned to the deal.
+        private async Task TryEmailContractPacket(int dealId)
+        {
+            var deal = await _context.Deals.Include(d => d.Property).FirstOrDefaultAsync(d => d.Id == dealId);
+            if (deal == null) return;
+
+            // Lookup client by name in Contacts
+            Contact? client = null;
+            if (!string.IsNullOrWhiteSpace(deal.ClientName))
+            {
+                client = await _context.Contacts.FirstOrDefaultAsync(c => c.IsActive && c.Name.ToLower() == deal.ClientName!.ToLower());
+            }
+            if (client == null || string.IsNullOrWhiteSpace(client.Email)) return; // nothing to send
+
+            // Pull accepted or latest offer
+            var offer = await _context.Offers
+                .Where(o => o.DealId == deal.Id)
+                .OrderByDescending(o => o.Status == "Accepted")
+                .ThenByDescending(o => o.CreatedAtUtc)
+                .FirstOrDefaultAsync();
+
+            // Pull deadlines (Inspection/Appraisal/LoanCommitment/Closing)
+            var deadlines = await _context.DealDeadlines
+                .Where(d => d.DealId == deal.Id)
+                .ToListAsync();
+
+            var settings = await _context.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+            var brokerPct = settings?.BrokerCommissionPercent ?? 10m;
+            var agentPct = settings?.AgentCommissionPercent ?? 5m;
+
+            // Build an HTML contract summary tailored to this project
+            string html = BuildContractHtml(deal, client, offer, deadlines, brokerPct, agentPct);
+
+            // Persist a copy as an .html under the contact's documents for reference
+            try
+            {
+                var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contacts", client.Id.ToString());
+                Directory.CreateDirectory(uploadsRoot);
+                var fname = $"Contract_{deal.Id}_{DateTime.UtcNow:yyyyMMddHHmmss}.html";
+                var full = Path.Combine(uploadsRoot, fname);
+                await System.IO.File.WriteAllTextAsync(full, html, Encoding.UTF8);
+            }
+            catch { }
+
+            var subject = $"Contract Packet - {deal.Property?.Title ?? deal.Title}";
+            // Generate PDF and attach
+            byte[] pdfBytes = Array.Empty<byte>();
+            try { pdfBytes = _pdfGen.Generate(deal, client, offer, deadlines, brokerPct, agentPct); } catch { }
+
+            // Save PDF to contact docs as well (if created)
+            if (pdfBytes != null && pdfBytes.Length > 0)
+            {
+                try
+                {
+                    var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contacts", client.Id.ToString());
+                    Directory.CreateDirectory(uploadsRoot);
+                    var pdfName = $"Contract_{deal.Id}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
+                    var pdfFull = Path.Combine(uploadsRoot, pdfName);
+                    await System.IO.File.WriteAllBytesAsync(pdfFull, pdfBytes);
+                }
+                catch { }
+            }
+
+            bool sent = false;
+            if (_emailSender is RealEstateCRM.Services.EmailSender concrete && pdfBytes != null && pdfBytes.Length > 0)
+            {
+                sent = await concrete.SendEmailWithAttachmentsAsync(client.Email!, subject, html, new[]
+                {
+                    (FileName: $"Contract_{deal.Id}.pdf", ContentType: "application/pdf", Data: pdfBytes)
+                });
+            }
+            if (!sent)
+            {
+                // Fallback without attachment
+                await _emailSender.SendEmailAsync(client.Email!, subject, html);
+                sent = true; // best-effort
+            }
+
+            try { await _notifications.NotifyRoleAsync("Broker", $"Contract email {(sent ? "sent" : "failed")} to {client.Email} for deal #{deal.Id}", "/Deals", null, "ContractEmail"); } catch { }
+        }
+
+        private static string BuildContractHtml(Deal deal, Contact client, Offer? offer, List<DealDeadline> deadlines, decimal brokerPct, decimal agentPct)
+        {
+            var sb = new StringBuilder();
+            var prop = deal.Property;
+            string money(decimal? v) => v.HasValue ? $"₱ {v.Value:N0}" : "-";
+            string dt(DateTime? d) => d.HasValue ? d.Value.ToString("MMM dd, yyyy") : "-";
+
+            var insp = deadlines.FirstOrDefault(x => x.Type == "Inspection");
+            var appr = deadlines.FirstOrDefault(x => x.Type == "Appraisal");
+            var loan = deadlines.FirstOrDefault(x => x.Type == "LoanCommitment");
+            var clos = deadlines.FirstOrDefault(x => x.Type == "Closing");
+
+            sb.Append("<div style='font-family:Inter,Arial,sans-serif;color:#111;line-height:1.5;'>");
+            sb.Append("<h2 style='margin:0 0 6px'>Real Estate Purchase Contract</h2>");
+            sb.Append("<div style='font-size:12px;color:#555;margin-bottom:12px'>Generated by Homey CRM</div>");
+
+            // Parties
+            sb.Append("<h3 style='margin:16px 0 6px'>Parties</h3><table style='width:100%;font-size:14px'>");
+            sb.Append($"<tr><td style='padding:4px 8px;width:30%;color:#666'>Buyer</td><td style='padding:4px 8px'>{System.Net.WebUtility.HtmlEncode(client.Name)} ({System.Net.WebUtility.HtmlEncode(client.Email ?? "-")})</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Agent</td><td style='padding:4px 8px'>{System.Net.WebUtility.HtmlEncode(deal.AgentName ?? "-")}</td></tr>");
+            sb.Append("</table>");
+
+            // Property
+            sb.Append("<h3 style='margin:16px 0 6px'>Property</h3><table style='width:100%;font-size:14px'>");
+            sb.Append($"<tr><td style='padding:4px 8px;width:30%;color:#666'>Title</td><td style='padding:4px 8px'>{System.Net.WebUtility.HtmlEncode(prop?.Title ?? deal.Title)}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Address</td><td style='padding:4px 8px'>{System.Net.WebUtility.HtmlEncode(prop?.Address ?? "-")}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Type</td><td style='padding:4px 8px'>{System.Net.WebUtility.HtmlEncode(prop?.PropertyType ?? "-")}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>List Price</td><td style='padding:4px 8px'>{money(prop?.Price)}</td></tr>");
+            sb.Append("</table>");
+
+            // Financials
+            sb.Append("<h3 style='margin:16px 0 6px'>Financial Terms</h3><table style='width:100%;font-size:14px'>");
+            sb.Append($"<tr><td style='padding:4px 8px;width:30%;color:#666'>Offer Amount</td><td style='padding:4px 8px'>{money(offer?.Amount ?? deal.OfferAmount)}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Financing</td><td style='padding:4px 8px'>{System.Net.WebUtility.HtmlEncode(offer?.FinancingType ?? "-")}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Earnest Money</td><td style='padding:4px 8px'>{money(offer?.EarnestMoney)}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Proposed Close Date</td><td style='padding:4px 8px'>{dt(offer?.CloseDate)}</td></tr>");
+            sb.Append("</table>");
+
+            // Deadlines
+            sb.Append("<h3 style='margin:16px 0 6px'>Deadlines</h3><table style='width:100%;font-size:14px'>");
+            sb.Append($"<tr><td style='padding:4px 8px;width:30%;color:#666'>Inspection</td><td style='padding:4px 8px'>{dt(insp?.DueDate)}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Appraisal</td><td style='padding:4px 8px'>{dt(appr?.DueDate)}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Loan Commitment</td><td style='padding:4px 8px'>{dt(loan?.DueDate)}</td></tr>");
+            sb.Append($"<tr><td style='padding:4px 8px;color:#666'>Closing</td><td style='padding:4px 8px'>{dt(clos?.DueDate)}</td></tr>");
+            sb.Append("</table>");
+
+            // Commissions note (transparency)
+            sb.Append($"<div style='margin-top:16px;font-size:12px;color:#666'>Commission disclosure: Broker {brokerPct}% • Agent {agentPct}% (paid by seller/agency as applicable).</div>");
+
+            // Boilerplate terms
+            sb.Append("<h3 style='margin:16px 0 6px'>Standard Terms</h3>");
+            sb.Append("<ul style='margin:0 0 12px 16px;font-size:13px;color:#333'>");
+            sb.Append("<li>Offer is contingent upon satisfactory property inspection by the Inspection deadline.</li>");
+            sb.Append("<li>Financing contingency applies through the Loan Commitment deadline.</li>");
+            sb.Append("<li>Earnest money is held in escrow and credited at closing; subject to contingency terms.</li>");
+            sb.Append("<li>All parties agree to act in good faith to complete closing by the specified Closing date.</li>");
+            sb.Append("</ul>");
+
+            sb.Append("<div style='margin-top:24px;font-size:12px;color:#666'>This email contains your contract summary. Keep for your records.</div>");
+            sb.Append("</div>");
+
+            return sb.ToString();
         }
 
         // Archive/unarchive a deal (uses simple status swap to avoid schema changes)

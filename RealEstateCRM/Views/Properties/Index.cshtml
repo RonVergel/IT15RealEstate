@@ -29,7 +29,7 @@
 
 <!-- Search / controls (keeps your existing row) -->
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <form id="filter-form" method="get" asp-action="Index" asp-controller="Properties" class="flex-1 flex flex-col sm:flex-row sm:items-center gap-4">
+    <form id="filter-form" method="get" asp-action="Index" asp-controller="Properties" class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex-1 max-w-2xl">
             <label class="relative block">
                 <span class="sr-only">Search</span>
@@ -42,7 +42,7 @@
                        class="w-full sm:w-[275px] pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </label>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 ml-auto">
             <button type="button" id="toggle-filter" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md text-gray-600 hover:bg-gray-50">
                 <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4" />
@@ -54,10 +54,10 @@
         </div>
 
         <!-- Filter panel -->
-        <div id="filter-panel" class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 bg-white border rounded-lg p-3 mt-3 hidden">
+        <div id="filter-panel" class="w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 bg-white border border-gray-200 rounded-lg p-4 mt-3 hidden">
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Property Type</label>
-                <select name="propertyType" class="w-full px-2 py-2 border rounded text-sm">
+                <select name="propertyType" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all">
                     <option value="">Any</option>
                     @foreach (var pt in (IEnumerable<string>) (ViewBag.PropertyTypes ?? new List<string>()))
                     {
@@ -68,7 +68,7 @@
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Listing Status</label>
-                <select name="listingStatus" class="w-full px-2 py-2 border rounded text-sm">
+                <select name="listingStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all">
                     <option value="">Any</option>
                     @foreach (var ls in (IEnumerable<string>) (ViewBag.ListingStatuses ?? new List<string>()))
                     {
@@ -79,7 +79,7 @@
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Buying Type</label>
-                <select name="buyingType" class="w-full px-2 py-2 border rounded text-sm">
+                <select name="buyingType" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all">
                     <option value="">Any</option>
                     @foreach (var bt in (IEnumerable<string>) (ViewBag.BuyingTypes ?? new List<string>()))
                     {
@@ -90,7 +90,7 @@
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Assignment</label>
-                <select name="assigned" class="w-full px-2 py-2 border rounded text-sm">
+                <select name="assigned" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all">
                     @if (string.IsNullOrEmpty(ViewBag.FilterAssigned)) {<option value="" selected>Any</option>} else {<option value="">Any</option>}
                     @if (ViewBag.FilterAssigned == "assigned") {<option value="assigned" selected>Assigned</option>} else {<option value="assigned">Assigned</option>}
                     @if (ViewBag.FilterAssigned == "unassigned") {<option value="unassigned" selected>Unassigned</option>} else {<option value="unassigned">Unassigned</option>}
@@ -98,19 +98,19 @@
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Min Price</label>
-                <input type="number" name="minPrice" value="@ViewBag.FilterMinPrice" class="w-full px-2 py-2 border rounded text-sm" />
+                <input type="number" name="minPrice" value="@ViewBag.FilterMinPrice" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" />
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Max Price</label>
-                <input type="number" name="maxPrice" value="@ViewBag.FilterMaxPrice" class="w-full px-2 py-2 border rounded text-sm" />
+                <input type="number" name="maxPrice" value="@ViewBag.FilterMaxPrice" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" />
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Min Beds</label>
-                <input type="number" name="minBeds" value="@ViewBag.FilterMinBeds" class="w-full px-2 py-2 border rounded text-sm" />
+                <input type="number" name="minBeds" value="@ViewBag.FilterMinBeds" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" />
             </div>
             <div>
                 <label class="block text-xs text-gray-600 mb-1">Min Baths</label>
-                <input type="number" name="minBaths" value="@ViewBag.FilterMinBaths" class="w-full px-2 py-2 border rounded text-sm" />
+                <input type="number" name="minBaths" value="@ViewBag.FilterMinBaths" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" />
             </div>
         </div>
     </form>
@@ -297,7 +297,7 @@
     <div class="absolute inset-0 transition-all duration-300 ease-out" id="property-details-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
 
     <!-- Modal content container -->
-    <div class="relative h-full w-full flex items-center justify-center p-4">
+    <div class="relative h-full w-full flex items-center justify-center p-4" id="property-details-overlay">
         <!-- Modal dialog -->
         <div class="relative bg-white rounded-xl shadow-2xl w-[860px] h-[90vh] max-w-[95vw] max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="property-details-content">
             <!-- Header with close and edit buttons -->
@@ -307,6 +307,11 @@
                     <button id="edit-mode-btn" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" title="Edit Property">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                        </svg>
+                    </button>
+                    <button id="delete-property-btn" class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors" title="Delete Property">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                     <button id="save-changes-btn" class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors hidden" title="Save Changes">
@@ -551,7 +556,7 @@
     <div class="absolute inset-0 transition-all duration-300 ease-out modal-backdrop-custom" id="modal-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
 
     <!-- Modal content container -->
-    <div class="relative h-full w-full flex items-center justify-center p-4">
+    <div class="relative h-full w-full flex items-center justify-center p-4" id="add-property-overlay">
         <!-- Modal dialog -->
         <div class="relative bg-white rounded-lg shadow-xl w-[900px] h-[900px] max-w-[95vw] max-h-[95vh] overflow-auto transform scale-95 transition-transform duration-300 ease-out" id="modal-content">
             <!-- Close button -->
@@ -1177,6 +1182,7 @@
             const propertyDetailsModal = document.getElementById('property-details-modal');
             const propertyDetailsBackdrop = document.getElementById('property-details-backdrop');
             const propertyDetailsContent = document.getElementById('property-details-content');
+            const propertyDetailsOverlay = document.getElementById('property-details-overlay');
             const closePropertyDetailsBtn = document.getElementById('close-property-details-btn');
             const editModeBtn = document.getElementById('edit-mode-btn');
             const saveChangesBtn = document.getElementById('save-changes-btn');
@@ -1332,7 +1338,7 @@
                 // Show the modal
                 propertyDetailsModal.classList.remove('hidden', 'opacity-0');
                 propertyDetailsModal.classList.add('opacity-100');
-                if (propertyDetailsBackdrop) propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
+            if (propertyDetailsBackdrop) propertyDetailsBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
                 if (propertyDetailsContent) {
                     propertyDetailsContent.classList.remove('scale-95');
                     propertyDetailsContent.classList.add('scale-100');
@@ -1741,6 +1747,7 @@
             // Wire up property details modal buttons
             if (closePropertyDetailsBtn) closePropertyDetailsBtn.addEventListener('click', closePropertyDetailsModal);
             if (propertyDetailsBackdrop) propertyDetailsBackdrop.addEventListener('click', closePropertyDetailsModal);
+            if (propertyDetailsOverlay) propertyDetailsOverlay.addEventListener('click', function(e){ if (e.target === propertyDetailsOverlay) closePropertyDetailsModal(); });
             if (editModeBtn) editModeBtn.addEventListener('click', function (e) { e.preventDefault(); enterEditModeUI(); });
             if (cancelEditBtn) cancelEditBtn.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -1781,7 +1788,8 @@
 
             if (modal) {
                 modal.addEventListener('click', function (event) {
-                    if (event.target === modal || event.target === modalBackdrop) {
+                    const overlay = document.getElementById('add-property-overlay');
+                    if (event.target === modal || event.target === modalBackdrop || event.target === overlay) {
                         closeModal();
                     }
                 });
@@ -1795,6 +1803,39 @@
                     filterPanel.classList.toggle('hidden');
                 });
             }
+
+            // Delete property
+            (function wireDelete(){
+                const delBtn = document.getElementById('delete-property-btn');
+                if (!delBtn) return;
+                delBtn.addEventListener('click', async function(){
+                    const id = parseInt(document.getElementById('modal-property-id').value, 10) || 0;
+                    if (!id) return;
+                    if (!confirm('Delete this property? This cannot be undone.')) return;
+                    const tokenEl = document.querySelector('#property-details-modal input[name="__RequestVerificationToken"]');
+                    const token = tokenEl ? tokenEl.value : '';
+                    try {
+                        const res = await fetch('/Properties/Delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+                            body: `id=${encodeURIComponent(id)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+                        });
+                        if (!res.ok) {
+                            const t = await res.text();
+                            throw new Error(t || 'Failed to delete property');
+                        }
+                        // Remove card from grid and close modal
+                        try {
+                            const card = document.querySelector(`.property-card[data-property-id="${id}"]`);
+                            if (card) card.remove();
+                        } catch {}
+                        try { document.getElementById('close-property-details-btn').click(); } catch {}
+                        try { showToast('Property deleted', 'success'); } catch {}
+                    } catch (err) {
+                        alert(err.message || 'Failed to delete property');
+                    }
+                });
+            })();
 
             // Auto-submit when clearing the search box (no manual reload needed)
             (function autoSubmitOnClear(){

@@ -4,6 +4,7 @@ using RealEstateCRM.Data;
 using RealEstateCRM.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace RealEstateCRM.Controllers
 {
@@ -12,11 +13,13 @@ namespace RealEstateCRM.Controllers
     {
         private readonly AppDbContext _db;
         private readonly ILogger<LeadsController> _logger;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public LeadsController(AppDbContext db, ILogger<LeadsController> logger)
+        public LeadsController(AppDbContext db, ILogger<LeadsController> logger, UserManager<IdentityUser> _userManager)
         {
             _db = db;
             _logger = logger;
+            this._userManager = _userManager;
         }
 
         // GET: /Leads/Index?page=1 - Show leads from the Leads table (paged)
@@ -69,6 +72,25 @@ namespace RealEstateCRM.Controllers
                     lead.DateCreated = DateTime.UtcNow;
                     lead.IsActive = true;
                     lead.LeadSource = "Manual"; // Mark as manually created
+
+                    // Attribute lead to the current user account
+                    try
+                    {
+                        var user = await _userManager.GetUserAsync(User);
+                        string? display = user?.UserName ?? user?.Email;
+                        try
+                        {
+                            if (user != null)
+                            {
+                                var claims = await _userManager.GetClaimsAsync(user);
+                                var full = claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                                if (!string.IsNullOrWhiteSpace(full)) display = full;
+                            }
+                        }
+                        catch { }
+                        lead.Agent = display;
+                    }
+                    catch { }
 
                     _db.Leads.Add(lead);
                     var saveResult = await _db.SaveChangesAsync();

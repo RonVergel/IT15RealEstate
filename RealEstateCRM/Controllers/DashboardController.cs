@@ -7,6 +7,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using RealEstateCRM.Services.Notifications;
 
 namespace RealEstateCRM.Controllers
 {
@@ -14,10 +15,14 @@ namespace RealEstateCRM.Controllers
     public class DashboardController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> _userManager;
+        private readonly INotificationService _notifications;
 
-        public DashboardController(AppDbContext context)
+        public DashboardController(AppDbContext context, Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> userManager, INotificationService notifications)
         {
             _context = context;
+            _userManager = userManager;
+            _notifications = notifications;
         }
 
         public async Task<IActionResult> Index()
@@ -105,6 +110,152 @@ namespace RealEstateCRM.Controllers
                 DealStatusLabels = pipelineData.Select(p => p.Status).ToList(),
                 DealsPerStatus = pipelineData.Select(p => p.Count).ToList()
             };
+
+            // Load agency settings (commissions). Fallback to 10/5 if missing.
+            var settings = await _context.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+            var brokerPct = settings?.BrokerCommissionPercent ?? 10m;
+            var agentPct = settings?.AgentCommissionPercent ?? 5m;
+
+            // Date range for revenue (month/quarter/year via query)
+            var range = (Request.Query["revRange"].FirstOrDefault() ?? "month").ToLowerInvariant();
+            DateTime from = DateTime.UtcNow.AddDays(-30);
+            string rangeLabel = "Last 30 days";
+            if (range == "quarter") { from = DateTime.UtcNow.AddDays(-90); rangeLabel = "Last 90 days"; }
+            else if (range == "year") { from = DateTime.UtcNow.AddDays(-365); rangeLabel = "Last 365 days"; }
+
+            // Projected revenue from closed deals using agency settings within date range
+            var closedDeals = await _context.Deals
+                .Include(d => d.Property)
+                .Where(d => d.Status == "Closed" && (d.ClosedAtUtc ?? d.LastUpdated) >= from)
+                .ToListAsync();
+
+            decimal broker = 0m, agent = 0m;
+            foreach (var d in closedDeals)
+            {
+                var basePrice = d.OfferAmount ?? d.Property?.Price ?? 0m;
+                if (basePrice <= 0) continue;
+                broker += Math.Round(basePrice * (brokerPct / 100m), 2, MidpointRounding.AwayFromZero);
+                agent += Math.Round(basePrice * (agentPct / 100m), 2, MidpointRounding.AwayFromZero);
+            }
+
+            dashboardData.ProjectedRevenueBroker = broker;
+            dashboardData.ProjectedRevenueAgent = agent;
+            dashboardData.ProjectedRevenueTotal = broker + agent;
+            dashboardData.BrokerCommissionPercent = brokerPct;
+            dashboardData.AgentCommissionPercent = agentPct;
+
+            // Per-user (current broker) revenue within same date range
+            var current = await _userManager.GetUserAsync(User);
+            var currentId = current?.Id;
+            string? displayName = current?.UserName ?? current?.Email;
+            try
+            {
+                var fullName = User?.Claims?.FirstOrDefault(c => c.Type == "name")?.Value;
+                if (!string.IsNullOrWhiteSpace(fullName)) displayName = fullName;
+            }
+            catch { }
+            dashboardData.IsBroker = User?.Identity?.IsAuthenticated == true && await _userManager.IsInRoleAsync(current!, "Broker");
+            dashboardData.RevenueRangeKey = range;
+            dashboardData.RevenueRangeLabel = rangeLabel;
+
+            if (dashboardData.IsBroker && !string.IsNullOrEmpty(currentId))
+            {
+                bool MatchAgent(string? agent)
+                {
+                    if (string.IsNullOrWhiteSpace(agent)) return false;
+                    var a = agent.Trim();
+                    return string.Equals(a, displayName, StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(a, (current?.UserName ?? string.Empty), StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(a, (current?.Email ?? string.Empty), StringComparison.OrdinalIgnoreCase);
+                }
+
+                var myDeals = closedDeals.Where(d => d.ClosedByUserId == currentId || MatchAgent(d.AgentName));
+                decimal myBroker = 0m;
+                foreach (var d in myDeals)
+                {
+                    var basePrice = d.OfferAmount ?? d.Property?.Price ?? 0m;
+                    if (basePrice <= 0) continue;
+                    myBroker += Math.Round(basePrice * (brokerPct / 100m), 2, MidpointRounding.AwayFromZero);
+                }
+                dashboardData.MyBrokerRevenue = myBroker;
+                dashboardData.AllBrokersRevenue = broker; // total broker revenue across all brokers
+            }
+
+            // ==============================
+            // Monthly goal evaluation + notify brokers
+            // ==============================
+            var now = DateTime.UtcNow;
+            var currentPeriod = now.Year * 100 + now.Month; // YYYYMM
+            var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthEnd = new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month), 23, 59, 59, DateTimeKind.Utc);
+
+            // Compute commissions for the current month regardless of selected UI range
+            var monthDeals = await _context.Deals
+                .Include(d => d.Property)
+                .Where(d => d.Status == "Closed" && (d.ClosedAtUtc ?? d.LastUpdated) >= monthStart && (d.ClosedAtUtc ?? d.LastUpdated) <= monthEnd)
+                .ToListAsync();
+            decimal monthBroker = 0m, monthAgent = 0m;
+            foreach (var d in monthDeals)
+            {
+                var basePrice = d.OfferAmount ?? d.Property?.Price ?? 0m;
+                if (basePrice <= 0) continue;
+                monthBroker += Math.Round(basePrice * (brokerPct / 100m), 2, MidpointRounding.AwayFromZero);
+                monthAgent += Math.Round(basePrice * (agentPct / 100m), 2, MidpointRounding.AwayFromZero);
+            }
+            var monthTotal = monthBroker + monthAgent;
+
+            // Build top monthly agent stats (by earnings then deals)
+            var agentStats = monthDeals
+                .Where(d => !string.IsNullOrWhiteSpace(d.AgentName))
+                .GroupBy(d => d.AgentName!.Trim())
+                .Select(g => new AgentMonthlyStat
+                {
+                    AgentName = g.Key,
+                    DealsClosed = g.Count(),
+                    Earnings = g.Sum(x =>
+                    {
+                        var basePrice = x.OfferAmount ?? x.Property?.Price ?? 0m;
+                        return basePrice > 0 ? Math.Round(basePrice * (agentPct / 100m), 2, MidpointRounding.AwayFromZero) : 0m;
+                    })
+                })
+                .OrderByDescending(s => s.Earnings)
+                .ThenByDescending(s => s.DealsClosed)
+                .Take(5)
+                .ToList();
+            dashboardData.TopMonthlyAgents = agentStats;
+
+            if ((settings?.MonthlyRevenueGoal ?? 0m) > 0m)
+            {
+                var goal = settings!.MonthlyRevenueGoal;
+                var achieved = monthTotal >= goal;
+
+                // Notify achieved once per month when threshold crossed
+                if (achieved && settings.LastNotifiedAchievedPeriod != currentPeriod)
+                {
+                    try
+                    {
+                        await _notifications.NotifyRoleAsync("Broker", $"Monthly goal reached! Revenue ₱{monthTotal:N0} / Goal ₱{goal:N0}", "/Dashboard", null, "GoalAchieved");
+                        settings.LastNotifiedAchievedPeriod = currentPeriod;
+                        await _context.SaveChangesAsync();
+                    }
+                    catch { }
+                }
+                // Notify behind once near month end if not achieved (last 5 days of month)
+                else if (!achieved)
+                {
+                    var daysInMonth = DateTime.DaysInMonth(now.Year, now.Month);
+                    if (now.Day >= daysInMonth - 4 && settings.LastNotifiedBehindPeriod != currentPeriod)
+                    {
+                        try
+                        {
+                            await _notifications.NotifyRoleAsync("Broker", $"Monthly goal not met yet: ₱{monthTotal:N0} / ₱{goal:N0}.", "/Dashboard", null, "GoalBehind");
+                            settings.LastNotifiedBehindPeriod = currentPeriod;
+                            await _context.SaveChangesAsync();
+                        }
+                        catch { }
+                    }
+                }
+            }
 
             // =========================
             // Preferred Property Type by Occupation
@@ -274,6 +425,23 @@ namespace RealEstateCRM.Controllers
         // Deal pipeline chart data (labels and counts)
         public List<string> DealStatusLabels { get; set; } = new();
         public List<int> DealsPerStatus { get; set; } = new();
+
+        // Projected revenue (commissions) from closed deals
+        public decimal ProjectedRevenueTotal { get; set; }
+        public decimal ProjectedRevenueBroker { get; set; }
+        public decimal ProjectedRevenueAgent { get; set; }
+        public decimal BrokerCommissionPercent { get; set; } = 10m;
+        public decimal AgentCommissionPercent { get; set; } = 5m;
+
+        // Per-user revenue (for brokers)
+        public bool IsBroker { get; set; }
+        public string RevenueRangeKey { get; set; } = "month"; // month|quarter|year
+        public string RevenueRangeLabel { get; set; } = "Last 30 days";
+        public decimal MyBrokerRevenue { get; set; }
+        public decimal AllBrokersRevenue { get; set; }
+
+        // Top monthly agents (by agent earnings from closed deals this month)
+        public List<AgentMonthlyStat> TopMonthlyAgents { get; set; } = new();
     }
 
     // Simple DTO for occupation -> property type counts
@@ -285,5 +453,13 @@ namespace RealEstateCRM.Controllers
         public int RawLand { get; set; }
         public int Other { get; set; }
         public int Total { get; set; }
+    }
+
+    // Simple DTO for monthly agent performance
+    public class AgentMonthlyStat
+    {
+        public string AgentName { get; set; } = string.Empty;
+        public int DealsClosed { get; set; }
+        public decimal Earnings { get; set; }
     }
 }

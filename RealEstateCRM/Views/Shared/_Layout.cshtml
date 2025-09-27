@@ -60,7 +60,6 @@
                 {
                     <a class="@getNavLinkClass("Deals", "All")" asp-controller="Deals" asp-action="All">All Deals</a>
                 }
-                <a class="@getNavLinkClass("Archives", "Index")" asp-controller="Archives" asp-action="Index">Archives</a>
                 <a class="@getNavLinkClass("Leads", "Index")" asp-controller="Leads" asp-action="Index">Leads</a>
                 <a class="@getNavLinkClass("Contacts", "Index")" asp-controller="Contacts" asp-action="Index">Contacts</a>
                 
@@ -68,7 +67,14 @@
                 @* Show Manage Agents only for users in Broker role *@
                 @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
                 {
+                    <a class="@getNavLinkClass("Settings", "Index")" asp-controller="Settings" asp-action="Index">Agency Settings</a>
                     <a class="@getNavLinkClass("Admin", "Index")" asp-controller="Admin" asp-action="Index">Manage Agents</a>
+                }
+
+                @* Move Archives to very last item (Broker-only) *@
+                @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
+                {
+                    <a class="@getNavLinkClass("Archives", "Index")" asp-controller="Archives" asp-action="Index">Archives</a>
                 }
             </nav>
         </aside>

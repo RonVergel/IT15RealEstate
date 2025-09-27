@@ -19,6 +19,7 @@ namespace RealEstateCRM.Data
         public DbSet<Offer> Offers { get; set; }
         public DbSet<DealDeadline> DealDeadlines { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<AgencySettings> AgencySettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

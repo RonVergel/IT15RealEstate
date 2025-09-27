@@ -72,11 +72,18 @@ else
     <input type="hidden" name="id" />
     <button type="submit" hidden></button>
     </form>
+<form id="agent-email-form" method="post" asp-controller="Admin" asp-action="EmailAgent" class="hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" />
+    <input type="hidden" name="subject" />
+    <input type="hidden" name="message" />
+    <button type="submit" hidden></button>
+    </form>
 
 <!-- Agent Details Modal -->
 <div id="agent-modal" class="fixed inset-0 z-[10000] hidden">
     <div class="absolute inset-0 bg-black/30" id="agent-modal-backdrop"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="absolute inset-0 flex items-center justify-center p-4" id="agent-modal-overlay">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
             <div class="px-5 py-3 border-b flex items-center justify-between">
                 <h3 class="font-semibold text-gray-900">Agent Details</h3>
@@ -97,6 +104,7 @@ else
         const body = document.getElementById('agent-modal-body');
         const closeBtn = document.getElementById('agent-close');
         const backdrop = document.getElementById('agent-modal-backdrop');
+        const overlay = document.getElementById('agent-modal-overlay');
 
         function open(){ modal.classList.remove('hidden'); }
         function close(){ modal.classList.add('hidden'); }
@@ -153,6 +161,17 @@ else
                     <ul class="divide-y divide-gray-100">${recent || '<li class="py-2 text-sm text-gray-500">No deals yet</li>'}</ul>
                 </div>
 
+                <div class="mt-6 border-t pt-4">
+                    <div class="text-sm font-medium text-gray-900 mb-2">Email Agent</div>
+                    <div class="space-y-2">
+                        <input id="email-subject" type="text" placeholder="Subject" class="w-full border rounded px-3 py-2 text-sm" />
+                        <textarea id="email-message" rows="4" placeholder="Write your message..." class="w-full border rounded px-3 py-2 text-sm"></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <button class="px-3 py-2 text-sm rounded border bg-blue-600 text-white hover:bg-blue-700" data-action="email" data-id="${a.id}">Send Email</button>
+                    </div>
+                </div>
+
                 <div class="mt-6 flex flex-wrap gap-2 border-t pt-4">
                     <button class="px-3 py-2 text-sm rounded border" data-action="lock" data-id="${a.id}">Lock</button>
                     <button class="px-3 py-2 text-sm rounded border" data-action="unlock" data-id="${a.id}">Unlock</button>
@@ -171,6 +190,7 @@ else
         }));
         closeBtn.addEventListener('click', close);
         backdrop.addEventListener('click', close);
+        if (overlay) overlay.addEventListener('click', function(e){ if (e.target === overlay) close(); });
 
         // Delegate action buttons to AJAX posts so we stay on this page
         document.addEventListener('click', function(e){
@@ -182,13 +202,15 @@ else
                 lock: '/Admin/LockAgent',
                 unlock: '/Admin/UnlockAgent',
                 resend: '/Admin/ResendConfirmation',
-                delete: '/Admin/DeleteAgent'
+                delete: '/Admin/DeleteAgent',
+                email: '/Admin/EmailAgent'
             };
             const formIdMap = {
                 lock: 'agent-lock-form',
                 unlock: 'agent-unlock-form',
                 resend: 'agent-resend-form',
-                delete: 'agent-delete-form'
+                delete: 'agent-delete-form',
+                email: 'agent-email-form'
             };
             const url = urlMap[action];
             const form = document.getElementById(formIdMap[action]);
@@ -201,17 +223,35 @@ else
             const tokenInput = form.querySelector('input[name="__RequestVerificationToken"]');
             const token = tokenInput ? tokenInput.value : '';
 
+            let bodyParams = `id=${encodeURIComponent(id)}&__RequestVerificationToken=${encodeURIComponent(token)}`;
+            if (action === 'email') {
+                const subject = (document.getElementById('email-subject')?.value || '').trim();
+                const message = (document.getElementById('email-message')?.value || '').trim();
+                if (!subject) { alert('Please enter a subject.'); return; }
+                if (!message) { alert('Please enter a message.'); return; }
+                bodyParams += `&subject=${encodeURIComponent(subject)}&message=${encodeURIComponent(message)}`;
+            }
+
             fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
-                body: `id=${encodeURIComponent(id)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+                body: bodyParams
             }).then(async r => {
                 if (!r.ok) {
                     const t = await r.text();
                     throw new Error(t || 'Request failed');
                 }
-            }).then(() => { location.reload(); })
-              .catch(err => { alert(err.message || 'Action failed'); });
+            }).then(() => {
+                if (action === 'email') {
+                    // Close the modal immediately after a successful send
+                    try { document.getElementById('email-subject').value = ''; } catch {}
+                    try { document.getElementById('email-message').value = ''; } catch {}
+                    alert('Email sent successfully.');
+                    try { close(); } catch {}
+                } else {
+                    location.reload();
+                }
+            }).catch(err => { alert(err.message || 'Action failed'); });
         });
     })();
 </script>

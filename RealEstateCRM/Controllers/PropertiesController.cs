@@ -667,6 +667,44 @@ namespace RealEstateCRM.Controllers
             }
         }
 
+        // POST: Properties/Delete
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var prop = await _context.Properties.FindAsync(id);
+                if (prop == null)
+                    return NotFound();
+
+                // Prevent deletion if property is referenced by any deal
+                var inUse = await _context.Deals.AnyAsync(d => d.PropertyId == id);
+                if (inUse)
+                    return BadRequest("Cannot delete a property that is referenced by existing deals.");
+
+                // Remove image from disk if present
+                if (!string.IsNullOrWhiteSpace(prop.ImagePath))
+                {
+                    try
+                    {
+                        var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", prop.ImagePath.TrimStart('/','\\'));
+                        if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+                    }
+                    catch { }
+                }
+
+                _context.Properties.Remove(prop);
+                await _context.SaveChangesAsync();
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete property {Id}", id);
+                return StatusCode(500, "Failed to delete property.");
+            }
+        }
+
         // POST: Properties/AcceptAssignment
         [HttpPost]
         [ValidateAntiForgeryToken]

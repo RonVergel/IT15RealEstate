@@ -4,6 +4,8 @@ using RealEstateCRM.Data;
 using RealEstateCRM.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
+using System.Text.Encodings.Web;
+using System.Net;
 
 namespace RealEstateCRM.Controllers
 {
@@ -97,7 +99,7 @@ namespace RealEstateCRM.Controllers
         // POST: /Contacts/SendEmail
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SendEmail(int contactId, string subject, string body)
+        public async Task<IActionResult> SendEmail(int contactId, string subject, string body, List<IFormFile>? files)
         {
             try
             {
@@ -115,7 +117,46 @@ namespace RealEstateCRM.Controllers
                     return Json(new { success = false, message = "Subject and message are required." });
                 }
 
-                await _emailSender.SendEmailAsync(c.Email!, subject.Trim(), body);
+                // Save attachments to contact documents (if provided)
+                var uploaded = new List<(string Name, string Url)>();
+                if (files != null && files.Count > 0)
+                {
+                    var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contacts", contactId.ToString());
+                    Directory.CreateDirectory(uploadsRoot);
+                    const long maxBytes = 20 * 1024 * 1024;
+                    foreach (var f in files)
+                    {
+                        if (f == null || f.Length == 0) continue;
+                        if (f.Length > maxBytes) continue;
+                        var safeName = string.Join("_", f.FileName.Split(Path.GetInvalidFileNameChars()));
+                        var unique = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "_" + Guid.NewGuid().ToString("N").Substring(0,8) + "_" + safeName;
+                        var full = Path.Combine(uploadsRoot, unique);
+                        using (var stream = System.IO.File.Create(full))
+                        {
+                            await f.CopyToAsync(stream);
+                        }
+                        var url = $"/uploads/contacts/{contactId}/{unique}";
+                        uploaded.Add((unique, url));
+                    }
+                }
+
+                // Compose HTML body with links to uploaded files
+                var encodedBody = WebUtility.HtmlEncode(body).Replace("\n", "<br/>");
+                string attachmentsHtml = string.Empty;
+                if (uploaded.Any())
+                {
+                    var sb = new System.Text.StringBuilder();
+                    foreach (var item in uploaded)
+                    {
+                        var safeUrl = HtmlEncoder.Default.Encode(item.Url);
+                        var safeName = HtmlEncoder.Default.Encode(item.Name);
+                        sb.Append("<li><a href='").Append(safeUrl).Append("'>").Append(safeName).Append("</a></li>");
+                    }
+                    attachmentsHtml = "<hr/><div style='margin-top:8px'><div style='font-weight:600'>Attached Files</div><ul>" + sb.ToString() + "</ul></div>";
+                }
+
+                var htmlBody = "<div style='font-family:Arial,sans-serif;color:#333;line-height:1.5'>" + encodedBody + attachmentsHtml + "</div>";
+                await _emailSender.SendEmailAsync(c.Email!, subject.Trim(), htmlBody);
 
                 // Update LastContacted
                 c.LastContacted = DateTime.UtcNow;
@@ -127,6 +168,72 @@ namespace RealEstateCRM.Controllers
             {
                 _logger.LogError(ex, "Failed to send email to contact {Id}", contactId);
                 return Json(new { success = false, message = "Failed to send email. Please try again." });
+            }
+        }
+
+        // GET: /Contacts/ListDocuments?contactId=123
+        [HttpGet]
+        public IActionResult ListDocuments(int contactId)
+        {
+            try
+            {
+                if (contactId <= 0) return Json(new { success = false, message = "Invalid contact id" });
+                var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contacts", contactId.ToString());
+                if (!Directory.Exists(root)) return Json(new { success = true, files = Array.Empty<object>() });
+                var files = Directory.GetFiles(root)
+                    .OrderByDescending(p => System.IO.File.GetCreationTimeUtc(p))
+                    .Select(p => new
+                    {
+                        name = Path.GetFileName(p),
+                        size = new FileInfo(p).Length,
+                        uploadedAt = System.IO.File.GetCreationTimeUtc(p),
+                        url = "/uploads/contacts/" + contactId + "/" + Path.GetFileName(p)
+                    })
+                    .ToList();
+                return Json(new { success = true, files });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing documents for contact {Id}", contactId);
+                return Json(new { success = false, message = "Failed to list documents." });
+            }
+        }
+
+        // POST: /Contacts/UploadDocument
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadDocument(int contactId, IFormFile file)
+        {
+            try
+            {
+                if (contactId <= 0) return Json(new { success = false, message = "Invalid contact id" });
+                if (file == null || file.Length == 0) return Json(new { success = false, message = "No file uploaded." });
+
+                var contact = await _db.Contacts.FindAsync(contactId);
+                if (contact == null || !contact.IsActive) return Json(new { success = false, message = "Contact not found or inactive." });
+
+                // Limit size to 20 MB
+                const long maxBytes = 20 * 1024 * 1024;
+                if (file.Length > maxBytes) return Json(new { success = false, message = "File exceeds 20MB limit." });
+
+                var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contacts", contactId.ToString());
+                Directory.CreateDirectory(uploadsRoot);
+
+                var safeFileName = string.Join("_", file.FileName.Split(Path.GetInvalidFileNameChars()));
+                var uniqueName = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8) + "_" + safeFileName;
+                var fullPath = Path.Combine(uploadsRoot, uniqueName);
+                using (var stream = System.IO.File.Create(fullPath))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var relUrl = $"/uploads/contacts/{contactId}/{uniqueName}";
+                return Json(new { success = true, file = new { name = uniqueName, size = file.Length, url = relUrl, uploadedAt = DateTime.UtcNow } });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload document for contact {Id}", contactId);
+                return Json(new { success = false, message = "Failed to upload document." });
             }
         }
 

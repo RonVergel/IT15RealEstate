@@ -1,3 +1,4 @@
+﻿using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -10,6 +11,9 @@ using RealEstateCRM.Services.Notifications;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Accept QuestPDF Community license for PDF generation
+QuestPDF.Settings.License = LicenseType.Community;
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -49,6 +53,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddSingleton<RealEstateCRM.Services.ContractPdfGenerator>();
 
 // Ensure security stamp is validated every request so locked users are signed out immediately
 builder.Services.Configure<SecurityStampValidatorOptions>(o =>
@@ -111,6 +116,36 @@ CREATE TABLE IF NOT EXISTS ""DealDeadlines"" (
     CONSTRAINT fk_deadlines_deal FOREIGN KEY (""DealId"") REFERENCES ""Deals"" (""Id"") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_deadlines_dealid ON ""DealDeadlines"" (""DealId"");
+
+-- AgencySettings table (single-row configuration)
+CREATE TABLE IF NOT EXISTS ""AgencySettings"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""BrokerCommissionPercent"" NUMERIC(5,2) NOT NULL DEFAULT 10.00,
+    ""AgentCommissionPercent"" NUMERIC(5,2) NOT NULL DEFAULT 5.00,
+    ""UpdatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ""MonthlyRevenueGoal"" NUMERIC(18,2) NOT NULL DEFAULT 0.00,
+    ""LastNotifiedAchievedPeriod"" INT NULL,
+    ""LastNotifiedBehindPeriod"" INT NULL
+);
+-- Seed a default row if table is empty
+INSERT INTO ""AgencySettings"" (""BrokerCommissionPercent"", ""AgentCommissionPercent"")
+SELECT 10.00, 5.00
+WHERE NOT EXISTS (SELECT 1 FROM ""AgencySettings"");
+
+-- Add closed tracking to Deals for revenue analytics
+ALTER TABLE ""Deals"" ADD COLUMN IF NOT EXISTS ""ClosedAtUtc"" TIMESTAMPTZ NULL;
+ALTER TABLE ""Deals"" ADD COLUMN IF NOT EXISTS ""ClosedByUserId"" TEXT NULL;
+CREATE INDEX IF NOT EXISTS idx_deals_closedat ON ""Deals"" (""ClosedAtUtc"");
+CREATE INDEX IF NOT EXISTS idx_deals_closedby ON ""Deals"" (""ClosedByUserId"");
+
+-- Add new columns to AgencySettings if table existed before
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""MonthlyRevenueGoal"" NUMERIC(18,2) NOT NULL DEFAULT 0.00;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LastNotifiedAchievedPeriod"" INT NULL;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LastNotifiedBehindPeriod"" INT NULL;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""InspectionDays"" INT NOT NULL DEFAULT 7;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""AppraisalDays"" INT NOT NULL DEFAULT 14;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LoanCommitmentDays"" INT NOT NULL DEFAULT 21;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""ClosingDays"" INT NOT NULL DEFAULT 30;
 ";
                 await context.Database.ExecuteSqlRawAsync(sql);
             }
@@ -230,3 +265,4 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+

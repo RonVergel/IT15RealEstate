@@ -32,7 +32,7 @@
                 </select>
             </div>
         }
-        <button id="add-deal-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        <button id="add-deal-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition @(isAllDeals ? "hidden" : "")">
             Add Deal
         </button>
     </div>
@@ -109,6 +109,22 @@
                         @if (deal.OfferAmount.HasValue)
                         {
                             <p class="text-sm font-semibold text-green-600 mt-2">₱ @deal.OfferAmount.Value.ToString("N0")</p>
+                        }
+                        else if (deal.Property != null)
+                        {
+                            <p class="text-sm font-semibold text-gray-800 mt-2">List Price: ₱ @deal.Property.Price.ToString("N0")</p>
+                        }
+                        else if (deal.Property != null)
+                        {
+                            <p class="text-sm font-semibold text-gray-800 mt-2">List Price: ₱ @deal.Property.Price.ToString("N0")</p>
+                        }
+                        else if (deal.Property != null)
+                        {
+                            <p class="text-sm font-semibold text-gray-800 mt-2">List Price: ₱ @deal.Property.Price.ToString("N0")</p>
+                        }
+                        else if (deal.Property != null)
+                        {
+                            <p class="text-sm font-semibold text-gray-800 mt-2">List Price: ₱ @deal.Property.Price.ToString("N0")</p>
                         }
                         
                         <div class="mt-4 space-y-3">
@@ -396,6 +412,10 @@
                         {
                             <p class="text-sm font-semibold text-green-600 mt-2">₱ @deal.OfferAmount.Value.ToString("N0")</p>
                         }
+                        else if (deal.Property != null)
+                        {
+                            <p class="text-sm font-semibold text-gray-800 mt-2">List Price: ₱ @deal.Property.Price.ToString("N0")</p>
+                        }
                         @* Deadlines placeholder for Under Contract summary *@
                         <div class="mt-2" data-deadlines="@deal.Id"></div>
                     </div>
@@ -482,12 +502,12 @@
                 }
             }
         </div>
-    </div>
+</div>
 
 <!-- Edit Offer Modal -->
 <div id="offer-modal" class="fixed inset-0 z-[10001] hidden">
     <div class="absolute inset-0 bg-black/30" id="offer-modal-backdrop"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="absolute inset-0 flex items-center justify-center p-4" id="offer-modal-overlay">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div class="px-4 py-3 border-b flex items-center justify-between">
                 <h3 class="font-semibold text-gray-900">Set Offer Amount</h3>
@@ -593,6 +613,8 @@
             closeBtn.addEventListener('click', close);
             cancelBtn.addEventListener('click', close);
             document.getElementById('offer-modal-backdrop').addEventListener('click', close);
+            const offerOverlay = document.getElementById('offer-modal-overlay');
+            if (offerOverlay) offerOverlay.addEventListener('click', function(e){ if (e.target === offerOverlay) close(); });
 
             function validate(){
                 const raw = (inputEl.value || '').trim();
@@ -638,12 +660,203 @@
                 const body = `dealId=${encodeURIComponent(id)}&amount=${encodeURIComponent(amount)}&financingType=${encodeURIComponent(financing)}&earnestMoney=${encodeURIComponent(earnest)}&closeDate=${encodeURIComponent(closeDate)}&notes=${encodeURIComponent(notes)}`;
                 fetch('/Deals/CreateOffer', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body })
                     .then(async r=>{ if(!r.ok){ const t = await r.text(); setHint(t||'Failed to save offer', true); throw new Error(t||'Failed'); } })
-                    .then(()=>{ try{ showToast('Offer saved','success'); } catch(e){} window.setTimeout(()=>location.reload(), 300); })
+                    .then(()=>{
+                        try{ showToast('Offer saved','success'); } catch(e){}
+                        // Close modal and move card to Contract Draft immediately without full reload
+                        try { close(); } catch {}
+                        try {
+                            const card = document.querySelector(`.deal-card[data-deal-id=\"${id}\"]`);
+                            const target = document.querySelector('.deal-cards[data-stage=\"ContractDraft\"]');
+                            if (card && target) {
+                                // Update offer attribute for sums
+                                card.setAttribute('data-offer', String(amount));
+                                // Remove any offer button row (not applicable outside Negotiation)
+                                const btn = card.querySelector('.deal-offer-btn');
+                                if (btn) { const row = btn.closest('div'); if (row) row.remove(); }
+                                target.appendChild(card);
+                                try { refreshCounts(); } catch {}
+                                try { updateOfferButtons && updateOfferButtons(); } catch {}
+                            }
+                        } catch {}
+                    })
                     .catch(()=>{});
             });
 
             // Disabled: offers are only set in Negotiation
         })();
+    </script>
+</div>
+
+<!-- View Deal Modal (read-only) -->
+<div id="deal-view-modal" class="fixed inset-0 z-[10002] hidden">
+    <div class="absolute inset-0 bg-black/30" id="deal-view-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4" id="deal-view-overlay">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden">
+            <div class="px-5 py-3 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900" id="deal-view-title">Deal Details</h3>
+                <button id="deal-view-close" class="text-gray-500 hover:text-gray-700" aria-label="Close">&times;</button>
+            </div>
+            <div class="p-5" id="deal-view-body">
+                <!-- populated by JS -->
+            </div>
+        </div>
+    </div>
+    <script>
+        (function(){
+            const modal = document.getElementById('deal-view-modal');
+            const closeBtn = document.getElementById('deal-view-close');
+            const backdrop = document.getElementById('deal-view-backdrop');
+            const overlay = document.getElementById('deal-view-overlay');
+            const titleEl = document.getElementById('deal-view-title');
+            const bodyEl = document.getElementById('deal-view-body');
+
+            function open(){ modal.classList.remove('hidden'); }
+            function close(){ modal.classList.add('hidden'); }
+
+            function fmtCurrency(v){ try { return Number(v||0).toLocaleString(); } catch { return v; } }
+
+            async function openWithId(id){
+                try {
+                    const res = await fetch(`/Deals/DealSummary?id=${encodeURIComponent(id)}`);
+                    if (!res.ok) throw new Error('Failed to load deal');
+                    const d = await res.json();
+                    titleEl.textContent = d.title || d.dealTitle || 'Deal Details';
+
+                    const img = d.property?.image || '/assets/images/property-placeholder.jpg';
+                    const priceLine = d.offer ? `₱ ${fmtCurrency(d.offer)}` : (d.property?.price ? `List Price: ₱ ${fmtCurrency(d.property.price)}` : '-');
+                    const specs = d.property ? `${d.property.bedrooms} bed • ${d.property.bathrooms} bath • ${d.property.area} sqm` : '';
+
+                    bodyEl.innerHTML = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <img src="${img}" alt="property" class="w-full h-48 object-cover rounded border"/>
+                                ${d.property?.address ? `<p class='text-sm text-gray-600 mt-2'>${d.property.address}</p>` : ''}
+                            </div>
+                            <div class="space-y-2">
+                                ${d.dealTitle ? `<div class='text-sm text-gray-500'>Deal Title</div><div class='font-medium'>${d.dealTitle}</div>` : ''}
+                                <div class='text-sm text-gray-500'>Status</div>
+                                <div class='font-medium'>${d.status || '-'}</div>
+                                <div class='text-sm text-gray-500'>Price</div>
+                                <div class='font-semibold ${d.offer ? 'text-green-600' : 'text-gray-900'}'>${priceLine}</div>
+                                <div class='text-sm text-gray-500'>Agent</div>
+                                <div class='font-medium'>${d.agent || '-'}</div>
+                                <div class='text-sm text-gray-500'>Client</div>
+                                <div class='font-medium'>${d.client || '-'}</div>
+                                ${specs ? `<div class='text-sm text-gray-500'>Specs</div><div class='font-medium'>${specs}</div>` : ''}
+                                ${d.description ? `<div class='text-sm text-gray-500'>Notes</div><div class='text-sm'>${d.description}</div>` : ''}
+                                <div class='text-xs text-gray-400 pt-2'>Updated: ${d.updated ? new Date(d.updated).toLocaleString() : '-'}</div>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <div class='text-sm font-semibold text-gray-900 mb-2'>Deadlines</div>
+                            <div id="deadline-editor" data-deal-id="${d.id}" class="space-y-2">
+                                <div class="text-xs text-gray-500">Loading deadlines…</div>
+                            </div>
+                            <div class="flex items-center justify-end gap-2 mt-4">
+                                <button id="deadline-cancel" class="px-3 py-1.5 text-sm border rounded">Cancel</button>
+                                <button id="deadline-save" class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded">Save</button>
+                            </div>
+                        </div>`;
+                    open();
+                    try { await loadAndRenderDeadlineEditor(d.id); } catch {}
+                    try {
+                        document.getElementById('deadline-cancel')?.addEventListener('click', close);
+                        document.getElementById('deadline-save')?.addEventListener('click', async function(){
+                            const payload = collectDeadlineEditorPayload();
+                            if (!payload) return;
+                            const ok = await saveDeadlineEdits(payload);
+                            if (ok) {
+                                try { showToast('Deadlines saved', 'success'); } catch {}
+                                try { if (window.loadDeadlines) window.loadDeadlines(); } catch {}
+                                close();
+                            } else {
+                                alert('Failed to save deadlines');
+                            }
+                        });
+                    } catch {}
+                } catch (e) {
+                    bodyEl.innerHTML = '<div class="text-red-600">Failed to load deal details.</div>';
+                    open();
+                }
+            }
+
+            window.openDealViewModal = openWithId;
+            closeBtn.addEventListener('click', close);
+            backdrop.addEventListener('click', close);
+            if (overlay) overlay.addEventListener('click', function(e){ if (e.target === overlay) close(); });
+        })();
+    </script>
+    <script>
+        // Utilities for deadline editor inside the Deal View modal
+        async function loadAndRenderDeadlineEditor(dealId){
+            const host = document.getElementById('deadline-editor');
+            if (!host) return;
+            const res = await fetch(`/Deals/GetDeadlines?dealId=${encodeURIComponent(dealId)}`);
+            const items = res.ok ? await res.json() : [];
+            const byType = (name)=> items.find(x => (x.type||x.Type) === name);
+
+            const types = [
+                { key:'Inspection', label:'Inspection' },
+                { key:'Appraisal', label:'Appraisal' },
+                { key:'LoanCommitment', label:'Loan Commitment' },
+                { key:'Closing', label:'Closing' }
+            ];
+
+            const row = (t, itm) => {
+                const id = itm?.id ?? itm?.Id ?? '';
+                const due = itm?.dueDate ?? itm?.DueDate ?? null;
+                let val = '';
+                if (due) {
+                    const dt = new Date(due);
+                    // to yyyy-MM-ddTHH:mm
+                    const pad=(n)=> (n<10?('0'+n):''+n);
+                    val = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+                }
+                return `
+                <div class="flex items-center gap-3">
+                    <div class="w-40 text-sm text-gray-700">${t.label}</div>
+                    <input type="hidden" name="id" value="${id}">
+                    <input type="hidden" name="type" value="${t.key}">
+                    <input type="datetime-local" name="due" value="${val}" class="border rounded px-2 py-1 text-sm">
+                    <input type="text" name="notes" value="${itm?.notes ?? itm?.Notes ?? ''}" placeholder="Notes (optional)" class="flex-1 border rounded px-2 py-1 text-sm">
+                </div>`;
+            };
+
+            host.innerHTML = types.map(t => row(t, byType(t.key))).join('');
+        }
+
+        function collectDeadlineEditorPayload(){
+            const host = document.getElementById('deadline-editor');
+            if (!host) return null;
+            const dealId = Number(host.getAttribute('data-deal-id'));
+            const rows = Array.from(host.querySelectorAll('div.flex.items-center'));
+            const deadlines = rows.map(r => {
+                const id = r.querySelector('input[name="id"]').value.trim();
+                const type = r.querySelector('input[name="type"]').value.trim();
+                const due = r.querySelector('input[name="due"]').value; // yyyy-MM-ddTHH:mm
+                const notes = r.querySelector('input[name="notes"]').value;
+                if (!due) return null; // skip empty
+                const dueDate = new Date(due);
+                return {
+                    id: id ? Number(id) : null,
+                    type,
+                    dueDate: dueDate.toISOString(),
+                    notes: notes || null
+                };
+            }).filter(Boolean);
+            return { dealId, deadlines };
+        }
+
+        async function saveDeadlineEdits(payload){
+            try {
+                const res = await fetch('/Deals/SaveDeadlines', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return res.ok;
+            } catch { return false; }
+        }
     </script>
 </div>
 
@@ -653,7 +866,7 @@
     <div class="absolute inset-0 transition-all duration-300 ease-out" id="deal-modal-backdrop" style="background-color: rgba(29, 29, 29, 0); transition: background-color 300ms ease-out;"></div>
 
     <!-- Modal content container -->
-    <div class="relative h-full w-full flex items-center justify-center p-4">
+    <div class="relative h-full w-full flex items-center justify-center p-4" id="deal-modal-overlay">
         <!-- Modal dialog -->
         <div class="relative bg-white rounded-lg shadow-xl w-[900px] max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="deal-modal-content">
             <!-- Close button -->
@@ -736,10 +949,10 @@
 
                                 <!-- Client Name (populated from Contacts table) -->
                                 <div>
-                                    <label for="client-name" class="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
-                                    <select id="client-name" name="ClientName"
+                                    <label for="client-name" class="block text-sm font-medium text-gray-700 mb-1">Client Name <span class="text-red-500">*</span></label>
+                                    <select id="client-name" name="ClientName" required
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                                        <option value="">-- Select a client (optional) --</option>
+                                        <option value="">-- Select a client --</option>
                                     </select>
                                 </div>
                             </div>
@@ -773,6 +986,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const IS_ALL_DEALS = @(isAllDeals.ToString().ToLower());
             // ===============================
             // TOAST NOTIFICATION SYSTEM
             // ===============================
@@ -898,12 +1112,14 @@
                 input.addEventListener('blur', () => commit(true));
             }
 
-            // Wire events
-            document.querySelectorAll('.editable-column-header').forEach(header => {
-                header.addEventListener('dblclick', () => beginRename(header));
-                const btn = header.querySelector('.edit-title-btn');
-                if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); beginRename(header); });
-            });
+            // Wire events (disabled on All Deals overview)
+            if (!IS_ALL_DEALS) {
+                document.querySelectorAll('.editable-column-header').forEach(header => {
+                    header.addEventListener('dblclick', () => beginRename(header));
+                    const btn = header.querySelector('.edit-title-btn');
+                    if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); beginRename(header); });
+                });
+            }
 
             // ----- Drag-n-drop (existing) + live count update -----
             const pipelines = document.querySelectorAll('.deal-cards');
@@ -948,6 +1164,15 @@
                                 return;
                             }
 
+                            // Ask for confirmation when moving Contract Draft -> Under Contract
+                            if (fromStatus === 'ContractDraft' && newStatus === 'UnderContract') {
+                                const ok = window.confirm('Move deal to Under Contract? This will initialize deadlines and start the closing timeline.');
+                                if (!ok) {
+                                    try { evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); } catch {}
+                                    return;
+                                }
+                            }
+
                             fetch('/Deals/MoveDeal', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -958,8 +1183,9 @@
                                     location.reload();
                                 } else {
                                     refreshCounts();
+                                    try { updateOfferButtons(); } catch {}
                                 }
-                            }).catch(() => refreshCounts());
+                            }).catch(() => { try { refreshCounts(); updateOfferButtons(); } catch {} });
                         }
                     });
                 });
@@ -990,6 +1216,8 @@
                         .catch(()=>{ el.innerHTML=''; });
                 });
             }
+            // expose for external refresh after edits
+            try { window.loadDeadlines = loadDeadlines; } catch {}
             loadDeadlines();
 
             // Inject Close buttons into Under Contract and Clear To Close
@@ -1225,14 +1453,17 @@
                 propertySelectionStep.classList.remove('hidden');
             }
 
-            addDealBtn.addEventListener('click', openDealModal);
+            if (!IS_ALL_DEALS && addDealBtn) {
+                addDealBtn.addEventListener('click', openDealModal);
+            }
             closeDealModalBtn.addEventListener('click', closeDealModal);
             nextStepBtn.addEventListener('click', showDealDetailsStep);
             backStepBtn.addEventListener('click', showPropertySelectionStep);
             document.getElementById('add-deal-modal').addEventListener('click', function (event) {
                 const dealModal = document.getElementById('add-deal-modal');
                 const backdrop = document.getElementById('deal-modal-backdrop');
-                if (event.target === dealModal || event.target === backdrop) closeDealModal();
+                const overlay = document.getElementById('deal-modal-overlay');
+                if (event.target === dealModal || event.target === backdrop || event.target === overlay) closeDealModal();
             });
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape' && !document.getElementById('add-deal-modal').classList.contains('hidden')) {
@@ -1273,6 +1504,21 @@
                 offerInput.addEventListener('input', () => checkOffer());
                 form.addEventListener('submit', (e) => checkOffer(e));
             })();
+
+            // Require a client to be selected before submission
+            (function requireClient(){
+                const form = document.getElementById('deal-form');
+                const clientSel = document.getElementById('client-name');
+                if (!form || !clientSel) return;
+                form.addEventListener('submit', function(e){
+                    const val = (clientSel.value || '').trim();
+                    if (!val) {
+                        e.preventDefault();
+                        try { showToast('Please select a client before creating a deal.', 'error'); } catch {}
+                        clientSel.focus();
+                    }
+                });
+            })();
         });
     </script>
 }
@@ -1282,6 +1528,7 @@
         (function(){
             const pipeline = document.getElementById('deals-pipeline');
             if (!pipeline) return;
+            const IS_ALL_DEALS = @(isAllDeals.ToString().ToLower());
 
             // Inject secondary controls row
             try {
@@ -1313,7 +1560,7 @@
                         sum.className = 'column-sum text-xs ml-2 opacity-80';
                         h.appendChild(sum);
                     }
-                    if (!h.querySelector('.edit-title-btn')){
+                    if (!IS_ALL_DEALS && !h.querySelector('.edit-title-btn')){
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'edit-title-btn ml-auto text-black/60 hover:text-black';
@@ -1366,7 +1613,24 @@
                     });
                 });
             }
-            wireOfferButtons();
+            function cleanupOfferButtonsOutsideNegotiation(){
+                document.querySelectorAll('.deal-card').forEach(card => {
+                    const list = card.closest('.deal-cards');
+                    if (!list || list.dataset.stage === 'Negotiation') return;
+                    const btn = card.querySelector('.deal-offer-btn');
+                    if (btn) {
+                        const row = btn.closest('div');
+                        if (row) row.remove();
+                    }
+                });
+            }
+            function updateOfferButtons(){
+                cleanupOfferButtonsOutsideNegotiation();
+                wireOfferButtons();
+            }
+            // Expose for other scripts (e.g., drag handlers) to invoke
+            try { window.updateOfferButtons = updateOfferButtons; } catch {}
+            if (!IS_ALL_DEALS) { updateOfferButtons(); }
 
             // Drag from New as well (when not All Deals)
             try {
@@ -1378,8 +1642,8 @@
                             const dealId = evt.item.dataset.dealId;
                             const newStatus = evt.to.dataset.stage;
                             fetch('/Deals/MoveDeal', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:`dealId=${dealId}&newStatus=${newStatus}` })
-                                .then(r=>{ if(!r.ok) location.reload(); else try{ refreshCounts(); }catch{} })
-                                .catch(()=>{ try{ refreshCounts(); }catch{} });
+                                .then(r=>{ if(!r.ok) location.reload(); else { try{ refreshCounts(); updateOfferButtons(); }catch{} } })
+                                .catch(()=>{ try{ refreshCounts(); updateOfferButtons(); }catch{} });
                         }});
                     }
                 }
@@ -1446,6 +1710,21 @@
         })();
     </script>
 
+
+<script>
+// Wire click-to-open for deal cards (view-only)
+(function(){
+    document.addEventListener('click', function(e){
+        const btn = e.target.closest('button, .deal-offer-btn');
+        if (btn) return;
+        const card = e.target.closest('.deal-card');
+        if (!card) return;
+        const id = card.getAttribute('data-deal-id');
+        if (!id) return;
+        try { window.openDealViewModal && window.openDealViewModal(id); } catch {}
+    });
+})();
+</script>
 @section Styles {
     <style>
         /* Board: single row that fits within viewport width */
@@ -1480,4 +1759,5 @@
         .deal-cards { min-height: 220px; }
     </style>
 }
+
 

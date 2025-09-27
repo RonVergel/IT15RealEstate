@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
 using Mailjet.Client;
 using Mailjet.Client.TransactionalEmails;
+using Mailjet.Client.TransactionalEmails.Response;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace RealEstateCRM.Services
 {
@@ -68,6 +70,46 @@ namespace RealEstateCRM.Services
                     response.Messages?[0].Status,
                     error?.ErrorMessage ?? "Unknown error");
             }
+        }
+
+        public async Task<bool> SendEmailWithAttachmentsAsync(string toEmail, string subject, string htmlMessage, IEnumerable<(string FileName, string ContentType, byte[] Data)> attachments)
+        {
+            if (string.IsNullOrEmpty(Options.ApiKey) || string.IsNullOrEmpty(Options.SecretKey))
+            {
+                _logger.LogError("Mailjet API Key or Secret Key is not configured.");
+                return false;
+            }
+
+            var client = new MailjetClient(Options.ApiKey, Options.SecretKey);
+            var cleanedHtml = (htmlMessage ?? string.Empty)
+                .Replace("\\r\\n", " ")
+                .Replace("\r\n", " ");
+
+            var senderEmail = !string.IsNullOrEmpty(Options.SenderEmail) ? Options.SenderEmail : "donotreply@yourdomain.com";
+
+            var builder = new TransactionalEmailBuilder()
+                .WithFrom(new SendContact(senderEmail, "Real Estate CRM"))
+                .WithSubject(subject)
+                .WithHtmlPart(cleanedHtml)
+                .WithTo(new SendContact(toEmail));
+
+            if (attachments != null)
+            {
+                foreach (var att in attachments)
+                {
+                    builder.WithAttachment(new Attachment(att.FileName, att.ContentType, System.Convert.ToBase64String(att.Data)));
+                }
+            }
+
+            var email = builder.Build();
+            var response = await client.SendTransactionalEmailAsync(email);
+            var ok = response.Messages != null && response.Messages[0].Status == "success";
+            if (!ok)
+            {
+                var error = response.Messages?[0].Errors?.FirstOrDefault();
+                _logger.LogError("Failed to send email with attachments to {Email}. Status: {Status}. Error: {Error}", toEmail, response.Messages?[0].Status, error?.ErrorMessage);
+            }
+            return ok;
         }
     }
 }

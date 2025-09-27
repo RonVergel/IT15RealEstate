@@ -30,6 +30,8 @@ namespace RealEstateCRM.Models
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         
         public DateTime? LastUpdated { get; set; } = DateTime.UtcNow;
+        public DateTime? ClosedAtUtc { get; set; }
+        public string? ClosedByUserId { get; set; }
         
         public int DisplayOrder { get; set; } = 0;
     }

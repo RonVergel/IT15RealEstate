@@ -6,10 +6,6 @@
 
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
     <h1 class="font-semibold text-2xl">Contacts</h1>
-
-    <button id="add-contact-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-        Add Contact
-    </button>
 </div>
     
 <!-- Search / controls (keeps your existing row) -->
@@ -226,7 +222,7 @@
 <!-- Contact Details + Email Modal -->
 <div id="contact-details-modal" class="fixed inset-0 z-[10000] hidden opacity-0 transition-opacity duration-300 ease-out">
     <div id="contact-details-backdrop" class="absolute inset-0" style="background-color: rgba(29,29,29,0);"></div>
-    <div class="relative h-full w-full flex items-center justify-center p-4">
+    <div class="relative h-full w-full flex items-center justify-center p-4" id="contact-details-overlay">
         <div id="contact-details-content" class="relative bg-white rounded-lg shadow-xl w-[720px] max-w-[95vw] max-h-[95vh] overflow-auto transform scale-95 transition-transform duration-300 ease-out">
             <div class="p-5 border-b border-gray-200 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900">Contact Details</h3>
@@ -282,6 +278,28 @@
                     <div id="cd-notes" class="font-medium text-gray-900 whitespace-pre-wrap">-</div>
                 </div>
 
+                <div class="mt-4">
+                    <h4 class="text-base font-semibold text-gray-900 mb-2">Documents</h4>
+                    @Html.AntiForgeryToken()
+                    <div class="flex items-center gap-2 mb-3">
+                        <input type="file" id="doc-file" class="text-sm" multiple />
+                        <button type="button" id="doc-upload" class="px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">Upload</button>
+                    </div>
+                    <div class="border rounded-lg overflow-hidden">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="text-left px-3 py-2">File Name</th>
+                                    <th class="text-left px-3 py-2">Uploaded</th>
+                                    <th class="text-left px-3 py-2">Size</th>
+                                    <th class="text-right px-3 py-2">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="doc-tbody" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <hr class="my-2" />
                 <div>
                     <h4 class="text-base font-semibold text-gray-900 mb-2">Send Email</h4>
@@ -299,6 +317,11 @@
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Message</label>
                             <textarea name="body" id="email-body" rows="5" class="w-full px-3 py-2 border rounded text-sm" placeholder="Write your message..." required></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Attach files</label>
+                            <input type="file" id="email-files" name="files" multiple class="text-sm" />
+                            <p class="text-xs text-gray-500">Optional. Files are stored under this contact's Documents.</p>
                         </div>
                         <div class="flex justify-end gap-2 pt-1">
                             <button type="button" id="email-cancel" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
@@ -535,64 +558,7 @@
                 </text>
             }
 
-            const addContactBtn = document.getElementById('add-contact-btn');
-            const contactModal = document.getElementById('add-contact-modal');
-            const contactModalBackdrop = document.getElementById('contact-modal-backdrop');
-            const contactModalContent = document.getElementById('contact-modal-content');
-            const closeContactModalBtn = document.getElementById('close-contact-modal-btn');
-            const cancelContactBtn = document.getElementById('cancel-contact-btn');
-
-            function openContactModal() {
-                contactModal.classList.remove('hidden');
-                contactModal.offsetHeight;
-                setTimeout(function() {
-                    contactModal.classList.remove('opacity-0');
-                    contactModal.classList.add('opacity-100');
-                    contactModalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0.4)';
-                    contactModalContent.classList.remove('scale-95');
-                    contactModalContent.classList.add('scale-100');
-                }, 10);
-                document.body.style.overflow = 'hidden';
-            }
-
-            function closeContactModal() {
-                contactModal.classList.remove('opacity-100');
-                contactModal.classList.add('opacity-0');
-                contactModalBackdrop.style.backgroundColor = 'rgba(29, 29, 29, 0)';
-                contactModalContent.classList.remove('scale-100');
-                contactModalContent.classList.add('scale-95');
-                setTimeout(function() {
-                    contactModal.classList.add('hidden');
-                    resetContactModal();
-                }, 300);
-                document.body.style.overflow = '';
-            }
-
-            function resetContactModal() {
-                const form = document.getElementById('contact-form');
-                if (form) form.reset();
-                
-                // Reset type buttons
-                const typeBtns = document.querySelectorAll('.contact-type-btn');
-                typeBtns.forEach(function(btn) {
-                    btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-                    btn.classList.add('bg-white', 'text-gray-700', 'border-gray-300', 'hover:bg-gray-50');
-                });
-                
-                document.getElementById('contact-type').value = '';
-            }
-
-            // Event listeners
-            addContactBtn.addEventListener('click', openContactModal);
-            closeContactModalBtn.addEventListener('click', closeContactModal);
-            cancelContactBtn.addEventListener('click', closeContactModal);
-
-            // Close modal when clicking on background overlay
-            contactModal.addEventListener('click', function (event) {
-                if (event.target === contactModal || event.target === contactModalBackdrop) {
-                    closeContactModal();
-                }
-            });
+            // Add Contact functionality removed per request; creation UI disabled
 
             // ===============================
             // CONTACT DETAILS + EMAIL
@@ -622,7 +588,10 @@
                 document.body.style.overflow = '';
             }
             document.getElementById('close-contact-details').addEventListener('click', closeDetails);
-            detailsModal.addEventListener('click', function(e){ if(e.target===detailsModal || e.target===detailsBackdrop) closeDetails(); });
+            detailsModal.addEventListener('click', function(e){
+                const overlay = document.getElementById('contact-details-overlay');
+                if(e.target===detailsModal || e.target===detailsBackdrop || e.target===overlay) closeDetails();
+            });
             document.getElementById('email-cancel').addEventListener('click', closeDetails);
 
             // Row click to load details (event delegation for robustness)
@@ -684,7 +653,7 @@
                         // Update Last Contacted in the grid without reload
                         const cell = document.getElementById(`lc-${contactId}`);
                         if (cell) cell.textContent = data.lastContacted || '—';
-                        closeDetails();
+                        try { await loadDocuments(contactId); } catch {}
                     } else {
                         showToast(data.message || 'Failed to send email', 'error');
                     }
@@ -692,6 +661,78 @@
                     console.error(err); showToast('Failed to send email', 'error');
                 }
             });
+
+            // --- Documents: load + upload ---
+            async function loadDocuments(contactId){
+                try{
+                    const res = await fetch(`/Contacts/ListDocuments?contactId=${encodeURIComponent(contactId)}`);
+                    const data = await res.json();
+                    const tbody = document.getElementById('doc-tbody');
+                    if (!tbody) return;
+                    if (!data || !data.success) { tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-3 text-gray-500">Failed to load documents</td></tr>'; return; }
+                    const files = data.files || [];
+                    if (!files.length) { tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-3 text-gray-500">No documents uploaded yet.</td></tr>'; return; }
+                    tbody.innerHTML = files.map(f => {
+                        const uploaded = new Date(f.uploadedAt).toLocaleString();
+                        const sizeKb = (Number(f.size||0)/1024).toFixed(1);
+                        return `
+                        <tr>
+                            <td class="px-3 py-2">
+                                <a href="${f.url}" class="text-blue-600 hover:underline" target="_blank" rel="noopener">${f.name}</a>
+                            </td>
+                            <td class="px-3 py-2 text-gray-700">${uploaded}</td>
+                            <td class="px-3 py-2 text-gray-700">${sizeKb} KB</td>
+                            <td class="px-3 py-2 text-right">
+                                <a href="${f.url}" download class="text-sm px-2 py-1 border rounded">Download</a>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }catch{ /* ignore */ }
+            }
+
+            // Load docs when opening details
+            (function augmentOpenDetails(){
+                const tbody = document.getElementById('contacts-tbody');
+                if (!tbody) return;
+                tbody.addEventListener('click', async function (ev) {
+                    const target = ev.target instanceof Element ? ev.target : null;
+                    if (!target) return;
+                    if (target.closest('input[type="checkbox"],button,.contact-type-badge,svg')) return;
+                    const row = target.closest('tr.contact-row');
+                    if (!row) return;
+                    const id = row.getAttribute('data-contact-id');
+                    if (!id) return;
+                    setTimeout(()=>{ try { loadDocuments(id); } catch {} }, 50);
+                }, true);
+            })();
+
+            // Upload docs
+            (function wireDocUpload(){
+                const btn = document.getElementById('doc-upload');
+                const fileInput = document.getElementById('doc-file');
+                const tokenEl = document.querySelector('#contact-details-modal input[name="__RequestVerificationToken"]');
+                const formToken = tokenEl ? tokenEl.value : '';
+                if (!btn || !fileInput) return;
+                btn.addEventListener('click', async function(){
+                    const files = fileInput.files;
+                    const contactId = (document.getElementById('email-contact-id')||{}).value;
+                    if (!contactId) { showToast('No contact selected', 'error'); return; }
+                    if (!files || !files.length) { showToast('Choose file(s) to upload', 'error'); return; }
+                    for (let i=0;i<files.length;i++){
+                        const fd = new FormData();
+                        fd.append('__RequestVerificationToken', formToken);
+                        fd.append('contactId', contactId);
+                        fd.append('file', files[i]);
+                        try{
+                            const res = await fetch('/Contacts/UploadDocument', { method:'POST', body: fd });
+                            const data = await res.json();
+                            if (!data || !data.success) throw new Error(data && data.message || 'Upload failed');
+                        }catch(err){ console.error(err); showToast('Failed to upload '+files[i].name, 'error'); }
+                    }
+                    try{ await loadDocuments(contactId); showToast('Upload complete','success'); }catch{}
+                    fileInput.value = '';
+                });
+            })();
 
             // Close modal with Escape key
             document.addEventListener('keydown', function (event) {

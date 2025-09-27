@@ -204,6 +204,40 @@ namespace RealEstateCRM.Controllers
             return Ok();
         }
 
+        // Send a custom email to an agent from Manage Agents
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EmailAgent(string id, string subject, string message)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return BadRequest("Missing agent id.");
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+            if (string.IsNullOrWhiteSpace(user.Email)) return BadRequest("User has no email address.");
+
+            subject = (subject ?? string.Empty).Trim();
+            message = (message ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(subject)) return BadRequest("Subject is required.");
+            if (string.IsNullOrWhiteSpace(message)) return BadRequest("Message is required.");
+
+            // Basic HTML wrapper for readability
+            var body = $@"<div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                <p>{System.Net.WebUtility.HtmlEncode(message).Replace("\n", "<br/>")}</p>
+                <hr style='border:none;border-top:1px solid #eee;margin:16px 0'/>
+                <p style='font-size:12px;color:#888;'>Sent via Real Estate CRM • {DateTimeOffset.Now.LocalDateTime:g}</p>
+            </div>";
+
+            try
+            {
+                await _emailSender.SendEmailAsync(user.Email!, subject, body);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to email agent {Email}", user.Email);
+                return StatusCode(500, "Failed to send email. Please try again later.");
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteAgent(string id)
