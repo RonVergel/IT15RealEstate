@@ -66,7 +66,7 @@ namespace RealEstateCRM.Controllers
             {
                 try
                 {
-                    lead.DateCreated = DateTime.Now;
+                    lead.DateCreated = DateTime.UtcNow;
                     lead.IsActive = true;
                     lead.LeadSource = "Manual"; // Mark as manually created
 

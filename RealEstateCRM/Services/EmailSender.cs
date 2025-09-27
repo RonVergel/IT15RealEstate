@@ -36,13 +36,20 @@ namespace RealEstateCRM.Services
 
             var client = new MailjetClient(Options.ApiKey, Options.SecretKey);
 
+            // Clean up any literal line break escape sequences that may have been
+            // embedded in HTML (e.g., "\r\n"). These show up visibly in some
+            // email clients if not removed.
+            var cleanedHtml = (htmlMessage ?? string.Empty)
+                .Replace("\\r\\n", " ")   // literal backslash-r backslash-n
+                .Replace("\r\n", " ");     // actual CRLF to space
+
             // Use the configured sender email, or a fallback
             var senderEmail = !string.IsNullOrEmpty(Options.SenderEmail) ? Options.SenderEmail : "donotreply@yourdomain.com";
 
             var email = new TransactionalEmailBuilder()
                 .WithFrom(new SendContact(senderEmail, "Real Estate CRM"))
                 .WithSubject(subject)
-                .WithHtmlPart(htmlMessage)
+                .WithHtmlPart(cleanedHtml)
                 .WithTo(new SendContact(toEmail))
                 .Build();
 

@@ -4,7 +4,7 @@
     ViewData["Title"] = "Manage Agents";
 }
 
-<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
     <h1 class="font-semibold text-2xl">Manage Agents</h1>
     <a asp-controller="Admin" asp-action="Index" class="px-3 py-2 text-sm bg-white border rounded-md text-gray-700 hover:bg-gray-50">Refresh</a>
 </div>
@@ -21,8 +21,10 @@ else
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr class="text-left text-sm text-gray-600">
+                    <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Email</th>
                     <th class="px-4 py-3">Username</th>
+                    <th class="px-4 py-3">Phone</th>
                     <th class="px-4 py-3">Email Confirmed</th>
                     <th class="px-4 py-3">Lockout</th>
                     <th class="px-4 py-3">Actions</th>
@@ -32,8 +34,10 @@ else
                 @foreach (var agent in Model)
                 {
                     <tr>
+                        <td class="px-4 py-3">@(string.IsNullOrWhiteSpace(agent.FullName) ? (agent.UserName ?? agent.Email) : agent.FullName)</td>
                         <td class="px-4 py-3">@agent.Email</td>
                         <td class="px-4 py-3">@agent.UserName</td>
+                        <td class="px-4 py-3">@(string.IsNullOrWhiteSpace(agent.PhoneNumber) ? "-" : agent.PhoneNumber)</td>
                         <td class="px-4 py-3">@((agent.EmailConfirmed) ? "Yes" : "No")</td>
                         <td class="px-4 py-3">@((agent.LockoutEnd.HasValue) ? agent.LockoutEnd.Value.LocalDateTime.ToString("g") : "-")</td>
                         <td class="px-4 py-3">

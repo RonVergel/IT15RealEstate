@@ -29,7 +29,7 @@ namespace RealEstateCRM.Models
         public string Type { get; set; } = string.Empty; // "Contact", or "Lead"
         
         [Display(Name = "Date Created")]
-        public DateTime DateCreated { get; set; } = DateTime.Now;
+        public DateTime DateCreated { get; set; } = DateTime.UtcNow;
         
         [Display(Name = "Last Contacted")]
         public DateTime? LastContacted { get; set; }

@@ -1,58 +1,124 @@
-﻿@model List<RealEstateCRM.Models.Property>
+@model List<RealEstateCRM.Models.Property>
 @{
    ViewData["Title"] = "Properties";
 }
 
-<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
     <h1 class="font-semibold text-2xl">Properties</h1>
 
     <button id="add-property-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
         Add Property
     </button>
+    <input type="hidden" id="current-query-values"
+           data-q="@ViewBag.Q"
+           data-property-type="@ViewBag.FilterPropertyType"
+           data-listing-status="@ViewBag.FilterListingStatus"
+           data-min-price="@ViewBag.FilterMinPrice"
+           data-max-price="@ViewBag.FilterMaxPrice"
+           data-min-beds="@ViewBag.FilterMinBeds"
+           data-min-baths="@ViewBag.FilterMinBaths"
+           data-buying-type="@ViewBag.FilterBuyingType"
+           data-assigned="@ViewBag.FilterAssigned" />
 </div>
 
+<!-- Current user meta for client scripts -->
+@{
+    var currentDisplayName = User?.Claims?.FirstOrDefault(c => c.Type == "FullName")?.Value ?? User.Identity?.Name ?? "You";
+}
+<div id="current-user-meta" data-display-name="@currentDisplayName" class="hidden"></div>
+
 <!-- Search / controls (keeps your existing row) -->
-<div class="flex items-center justify-between mb-6 gap-4">
-    <div class="flex-1 max-w-2xl">
-        <label class="relative block">
-            <span class="sr-only">Search</span>
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                </svg>
-            </span>
-
-            <input type="search"
-                   placeholder="Search"
-                   class="w-[275px] pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        </label>
-    </div>
-
-    <div class="flex items-center gap-2">
-        <button type="button" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md text-gray-600 hover:bg-gray-50">
-            <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4" />
-            </svg>
-            <span>Filter</span>
-        </button>
-
-        <div class="relative inline-block text-left">
-            <button type="button" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md text-gray-600 hover:bg-gray-50">
-                <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h6" />
-                </svg>
-                <span>Newest to Oldest</span>
-                <svg class="h-3 w-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                </svg>
-            </button>
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <form id="filter-form" method="get" asp-action="Index" asp-controller="Properties" class="flex-1 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="flex-1 max-w-2xl">
+            <label class="relative block">
+                <span class="sr-only">Search</span>
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                    </svg>
+                </span>
+                <input id="search-input" type="search" name="q" value="@ViewBag.Q" placeholder="Search..."
+                       class="w-full sm:w-[275px] pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </label>
         </div>
-    </div>
+        <div class="flex items-center gap-2">
+            <button type="button" id="toggle-filter" class="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md text-gray-600 hover:bg-gray-50">
+                <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+                </svg>
+                <span>Filter</span>
+            </button>
+            <button type="submit" class="px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">Apply</button>
+            <a href="/Properties" class="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Clear</a>
+        </div>
+
+        <!-- Filter panel -->
+        <div id="filter-panel" class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 bg-white border rounded-lg p-3 mt-3 hidden">
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Property Type</label>
+                <select name="propertyType" class="w-full px-2 py-2 border rounded text-sm">
+                    <option value="">Any</option>
+                    @foreach (var pt in (IEnumerable<string>) (ViewBag.PropertyTypes ?? new List<string>()))
+                    {
+                        if (ViewBag.FilterPropertyType == pt) {<option value="@pt" selected>@pt</option>}
+                        else {<option value="@pt">@pt</option>}
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Listing Status</label>
+                <select name="listingStatus" class="w-full px-2 py-2 border rounded text-sm">
+                    <option value="">Any</option>
+                    @foreach (var ls in (IEnumerable<string>) (ViewBag.ListingStatuses ?? new List<string>()))
+                    {
+                        if (ViewBag.FilterListingStatus == ls) {<option value="@ls" selected>@ls</option>}
+                        else {<option value="@ls">@ls</option>}
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Buying Type</label>
+                <select name="buyingType" class="w-full px-2 py-2 border rounded text-sm">
+                    <option value="">Any</option>
+                    @foreach (var bt in (IEnumerable<string>) (ViewBag.BuyingTypes ?? new List<string>()))
+                    {
+                        if (ViewBag.FilterBuyingType == bt) {<option value="@bt" selected>@bt</option>}
+                        else {<option value="@bt">@bt</option>}
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Assignment</label>
+                <select name="assigned" class="w-full px-2 py-2 border rounded text-sm">
+                    @if (string.IsNullOrEmpty(ViewBag.FilterAssigned)) {<option value="" selected>Any</option>} else {<option value="">Any</option>}
+                    @if (ViewBag.FilterAssigned == "assigned") {<option value="assigned" selected>Assigned</option>} else {<option value="assigned">Assigned</option>}
+                    @if (ViewBag.FilterAssigned == "unassigned") {<option value="unassigned" selected>Unassigned</option>} else {<option value="unassigned">Unassigned</option>}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Min Price</label>
+                <input type="number" name="minPrice" value="@ViewBag.FilterMinPrice" class="w-full px-2 py-2 border rounded text-sm" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Max Price</label>
+                <input type="number" name="maxPrice" value="@ViewBag.FilterMaxPrice" class="w-full px-2 py-2 border rounded text-sm" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Min Beds</label>
+                <input type="number" name="minBeds" value="@ViewBag.FilterMinBeds" class="w-full px-2 py-2 border rounded text-sm" />
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Min Baths</label>
+                <input type="number" name="minBaths" value="@ViewBag.FilterMinBaths" class="w-full px-2 py-2 border rounded text-sm" />
+            </div>
+        </div>
+    </form>
 </div>
 
 <!-- Success/Error Toast Notification -->
 <div id="toast-notification" class="fixed top-4 right-4 z-[10000] transform translate-x-full transition-transform duration-300 ease-in-out">
-    <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[300px]">
+    <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-full sm:w-auto sm:min-w-[300px] max-w-[90vw]">
         <div class="flex items-center gap-3">
             <div id="toast-icon" class="flex-shrink-0">
                 <!-- Success icon -->
@@ -91,7 +157,7 @@
             var badgeText = property.PropertyType;
             var imageSrc = !string.IsNullOrEmpty(property.ImagePath) ? property.ImagePath : placeholder;
             
-            <div class="property-card w-full bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-all duration-200"
+            <div class="property-card w-full bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-all duration-200 p-3"
                  data-property-id="@property.Id"
                  data-property-title="@property.Title"
                  data-property-address="@property.Address"
@@ -112,41 +178,39 @@
                  data-property-image="@imageSrc">
                 
                 <!-- Image area -->
-                <div class="relative w-full h-40">
-                    <img src="@imageSrc" alt="Property image" class="w-full h-full object-cover" />
-                </div>
+                <img src="@imageSrc" alt="Property image" class="w-full h-32 object-cover rounded-md mb-3" />
 
                 <!-- Content area -->
-                <div class="p-4 flex-1 flex flex-col">
+                <div class="flex-1 flex flex-col">
                     <!-- Title and Badge -->
-                    <div class="flex items-start justify-between">
-                        <h3 class="text-base font-bold text-gray-900 leading-tight pr-2">@property.Title</h3>
-                        <span class="text-xs font-medium text-white px-2.5 py-1 rounded-full @badgeColor flex-shrink-0">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-sm text-gray-900 leading-tight pr-2">@property.Title</h3>
+                        <span class="text-xs font-medium text-white px-2 py-0.5 rounded @badgeColor flex-shrink-0">
                             @badgeText
                         </span>
                     </div>
 
                     <!-- Address -->
-                    <p class="text-sm text-gray-600 mt-1 truncate">@property.Address</p>
+                    <p class="text-xs text-gray-500 mt-1 truncate">@property.Address</p>
 
                     <!-- Icons -->
-                    <div class="flex items-center gap-4 text-sm text-gray-600 my-4">
+                    <div class="flex items-center gap-4 text-xs text-gray-600 mt-3 mb-1">
                         <div class="flex items-center gap-1.5">
-                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l1.5-2.5A2 2 0 007 3h10a2 2 0 011.5.5L21 7" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21V7h10v14" />
                             </svg>
                             <span>@(property.Bedrooms ?? 0)</span>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 1.38-1.79 2.5-4 2.5S13 11.38 13 10s1.79-2.5 4-2.5 4 1.12 4 2.5z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10c0 1.38 1.79 2.5 4 2.5S11 11.38 11 10 9.21 7.5 7 7.5 3 8.62 3 10z" />
                             </svg>
                             <span>@(property.Bathrooms ?? 0)</span>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M7 7v14M17 7v14" />
                             </svg>
                             <span>@(property.Area ?? 0) sqm</span>
@@ -154,8 +218,8 @@
                     </div>
 
                     <!-- Price -->
-                    <div class="mt-auto">
-                        <p class="text-xl font-bold text-gray-900">₱ @property.Price.ToString("N0")</p>
+                    <div class="mt-auto pt-2">
+                        <p class="text-sm font-semibold text-green-600">₱ @property.Price.ToString("N0")</p>
                     </div>
                 </div>
             </div>
@@ -197,7 +261,7 @@
 
         <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
             @* Previous *@
-            <a asp-action="Index" asp-controller="Properties" asp-route-page="@(currentPage - 1)"
+            <a asp-action="Index" asp-controller="Properties" asp-route-page="@(currentPage - 1)" asp-route-q="@ViewBag.Q" asp-route-propertyType="@ViewBag.FilterPropertyType" asp-route-listingStatus="@ViewBag.FilterListingStatus" asp-route-minPrice="@ViewBag.FilterMinPrice" asp-route-maxPrice="@ViewBag.FilterMaxPrice" asp-route-minBeds="@ViewBag.FilterMinBeds" asp-route-minBaths="@ViewBag.FilterMinBaths" asp-route-buyingType="@ViewBag.FilterBuyingType" asp-route-assigned="@ViewBag.FilterAssigned"
                class="px-3 py-2 rounded-l-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(currentPage <= 1 ? "opacity-50 pointer-events-none" : "")"
                aria-disabled="@(currentPage <= 1)">
                 Previous
@@ -212,12 +276,12 @@
                 }
                 else
                 {
-                    <a asp-action="Index" asp-controller="Properties" asp-route-page="@p" class="px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">@p</a>
+                    <a asp-action="Index" asp-controller="Properties" asp-route-page="@p" asp-route-q="@ViewBag.Q" asp-route-propertyType="@ViewBag.FilterPropertyType" asp-route-listingStatus="@ViewBag.FilterListingStatus" asp-route-minPrice="@ViewBag.FilterMinPrice" asp-route-maxPrice="@ViewBag.FilterMaxPrice" asp-route-minBeds="@ViewBag.FilterMinBeds" asp-route-minBaths="@ViewBag.FilterMinBaths" asp-route-buyingType="@ViewBag.FilterBuyingType" asp-route-assigned="@ViewBag.FilterAssigned" class="px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">@p</a>
                 }
             }
 
             @* Next *@
-            <a asp-action="Index" asp-controller="Properties" asp-route-page="@(currentPage + 1)"
+            <a asp-action="Index" asp-controller="Properties" asp-route-page="@(currentPage + 1)" asp-route-q="@ViewBag.Q" asp-route-propertyType="@ViewBag.FilterPropertyType" asp-route-listingStatus="@ViewBag.FilterListingStatus" asp-route-minPrice="@ViewBag.FilterMinPrice" asp-route-maxPrice="@ViewBag.FilterMaxPrice" asp-route-minBeds="@ViewBag.FilterMinBeds" asp-route-minBaths="@ViewBag.FilterMinBaths" asp-route-buyingType="@ViewBag.FilterBuyingType" asp-route-assigned="@ViewBag.FilterAssigned"
                class="px-3 py-2 rounded-r-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(currentPage >= totalPages ? "opacity-50 pointer-events-none" : "")"
                aria-disabled="@(currentPage >= totalPages)">
                 Next
@@ -235,7 +299,7 @@
     <!-- Modal content container -->
     <div class="relative h-full w-full flex items-center justify-center p-4">
         <!-- Modal dialog -->
-        <div class="relative bg-white rounded-lg shadow-xl w-[500px] h-[90vh] max-w-[95vw] max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="property-details-content">
+        <div class="relative bg-white rounded-xl shadow-2xl w-[860px] h-[90vh] max-w-[95vw] max-h-[95vh] overflow-hidden transform scale-95 transition-transform duration-300 ease-out" id="property-details-content">
             <!-- Header with close and edit buttons -->
             <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
                 <h3 class="text-lg font-semibold text-gray-900" id="modal-property-title">Property Details</h3>
@@ -293,19 +357,16 @@
                         <!-- Editable Property Name -->
                         <div class="editable-field mb-2">
                             <span class="view-mode text-lg font-semibold text-gray-900" id="modal-property-name">Property Name</span>
-                            <input type="text" class="edit-mode hidden w-full text-lg font-semibold text-gray-900 border border-gray-300 rounded px-2 py-1" id="edit-property-name" />
+                            <input type="text" class="edit-mode hidden w-full text-lg font-semibold text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-name" />
                         </div>
 
                         <!-- Editable Address -->
                         <div class="editable-field mb-1">
                             <p class="view-mode text-gray-600" id="modal-property-address">Address</p>
-                            <input type="text" class="edit-mode hidden w-full text-gray-600 border border-gray-300 rounded px-2 py-1" id="edit-property-address" />
+                            <input type="text" class="edit-mode hidden w-full text-gray-700 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-address" />
                         </div>
 
-                        <div class="flex items-center gap-4 text-sm text-gray-600">
-                            <span id="modal-property-bed-bath">4 🛏️ 2 🛁</span>
-                            <span id="modal-property-area">99 sqm</span>
-                        </div>
+                        <!-- summary badges removed per request -->
                     </div>
 
                     <!-- About the Property -->
@@ -315,7 +376,7 @@
                             <p class="view-mode text-sm text-gray-600 leading-relaxed" id="modal-property-description">
                                 Property description will appear here...
                             </p>
-                            <textarea class="edit-mode hidden w-full text-sm text-gray-600 border border-gray-300 rounded px-2 py-2 resize-none" rows="3" id="edit-property-description"></textarea>
+                            <textarea class="edit-mode hidden w-full text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" rows="3" id="edit-property-description"></textarea>
                         </div>
                     </div>
 
@@ -329,7 +390,7 @@
                                     <span class="text-gray-600">Property Type</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-property-type">Residential</span>
-                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-property-type">
+                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-type">
                                             <option value="Residential">Residential</option>
                                             <option value="Commercial">Commercial</option>
                                             <option value="Raw Land">Raw Land</option>
@@ -342,7 +403,7 @@
                                     <span class="text-gray-600">Status</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-property-status">Active</span>
-                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-property-status">
+                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-status">
                                             <option value="Active">Active</option>
                                             <option value="Pending">Pending</option>
                                             <option value="Sold">Sold</option>
@@ -355,8 +416,8 @@
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Price</span>
                                     <div class="editable-field">
-                                        <span class="view-mode font-medium" id="modal-property-price">₱ 9,999,999</span>
-                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-24" id="edit-property-price" min="0" step="0.01" />
+                            <span class="view-mode font-medium" id="modal-property-price">₱ 9,999,999</span>
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 w-40 text-right focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-price" min="0" step="0.01" />
                                     </div>
                                 </div>
                             </div>
@@ -366,7 +427,7 @@
                                     <span class="text-gray-600">Type</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-property-buying-type">House</span>
-                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-property-buying-type">
+                                        <select class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-buying-type">
                                             <option value="Buying">Buying</option>
                                             <option value="Viewing">Viewing</option>
                                         </select>
@@ -398,7 +459,7 @@
                                     <span class="text-gray-600">Listed On</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-listing-date">2020</span>
-                                        <input type="datetime-local" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5" id="edit-listing-date" />
+                                        <input type="datetime-local" class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-listing-date" />
                                     </div>
                                 </div>
 
@@ -413,7 +474,7 @@
                                     <span class="text-gray-600">Area (sqm)</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-area-display">120</span>
-                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-16" id="edit-property-area" min="0" />
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 w-24 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-area" min="0" />
                                     </div>
                                 </div>
                             </div>
@@ -423,7 +484,7 @@
                                     <span class="text-gray-600">Bedrooms</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-bedrooms">4</span>
-                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-12" id="edit-bedrooms" min="0" />
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 w-20 text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-bedrooms" min="0" />
                                     </div>
                                 </div>
 
@@ -432,7 +493,7 @@
                                     <span class="text-gray-600">Bathrooms</span>
                                     <div class="editable-field">
                                         <span class="view-mode font-medium" id="modal-bathrooms">2</span>
-                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded px-1 py-0.5 w-12" id="edit-bathrooms" min="0" />
+                                        <input type="number" class="edit-mode hidden text-sm border border-gray-300 rounded-lg px-3 py-2 w-20 text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-bathrooms" min="0" />
                                     </div>
                                 </div>
                             </div>
@@ -450,10 +511,11 @@
                                     </div>
                                     <div class="flex-1">
                                         <div class="editable-field">
-                                            <p class="view-mode text-sm font-medium text-gray-900" id="modal-agent-name">Agent Name</p>
-                                            <input type="text" class="edit-mode hidden text-sm font-medium text-gray-900 border border-gray-300 rounded px-1 py-0.5" id="edit-agent-name" />
+                                            <p class="view-mode text-sm font-medium text-gray-900" id="modal-agent-name">Current User</p>
+                                            <!-- This input still represents the Assigned Agent when editing -->
+                                            <input type="text" class="edit-mode hidden text-sm font-medium text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-agent-name" />
                                         </div>
-                                        <p class="text-xs text-gray-500">Agent</p>
+                                        <p class="text-xs text-gray-500">Created by</p>
                                     </div>
                                 </div>
                             </div>
@@ -471,7 +533,7 @@
                                     </div>
                                     <div class="edit-mode hidden">
                                         <label class="text-xs text-gray-600">Property Link:</label>
-                                        <input type="url" class="w-full text-sm border border-gray-300 rounded px-2 py-1 mt-1" id="edit-property-link" placeholder="https://example.com/property" />
+                                        <input type="url" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" id="edit-property-link" placeholder="https://example.com/property" />
                                     </div>
                                 </div>
                             </div>
@@ -547,7 +609,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Property Price -->
                         <div>
-                            <label for="property-price" class="block text-sm font-medium text-gray-700 mb-1">Property Price (₱)</label>
+                            <label for="property-price" class="block text-sm font-medium text-gray-700 mb-1">Property Price (?)</label>
                             <input type="number" id="property-price" name="Price" min="0" step="0.01"
                                    placeholder="e.g., 5000000"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
@@ -999,9 +1061,9 @@
                         var pricePerSqft = priceVal / sqftForCalc;
                         // Format with currency and 2 decimals
                         try {
-                            calculatedPricePerSqft.textContent = '₱ ' + pricePerSqft.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            calculatedPricePerSqft.textContent = '? ' + pricePerSqft.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         } catch (e) {
-                            calculatedPricePerSqft.textContent = '₱ ' + pricePerSqft.toFixed(2);
+                            calculatedPricePerSqft.textContent = '? ' + pricePerSqft.toFixed(2);
                         }
                     } else {
                         calculatedPricePerSqft.textContent = '-';
@@ -1129,7 +1191,7 @@
             function formatCurrency(val) {
                 if (val == null || val === '') return '₱ 0';
                 try {
-                    return '₱ ' + parseFloat(val).toLocaleString();
+                    return '₱ ' + Number(val).toLocaleString();
                 } catch {
                     return '₱ ' + val;
                 }
@@ -1161,7 +1223,7 @@
 
                 const bed = ds.propertyBedrooms || '0';
                 const bath = ds.propertyBathrooms || '0';
-                document.getElementById('modal-property-bed-bath').textContent = `${bed} 🛏️ ${bath} 🛁`;
+                (function(){ const el = document.getElementById('modal-property-bed-bath'); if (el) el.textContent = `${bed} BR · ${bath} BA`; })();
                 document.getElementById('modal-bedrooms').textContent = bed;
                 document.getElementById('modal-bathrooms').textContent = bath;
                 document.getElementById('edit-bedrooms').value = bed;
@@ -1237,11 +1299,14 @@
                     document.getElementById('edit-listing-date').value = '';
                 }
 
-                // Agent
+                // Added by (always current logged-in user)
+                const currentUserMeta = document.getElementById('current-user-meta');
+                const addedByName = currentUserMeta ? currentUserMeta.dataset.displayName : '';
+                document.getElementById('modal-agent-name').textContent = addedByName || 'You';
+                // Edit field remains for Assigned Agent editing
                 const agentName = ds.propertyAgent || '';
-                document.getElementById('modal-agent-name').textContent = agentName || 'Unknown';
                 document.getElementById('edit-agent-name').value = agentName || '';
-                document.getElementById('modal-agent-initials').textContent = getInitials(agentName);
+                document.getElementById('modal-agent-initials').textContent = getInitials(addedByName || '');
 
                 // Link
                 const link = ds.propertyLink || '#';
@@ -1623,9 +1688,12 @@
                     document.getElementById('modal-days-on-market').textContent = daysOnMarket;
                 }
 
-                document.getElementById('modal-agent-name').textContent = agent || 'Unknown';
+                // Keep "Added by" as the current user after save
+                const _meta = document.getElementById('current-user-meta');
+                const _addedBy = _meta ? _meta.dataset.displayName : '';
+                document.getElementById('modal-agent-name').textContent = _addedBy || 'You';
                 if (document.getElementById('edit-agent-name')) document.getElementById('edit-agent-name').value = agent || '';
-                document.getElementById('modal-agent-initials').textContent = getInitials(agent || '');
+                document.getElementById('modal-agent-initials').textContent = getInitials(_addedBy || '');
 
                 const linkEl = document.getElementById('modal-property-link');
                 if (linkEl) {
@@ -1718,6 +1786,43 @@
                     }
                 });
             }
+
+            // Toggle filter panel
+            const toggleFilterBtn = document.getElementById('toggle-filter');
+            const filterPanel = document.getElementById('filter-panel');
+            if (toggleFilterBtn && filterPanel) {
+                toggleFilterBtn.addEventListener('click', function(){
+                    filterPanel.classList.toggle('hidden');
+                });
+            }
+
+            // Auto-submit when clearing the search box (no manual reload needed)
+            (function autoSubmitOnClear(){
+                const form = document.getElementById('filter-form');
+                const search = document.getElementById('search-input');
+                if (!form || !search) return;
+
+                let last = (search.value || '').trim();
+                function maybeSubmitOnEmpty() {
+                    const now = (search.value || '').trim();
+                    if (now === '' && last !== '') {
+                        // Clear the query and submit to show all properties
+                        search.value = '';
+                        // Remove any page param so it goes back to page 1
+                        const pageInput = document.createElement('input');
+                        pageInput.type = 'hidden';
+                        pageInput.name = 'page';
+                        pageInput.value = '1';
+                        form.appendChild(pageInput);
+                        form.submit();
+                    }
+                    last = now;
+                }
+                // Fires when clicking the native clear (x) on type=search
+                search.addEventListener('search', maybeSubmitOnEmpty);
+                // Fires on typing/backspace
+                search.addEventListener('input', maybeSubmitOnEmpty);
+            })();
 
             // Other page initialization (property details modal, edit etc.) remains unchanged
             console.log('Properties page initialization complete');

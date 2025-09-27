@@ -1,10 +1,10 @@
-﻿@model List<RealEstateCRM.Models.Contact>
+@model List<RealEstateCRM.Models.Contact>
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Contacts";
 }
 
-<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
     <h1 class="font-semibold text-2xl">Contacts</h1>
 
     <button id="add-contact-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
@@ -13,7 +13,7 @@
 </div>
     
 <!-- Search / controls (keeps your existing row) -->
-<div class="flex items-center justify-between mb-6 gap-4">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div class="flex-1 max-w-2xl">
         <label class="relative block">
             <span class="sr-only">Search</span>
@@ -25,7 +25,7 @@
 
             <input type="search"
                    placeholder="Search"
-                   class="w-[275px] pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                   class="w-full sm:w-[275px] pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
         </label>
     </div>
 
@@ -104,6 +104,7 @@
                     <th class="px-4 py-3">Email</th>
                     <th class="px-4 py-3">Phone</th>
                     <th class="px-4 py-3">Date Created</th>
+                    <th class="px-4 py-3">Last Contacted</th>
                     <th class="px-4 py-3">Occupation</th>
                     <th class="px-4 py-3">Salary</th>
                     <th class="px-4 py-3">Notes</th>
@@ -111,10 +112,10 @@
                 </tr>
             </thead>
 
-            <tbody class="bg-white divide-y divide-gray-100">
+            <tbody id="contacts-tbody" class="bg-white divide-y divide-gray-100">
                 @foreach (var contact in Model)
                 {
-                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                    <tr class="hover:bg-gray-50 transition-colors duration-150 contact-row" data-contact-id="@contact.Id" style="cursor:pointer">
                         <td class="px-4 py-4 align-top">
                             <input type="checkbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" />
                         </td>
@@ -166,13 +167,14 @@
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-500 truncate">
-                                @contact.DateCreated.ToString("MMM dd, yyyy")
-                            </div>
+                            <div class="text-sm text-gray-500 truncate">@contact.DateCreated.ToString("MMM dd, yyyy")</div>
+                        </td>
+                        <td class="px-4 py-4 align-top">
+                            <div id="lc-@contact.Id" class="text-sm text-gray-700 truncate">@(contact.LastContacted.HasValue ? contact.LastContacted.Value.ToString("MMM dd, yyyy") : "—")</div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
-                            <div class="text-sm text-gray-700 truncate">@(!string.IsNullOrEmpty(contact.Occupation) ? contact.Occupation : "<span class=\"text-gray-400\">—</span>")</div>
+                            <div class="text-sm text-gray-700 truncate">@(!string.IsNullOrEmpty(contact.Occupation) ? contact.Occupation : "<span class=\"text-gray-400\">�</span>")</div>
                         </td>
 
                         <td class="px-4 py-4 align-top">
@@ -183,7 +185,7 @@
                                 }
                                 else
                                 {
-                                    <span class="text-gray-400">—</span>
+                                    <span class="text-gray-400">�</span>
                                 }
                             </div>
                         </td>
@@ -219,6 +221,95 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- Contact Details + Email Modal -->
+<div id="contact-details-modal" class="fixed inset-0 z-[10000] hidden opacity-0 transition-opacity duration-300 ease-out">
+    <div id="contact-details-backdrop" class="absolute inset-0" style="background-color: rgba(29,29,29,0);"></div>
+    <div class="relative h-full w-full flex items-center justify-center p-4">
+        <div id="contact-details-content" class="relative bg-white rounded-lg shadow-xl w-[720px] max-w-[95vw] max-h-[95vh] overflow-auto transform scale-95 transition-transform duration-300 ease-out">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Contact Details</h3>
+                <button id="close-contact-details" class="p-2 rounded text-gray-500 hover:bg-gray-100" aria-label="Close">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-5 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-sm text-gray-500">Name</div>
+                        <div id="cd-name" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Type</div>
+                        <div id="cd-type" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Email</div>
+                        <div id="cd-email" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Phone</div>
+                        <div id="cd-phone" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Agent</div>
+                        <div id="cd-agent" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Address</div>
+                        <div id="cd-address" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Occupation</div>
+                        <div id="cd-occupation" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Salary</div>
+                        <div id="cd-salary" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Date Created</div>
+                        <div id="cd-created" class="font-medium text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500">Last Contacted</div>
+                        <div id="cd-last" class="font-medium text-gray-900">-</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-500">Notes</div>
+                    <div id="cd-notes" class="font-medium text-gray-900 whitespace-pre-wrap">-</div>
+                </div>
+
+                <hr class="my-2" />
+                <div>
+                    <h4 class="text-base font-semibold text-gray-900 mb-2">Send Email</h4>
+                    <form id="send-email-form" method="post" asp-controller="Contacts" asp-action="SendEmail" class="space-y-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="contactId" id="email-contact-id" />
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">To</label>
+                            <input type="text" id="email-to" class="w-full px-3 py-2 border rounded text-sm bg-gray-100" readonly />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Subject</label>
+                            <input type="text" name="subject" id="email-subject" class="w-full px-3 py-2 border rounded text-sm" placeholder="Subject" required />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Message</label>
+                            <textarea name="body" id="email-body" rows="5" class="w-full px-3 py-2 border rounded text-sm" placeholder="Write your message..." required></textarea>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-1">
+                            <button type="button" id="email-cancel" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Send</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style> #contact-details-modal .hidden { display:none; } </style>
 </div>
 
 @* PAGINATION: Show previous / page numbers / next and an item range *@
@@ -500,6 +591,105 @@
             contactModal.addEventListener('click', function (event) {
                 if (event.target === contactModal || event.target === contactModalBackdrop) {
                     closeContactModal();
+                }
+            });
+
+            // ===============================
+            // CONTACT DETAILS + EMAIL
+            // ===============================
+            const detailsModal = document.getElementById('contact-details-modal');
+            const detailsBackdrop = document.getElementById('contact-details-backdrop');
+            const detailsContent = document.getElementById('contact-details-content');
+            function openDetails() {
+                detailsModal.classList.remove('hidden');
+                detailsModal.offsetHeight; // reflow
+                setTimeout(()=>{
+                    detailsModal.classList.remove('opacity-0');
+                    detailsModal.classList.add('opacity-100');
+                    detailsContent.classList.remove('scale-95');
+                    detailsContent.classList.add('scale-100');
+                    detailsBackdrop.style.backgroundColor = 'rgba(29,29,29,0.4)';
+                }, 10);
+                document.body.style.overflow = 'hidden';
+            }
+            function closeDetails() {
+                detailsModal.classList.remove('opacity-100');
+                detailsModal.classList.add('opacity-0');
+                detailsContent.classList.remove('scale-100');
+                detailsContent.classList.add('scale-95');
+                detailsBackdrop.style.backgroundColor = 'rgba(29,29,29,0)';
+                setTimeout(()=>{ detailsModal.classList.add('hidden'); }, 250);
+                document.body.style.overflow = '';
+            }
+            document.getElementById('close-contact-details').addEventListener('click', closeDetails);
+            detailsModal.addEventListener('click', function(e){ if(e.target===detailsModal || e.target===detailsBackdrop) closeDetails(); });
+            document.getElementById('email-cancel').addEventListener('click', closeDetails);
+
+            // Row click to load details (event delegation for robustness)
+            const tbody = document.getElementById('contacts-tbody');
+            if (tbody) {
+                tbody.addEventListener('click', async function (ev) {
+                    const target = ev.target instanceof Element ? ev.target : null;
+                    if (!target) return;
+                    if (target.closest('input[type="checkbox"],button,.contact-type-badge,svg')) return;
+                    const row = target.closest('tr.contact-row');
+                    if (!row) return;
+                    const id = row.getAttribute('data-contact-id');
+                    if (!id) return;
+                    try {
+                        const res = await fetch(`/Contacts/GetContact?id=${id}`);
+                        const data = await res.json();
+                        if (!data || !data.success) { showToast((data && data.message) || 'Failed to load contact', 'error'); return; }
+                        // Fill fields
+                        document.getElementById('cd-name').textContent = data.name || '-';
+                        document.getElementById('cd-type').textContent = data.type || '-';
+                        document.getElementById('cd-email').textContent = data.email || '-';
+                        document.getElementById('cd-phone').textContent = data.phone || '-';
+                        document.getElementById('cd-agent').textContent = data.agent || '-';
+                        document.getElementById('cd-address').textContent = data.address || '-';
+                        document.getElementById('cd-occupation').textContent = data.occupation || '-';
+                        document.getElementById('cd-salary').textContent = (data.salary != null) ? `₱ ${Number(data.salary).toLocaleString()}` : '-';
+                        document.getElementById('cd-created').textContent = data.dateCreated || '-';
+                        document.getElementById('cd-last').textContent = data.lastContacted || '—';
+                        document.getElementById('cd-notes').textContent = data.notes || '-';
+
+                        // Prepare email form
+                        document.getElementById('email-contact-id').value = data.id;
+                        document.getElementById('email-to').value = data.email || '';
+                        document.getElementById('email-subject').value = '';
+                        document.getElementById('email-body').value = '';
+
+                        openDetails();
+                    } catch (err) {
+                        console.error(err);
+                        showToast('Error loading contact', 'error');
+                    }
+                });
+            }
+
+            // Send email AJAX
+            const sendEmailForm = document.getElementById('send-email-form');
+            sendEmailForm.addEventListener('submit', async function(e){
+                e.preventDefault();
+                try {
+                    const fd = new FormData(sendEmailForm);
+                    const contactId = fd.get('contactId');
+                    const res = await fetch('/Contacts/SendEmail', {
+                        method: 'POST',
+                        body: fd
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('Email sent', 'success');
+                        // Update Last Contacted in the grid without reload
+                        const cell = document.getElementById(`lc-${contactId}`);
+                        if (cell) cell.textContent = data.lastContacted || '—';
+                        closeDetails();
+                    } else {
+                        showToast(data.message || 'Failed to send email', 'error');
+                    }
+                } catch(err) {
+                    console.error(err); showToast('Failed to send email', 'error');
                 }
             });
 

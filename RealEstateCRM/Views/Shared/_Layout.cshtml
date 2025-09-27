@@ -1,19 +1,19 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Homey</title>
-    <link rel="stylesheet" href="~/css/output.css" />
+    <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="bg-gray-100 font-sans antialiased">
+<body class="bg-gray-100 font-sans antialiased overflow-x-hidden">
     <div class="flex h-screen bg-gray-50">
         <!-- Sidebar -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col py-8 hidden md:flex fixed md:relative z-10 md:z-auto h-full md:h-auto">
+        <aside id="desktop-sidebar" class="w-64 bg-white border-r border-gray-200 flex-col py-8 hidden md:flex fixed h-full z-20">
             <!-- Logo at top-left -->
             <div class="px-4">
                 <img src="~/assets/images/Homey_transparent.png"
@@ -23,15 +23,17 @@
             </div>
 
             @{
-
                 var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-                Func<string, string> getNavLinkClass = (controller) =>
+                var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+                Func<string, string, string> getNavLinkClass = (controller, action) =>
                 {
                     var baseClasses = "font-medium px-4 py-3"; // Increased vertical padding from py-2 to py-3
-                    if (string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase))
+                    var isActiveController = string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+                    var isActiveAction = action == null || string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+                    if (isActiveController && isActiveAction)
                     {
-                        // Active state: light blue background, blue text, and a right border highlight
-                        return $"py-3 bg-blue-50 text-blue-600 font-semibold border-r-4 border-blue-600 {baseClasses}";
+                        // Active state: light blue background, blue text, and a LEFT border highlight
+                        return $"py-3 bg-blue-50 text-blue-600 font-semibold border-l-4 border-blue-600 {baseClasses}";
                     }
                     // Inactive state
                     return $"text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md {baseClasses}";
@@ -40,51 +42,72 @@
 
             <!-- Nav -->
             <nav class="flex flex-col gap-6 mt-6">
-                <a class="@getNavLinkClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                <a class="@getNavLinkClass("Dashboard", "Index")" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
 
                 @* Show "Pending Assignments" only for Agent users who are NOT also Brokers.
                    This prevents Broker/Admin users (who may also be in Agent role) from seeing the Agent-only link. *@
                 @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Agent") && !User.IsInRole("Broker"))
                 {
-                    <a class="@getNavLinkClass("Properties")" asp-controller="PendingAssignments" asp-action="Index">Pending Assignments</a>
+                    <a class="@getNavLinkClass("PendingAssignments", "Index")" asp-controller="PendingAssignments" asp-action="Index">Pending Assignments</a>
                 }
                 else
                 {
-                    <a class="@getNavLinkClass("Properties")" asp-controller="Properties" asp-action="Index">Properties</a>
+                    <a class="@getNavLinkClass("Properties", "Index")" asp-controller="Properties" asp-action="Index">Properties</a>
                 }
 
-                <a class="@getNavLinkClass("Deals")" asp-controller="Deals" asp-action="Index">Deals</a>
-                <a class="@getNavLinkClass("Leads")" asp-controller="Leads" asp-action="Index">Leads</a>
-                <a class="@getNavLinkClass("Contacts")" asp-controller="Contacts" asp-action="Index">Contacts</a>
+                <a class="@getNavLinkClass("Deals", "Index")" asp-controller="Deals" asp-action="Index">Deals</a>
+                @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
+                {
+                    <a class="@getNavLinkClass("Deals", "All")" asp-controller="Deals" asp-action="All">All Deals</a>
+                }
+                <a class="@getNavLinkClass("Leads", "Index")" asp-controller="Leads" asp-action="Index">Leads</a>
+                <a class="@getNavLinkClass("Contacts", "Index")" asp-controller="Contacts" asp-action="Index">Contacts</a>
                 
 
                 @* Show Manage Agents only for users in Broker role *@
                 @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
                 {
-                    <a class="@getNavLinkClass("Admin")" asp-controller="Admin" asp-action="Index">Manage Agents</a>
+                    <a class="@getNavLinkClass("Admin", "Index")" asp-controller="Admin" asp-action="Index">Manage Agents</a>
                 }
             </nav>
         </aside>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col md:ml-64 min-w-0">
             <!-- Top Bar -->
-            <header class="w-full bg-white border-b border-gray-200 px-4 md:px-6 py-3 flex items-center justify-between">
+            <header class="w-full bg-white border-b border-gray-200 px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-10 md:pl-64">
                 <!-- Hamburger Menu for Mobile -->
                 <button id="sidebarToggle" class="md:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
-                <!-- Search -->
-                <div class="flex-1 max-w-lg ml-4 md:ml-0">
-                    <input type="text"
-                           placeholder="Search Properties, Leads, and more"
-                           class="w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                </div>
+                <div class="flex-1"></div>
 
-                <!-- User Dropdown -->
-                <div class="flex items-center gap-4 ml-6">
+                <!-- Notifications + User Dropdown -->
+                <div class="flex items-center gap-4 ml-6 relative">
+                    <!-- Notification Bell -->
+                    <div id="notif-container" class="relative">
+                        <button id="notif-button" class="relative p-2 rounded-full text-gray-600 hover:bg-gray-100" aria-label="Notifications">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full px-1.5 py-0.5"></span>
+                        </button>
+
+                        <!-- Dropdown -->
+                        <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                            <div class="flex items-center justify-between px-4 py-2 border-b">
+                                <span class="font-medium">Notifications</span>
+                                <button id="notif-markread" class="text-sm text-blue-600 hover:underline">Mark all read</button>
+                            </div>
+                            <ul id="notif-list" class="max-h-80 overflow-y-auto divide-y"></ul>
+                            <div class="px-4 py-2 text-center">
+                                <a href="#" class="text-sm text-gray-500">No more notifications</a>
+                            </div>
+                        </div>
+                    </div>
+
                     <partial name="_LoginPartial" />
                 </div>
             </header>
@@ -99,10 +122,126 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.querySelector('aside').classList.toggle('hidden');
-        });
+        (function () {
+            const toggle = document.getElementById('sidebarToggle');
+            if (!toggle) return;
+            let mobileSidebar;
+            // Create a mobile overlay sidebar separate from desktop one for full-screen behavior
+            function ensureMobileSidebar() {
+                if (mobileSidebar) return mobileSidebar;
+                mobileSidebar = document.getElementById('mobile-sidebar');
+                if (!mobileSidebar) {
+                    mobileSidebar = document.createElement('aside');
+                    mobileSidebar.id = 'mobile-sidebar';
+                    mobileSidebar.className = 'fixed inset-0 bg-white z-30 transform -translate-x-full transition-transform duration-300 ease-in-out md:hidden';
+                    mobileSidebar.innerHTML = document.getElementById('desktop-sidebar').innerHTML;
+                    document.body.appendChild(mobileSidebar);
+                }
+                return mobileSidebar;
+            }
+
+            const backdrop = document.createElement('div');
+            backdrop.id = 'sidebar-backdrop';
+            backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden';
+            document.body.appendChild(backdrop);
+
+            function openMobile() {
+                const m = ensureMobileSidebar();
+                m.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeMobile() {
+                const m = ensureMobileSidebar();
+                m.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            toggle.addEventListener('click', function () {
+                const m = ensureMobileSidebar();
+                if (m.classList.contains('-translate-x-full')) openMobile();
+                else closeMobile();
+            });
+            backdrop.addEventListener('click', closeMobile);
+        })();
+
+        // Lightweight notifications polling & UI
+        (function () {
+            const btn = document.getElementById('notif-button');
+            const badge = document.getElementById('notif-badge');
+            const dd = document.getElementById('notif-dropdown');
+            const list = document.getElementById('notif-list');
+            const markBtn = document.getElementById('notif-markread');
+            if (!btn || !badge || !dd || !list) return;
+
+            let open = false;
+            function toggleDropdown() {
+                open = !open;
+                dd.classList.toggle('hidden', !open);
+            }
+            btn.addEventListener('click', (e) => { e.stopPropagation(); toggleDropdown(); });
+            document.addEventListener('click', () => { if (open) { open = false; dd.classList.add('hidden'); } });
+
+            async function fetchCount() {
+                try {
+                    const r = await fetch('/Notifications/Count', { credentials: 'same-origin' });
+                    if (!r.ok) return;
+                    const { count } = await r.json();
+                    if (count && count > 0) {
+                        badge.textContent = count > 99 ? '99+' : String(count);
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                        badge.textContent = '';
+                    }
+                } catch { }
+            }
+
+            async function fetchRecent() {
+                try {
+                    const r = await fetch('/Notifications/Recent?take=10', { credentials: 'same-origin' });
+                    if (!r.ok) return;
+                    const items = await r.json();
+                    list.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        list.innerHTML = '<li class="px-4 py-3 text-sm text-gray-500">No notifications</li>';
+                        return;
+                    }
+                    for (const n of items) {
+                        const li = document.createElement('li');
+                        li.className = 'px-4 py-3 hover:bg-gray-50';
+                        const linkStart = n.linkUrl ? `<a href="${n.linkUrl}" class="block">` : '<div>';
+                        const linkEnd = n.linkUrl ? '</a>' : '</div>';
+                        const time = new Date(n.createdAt).toLocaleString();
+                        li.innerHTML = `${linkStart}
+                            <div class="text-sm ${n.isRead ? 'text-gray-600' : 'text-gray-900 font-medium'}">${n.message}</div>
+                            <div class="text-xs text-gray-400">${time}</div>
+                        ${linkEnd}`;
+                        list.appendChild(li);
+                    }
+                } catch { }
+            }
+
+            async function markAllRead() {
+                try {
+                    await fetch('/Notifications/MarkAllRead', { method: 'POST', credentials: 'same-origin' });
+                    fetchCount();
+                    fetchRecent();
+                } catch { }
+            }
+
+            markBtn?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); markAllRead(); });
+
+            // Polling
+            fetchCount();
+            setInterval(fetchCount, 15000);
+
+            // Refresh list when opened
+            btn.addEventListener('click', () => { if (!dd.classList.contains('hidden')) fetchRecent(); });
+        })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+

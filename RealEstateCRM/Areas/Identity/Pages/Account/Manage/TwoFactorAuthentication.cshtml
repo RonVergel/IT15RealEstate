@@ -1,0 +1,40 @@
+@page
+@model RealEstateCRM.Areas.Identity.Pages.Account.Manage.TwoFactorAuthenticationModel
+@{
+    ViewData["Title"] = "Two-factor authentication";
+    ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+}
+
+<section class="bg-white border border-gray-200 rounded-lg p-6">
+    <h1 class="text-xl font-semibold text-gray-900 mb-4">Two‑factor authentication</h1>
+    <p class="text-sm text-gray-600 mb-4">Add an extra layer of security to your account.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <div class="text-sm text-gray-500">Status</div>
+            <div class="mt-1">
+                @if (Model.Is2faEnabled)
+                {
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-700">Enabled</span>
+                }
+                else
+                {
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700">Disabled</span>
+                }
+            </div>
+        </div>
+        <div>
+            <div class="text-sm text-gray-500">Authenticator app</div>
+            <div class="mt-1 text-sm text-gray-900">@(Model.HasAuthenticator ? "Configured" : "Not configured")</div>
+        </div>
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-2">
+        <a class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" asp-page="./EnableAuthenticator">Enable authenticator</a>
+        <a class="px-4 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-50" asp-page="./ResetAuthenticator">Reset authenticator</a>
+        <a class="px-4 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-50" asp-page="./GenerateRecoveryCodes">Recovery codes</a>
+    </div>
+</section>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+

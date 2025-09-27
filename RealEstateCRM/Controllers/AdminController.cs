@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+ï»¿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.Linq; // added for LINQ
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace RealEstateCRM.Controllers
 {
@@ -49,9 +50,18 @@ namespace RealEstateCRM.Controllers
             var model = new List<AgentViewModel>();
             foreach (var u in agentUsers)
             {
-                // Skip users who are also Brokers — show only pure Agents in Manage Agents
+                // Skip users who are also Brokers - show only pure Agents in Manage Agents
                 var isBroker = await _userManager.IsInRoleAsync(u, "Broker");
                 if (isBroker) continue;
+
+                // Try to read FullName claim
+                string? fullName = null;
+                try
+                {
+                    var claims = await _userManager.GetClaimsAsync(u);
+                    fullName = claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                }
+                catch { }
 
                 model.Add(new AgentViewModel
                 {
@@ -60,7 +70,9 @@ namespace RealEstateCRM.Controllers
                     Email = u.Email,
                     EmailConfirmed = u.EmailConfirmed,
                     LockoutEnd = u.LockoutEnd,
-                    IsBroker = false
+                    IsBroker = false,
+                    FullName = fullName,
+                    PhoneNumber = u.PhoneNumber
                 });
             }
 
@@ -151,7 +163,7 @@ namespace RealEstateCRM.Controllers
         {
             if (!ModelState.IsValid)
             {
-                // preserve simple feedback path for the UI — return to dashboard with errors
+                // preserve simple feedback path for the UI â€” return to dashboard with errors
                 TempData["ErrorMessage"] = "Invalid input. Please check the form.";
                 return LocalRedirect(returnUrl);
             }
@@ -185,6 +197,17 @@ namespace RealEstateCRM.Controllers
                 return LocalRedirect(returnUrl);
             }
 
+            // Optional: store phone and full name without schema changes
+            if (!string.IsNullOrWhiteSpace(model.PhoneNumber))
+            {
+                user.PhoneNumber = model.PhoneNumber.Trim();
+                await _userManager.UpdateAsync(user);
+            }
+            if (!string.IsNullOrWhiteSpace(model.Name))
+            {
+                await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim("FullName", model.Name.Trim()));
+            }
+
             // Ensure Agent role exists and add user to it
             if (!await _role_manager.RoleExistsAsync("Agent"))
             {
@@ -209,16 +232,19 @@ namespace RealEstateCRM.Controllers
                 pageHandler: null,
                 values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
                 protocol: Request.Scheme);
+            var loginUrl = Url.Page(
+                "/Account/Login",
+                pageHandler: null,
+                values: new { area = "Identity", returnUrl = returnUrl },
+                protocol: Request.Scheme);
 
             var emailBody = $@"
                 <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                     <div style='max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
-                        <h2 style='text-align: center; color: #0056b3;'>Welcome to Real Estate CRM!</h2>
-                        <p>An admin has created an account for you. Please confirm your email address to activate the account.</p>
+                        <h2 style='text-align: center; color: #0056b3;'>Welcome to Real Estate CRM!</h2>\r\n                        <p>An admin has created an account for you. Please confirm your email address to activate the account.</p>\r\n\r\n                        <h3 style='margin-top: 24px; margin-bottom: 8px;'>Your Login Details</h3>\r\n                        <ul style='padding-left: 18px; margin-top: 0;'>\r\n                            <li>Email: <strong>{HtmlEncoder.Default.Encode(model.Email)}</strong></li>\r\n                            <li>Temporary Password: <strong>{HtmlEncoder.Default.Encode(model.Password)}</strong></li>\r\n                        </ul>\r\n                        <p style='font-size: 12px; color: #666; margin-top: 6px;'>For your security, please change your password after your first sign-in.</p>
                         <div style='text-align: center; margin: 30px 0;'>
                             <a href='{HtmlEncoder.Default.Encode(callbackUrl)}' style='background-color: #0056b3; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Confirm Your Account</a>
-                        </div>
-                        <p>If you are having trouble with the button above, please copy and paste the URL below into your web browser:</p>
+                        </div>\r\n                        <div style='text-align: center; margin: 10px 0;'>\r\n                            <a href='{HtmlEncoder.Default.Encode(loginUrl)}' style='color: #0056b3; text-decoration: underline;'>Go to Login</a>\r\n                        </div>\r\n                        <p>If you are having trouble with the button above, please copy and paste the URL below into your web browser:</p>
                         <p style='word-break: break-all; font-size: 12px;'><a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>{HtmlEncoder.Default.Encode(callbackUrl)}</a></p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'/>
                         <p style='font-size: 12px; color: #888;'>If you did not expect this account, please contact your administrator.</p>
@@ -244,6 +270,13 @@ namespace RealEstateCRM.Controllers
     public class CreateAgentRequest
     {
         [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Phone]
+        [System.ComponentModel.DataAnnotations.Display(Name = "Phone Number")]
+        public string? PhoneNumber { get; set; }
+        [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.EmailAddress]
         public string Email { get; set; } = string.Empty;
 
@@ -268,5 +301,12 @@ namespace RealEstateCRM.Controllers
 
         // New: indicates whether this user is also a Broker
         public bool IsBroker { get; set; }
+
+        // New: preferred display name and phone
+        public string? FullName { get; set; }
+        public string? PhoneNumber { get; set; }
     }
 }
+
+
+

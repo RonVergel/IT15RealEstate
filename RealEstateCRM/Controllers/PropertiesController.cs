@@ -21,28 +21,78 @@ namespace RealEstateCRM.Controllers
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<PropertiesController> _logger;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly RealEstateCRM.Services.Notifications.INotificationService _notifications;
 
-        public PropertiesController(AppDbContext context, IWebHostEnvironment webHostEnvironment, ILogger<PropertiesController> logger, UserManager<IdentityUser> userManager)
+        public PropertiesController(AppDbContext context, IWebHostEnvironment webHostEnvironment, ILogger<PropertiesController> logger, UserManager<IdentityUser> userManager, RealEstateCRM.Services.Notifications.INotificationService notifications)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _logger = logger;
             _userManager = userManager;
+            _notifications = notifications;
         }
 
-        // GET: Properties/Index?page=1
+        // GET: Properties/Index with optional filters
+        // Example: /Properties?page=1&q=condo&propertyType=Residential&listingStatus=Active&minPrice=100000&maxPrice=500000&minBeds=2&minBaths=1&buyingType=Sell&assigned=unassigned
         [HttpGet]
-        public async Task<IActionResult> Index(int page = 1)
+        public async Task<IActionResult> Index(
+            int page = 1,
+            string? q = null,
+            string? propertyType = null,
+            string? listingStatus = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            int? minBeds = null,
+            int? minBaths = null,
+            string? buyingType = null,
+            string? assigned = null)
         {
             const int pageSize = 10;
 
             try
             {
-                var totalCount = await _context.Properties.CountAsync();
+                // Base query
+                var query = _context.Properties.AsQueryable();
+
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(q))
+                {
+                    var kw = q.Trim();
+                    // Case-insensitive search across common text fields
+                    query = query.Where(p =>
+                        (p.Title != null && EF.Functions.ILike(p.Title, "%" + kw + "%")) ||
+                        (p.Address != null && EF.Functions.ILike(p.Address, "%" + kw + "%")) ||
+                        (p.Description != null && EF.Functions.ILike(p.Description, "%" + kw + "%")) ||
+                        (p.Agent != null && EF.Functions.ILike(p.Agent, "%" + kw + "%"))
+                    );
+                }
+                if (!string.IsNullOrWhiteSpace(propertyType))
+                    query = query.Where(p => p.PropertyType == propertyType);
+                if (!string.IsNullOrWhiteSpace(listingStatus))
+                    query = query.Where(p => p.ListingStatus == listingStatus);
+                if (!string.IsNullOrWhiteSpace(buyingType))
+                    query = query.Where(p => p.Type == buyingType);
+                if (minPrice.HasValue)
+                    query = query.Where(p => p.Price >= minPrice.Value);
+                if (maxPrice.HasValue)
+                    query = query.Where(p => p.Price <= maxPrice.Value);
+                if (minBeds.HasValue)
+                    query = query.Where(p => (p.Bedrooms ?? 0) >= minBeds.Value);
+                if (minBaths.HasValue)
+                    query = query.Where(p => (p.Bathrooms ?? 0) >= minBaths.Value);
+                if (!string.IsNullOrWhiteSpace(assigned))
+                {
+                    if (string.Equals(assigned, "assigned", StringComparison.OrdinalIgnoreCase))
+                        query = query.Where(p => !string.IsNullOrEmpty(p.Agent));
+                    else if (string.Equals(assigned, "unassigned", StringComparison.OrdinalIgnoreCase))
+                        query = query.Where(p => string.IsNullOrEmpty(p.Agent));
+                }
+
+                var totalCount = await query.CountAsync();
                 var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
                 page = Math.Max(1, Math.Min(page, totalPages));
 
-                var properties = await _context.Properties
+                var properties = await query
                     .OrderByDescending(p => p.ListingTime)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
@@ -54,6 +104,37 @@ namespace RealEstateCRM.Controllers
                 ViewBag.TotalPages = totalPages;
                 ViewBag.PageSize = pageSize;
                 ViewBag.TotalCount = totalCount;
+
+                // Persist current filters in ViewBag for the view + pagination
+                ViewBag.Q = q;
+                ViewBag.FilterPropertyType = propertyType;
+                ViewBag.FilterListingStatus = listingStatus;
+                ViewBag.FilterMinPrice = minPrice;
+                ViewBag.FilterMaxPrice = maxPrice;
+                ViewBag.FilterMinBeds = minBeds;
+                ViewBag.FilterMinBaths = minBaths;
+                ViewBag.FilterBuyingType = buyingType;
+                ViewBag.FilterAssigned = assigned;
+
+                // For dropdown options, gather distinct values from DB
+                ViewBag.PropertyTypes = await _context.Properties
+                    .Select(p => p.PropertyType)
+                    .Where(s => s != null && s != "")
+                    .Distinct()
+                    .OrderBy(s => s)
+                    .ToListAsync();
+                ViewBag.ListingStatuses = await _context.Properties
+                    .Select(p => p.ListingStatus)
+                    .Where(s => s != null && s != "")
+                    .Distinct()
+                    .OrderBy(s => s)
+                    .ToListAsync();
+                ViewBag.BuyingTypes = await _context.Properties
+                    .Select(p => p.Type)
+                    .Where(s => s != null && s != "")
+                    .Distinct()
+                    .OrderBy(s => s)
+                    .ToListAsync();
 
                 return View(properties);
             }
@@ -100,8 +181,9 @@ namespace RealEstateCRM.Controllers
                 }
 
                 // Set default values for optional fields
-                property.ListingStatus ??= "Active";
-                property.ListingTime = property.ListingTime == default ? DateTime.Now : property.ListingTime;
+                // If an Agent is assigned upon creation, mark as Pending; else Active
+                property.ListingStatus = !string.IsNullOrWhiteSpace(property.Agent) ? "Pending" : (property.ListingStatus ?? "Active");
+                property.ListingTime = property.ListingTime == default ? DateTime.UtcNow : NormalizeToUtc(property.ListingTime);
 
                 // Automatically calculate SQFT from Area (sqm)
                 property.CalculateSQFT();
@@ -118,7 +200,7 @@ namespace RealEstateCRM.Controllers
                 // Calculate DaysOnMarket
                 if (property.ListingTime != default(DateTime))
                 {
-                    property.DaysOnMarket = (DateTime.Now - property.ListingTime).Days;
+                    property.DaysOnMarket = (DateTime.UtcNow - property.ListingTime).Days;
                 }
 
                 // Log validation state
@@ -180,11 +262,85 @@ namespace RealEstateCRM.Controllers
                 if (saveResult > 0)
                 {
                     _logger.LogInformation($"Property '{property.Title}' created successfully with ID {property.Id}");
+                    // Notify: property created
+                    try
+                    {
+                        var actor = await _userManager.GetUserAsync(User);
+                        string actorName = actor?.UserName ?? actor?.Email ?? "Someone";
+                        try
+                        {
+                            var claims = actor != null ? await _userManager.GetClaimsAsync(actor) : null;
+                            var fullName = claims?.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                            if (!string.IsNullOrWhiteSpace(fullName)) actorName = fullName;
+                        }
+                        catch { }
+
+                        var msg = $"{actorName} added a property: '{property.Title}'.";
+                        await _notifications.NotifyRoleAsync("Broker", msg, "/Properties", actor?.Id, "property:create");
+                        await _notifications.NotifyRoleAsync("Agent", msg, "/Properties", actor?.Id, "property:create");
+
+                        // If an agent was assigned on create, notify that specific agent
+                        if (!string.IsNullOrWhiteSpace(property.Agent))
+                        {
+                            try
+                            {
+                                var allUsers = _userManager.Users.ToList();
+                                foreach (var u in allUsers)
+                                {
+                                    var name = u.UserName ?? u.Email ?? string.Empty;
+                                    try
+                                    {
+                                        var c = await _userManager.GetClaimsAsync(u);
+                                        var full = c.FirstOrDefault(x => x.Type == "FullName")?.Value;
+                                        if (!string.IsNullOrWhiteSpace(full)) name = full;
+                                    }
+                                    catch { }
+
+                                    if (string.Equals(name, property.Agent, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        var agentMsg = $"{actorName} assigned you a property to review: '{property.Title}'.";
+                                        await _notifications.NotifyUserAsync(u.Id, agentMsg, "/PendingAssignments", actor?.Id, "assignment:new");
+                                        break;
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
                     
                     // Set success message in TempData
                     TempData["SuccessMessage"] = "Property Added Successfully";
-                    
-                    // Redirect to index (first page)
+
+                    // If an agent is assigned, decide redirect based on current user's role and identity
+                    if (!string.IsNullOrWhiteSpace(property.Agent))
+                    {
+                        try
+                        {
+                            var currentUser = await _userManager.GetUserAsync(User);
+                            var isAgent = currentUser != null && await _userManager.IsInRoleAsync(currentUser, "Agent");
+                            var isBroker = currentUser != null && await _userManager.IsInRoleAsync(currentUser, "Broker");
+
+                            string? displayName = currentUser?.UserName ?? currentUser?.Email;
+                            try
+                            {
+                                var claims = currentUser != null ? await _userManager.GetClaimsAsync(currentUser) : null;
+                                var fullName = claims?.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                                if (!string.IsNullOrWhiteSpace(fullName)) displayName = fullName;
+                            }
+                            catch { }
+
+                            // Only send to Pending Assignments if the current user is the same assigned Agent (agent-only view)
+                            if (isAgent && !isBroker && !string.IsNullOrWhiteSpace(displayName) &&
+                                property.Agent.Equals(displayName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return RedirectToAction("Index", "PendingAssignments");
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // Default: go back to Properties list
                     return RedirectToAction(nameof(Index));
                 }
                 else
@@ -316,6 +472,9 @@ namespace RealEstateCRM.Controllers
                     return Json(new { success = false, message = "Property not found" });
                 }
 
+                // Track original agent for assignment-change detection
+                var originalAgent = existingProperty.Agent;
+
                 // Update properties with null-safe assignments
                 existingProperty.Title = !string.IsNullOrWhiteSpace(property.Title) ? property.Title : existingProperty.Title;
                 existingProperty.Address = !string.IsNullOrWhiteSpace(property.Address) ? property.Address : existingProperty.Address;
@@ -329,8 +488,14 @@ namespace RealEstateCRM.Controllers
                 existingProperty.ListingTime = property.ListingTime != default(DateTime) ? property.ListingTime : existingProperty.ListingTime;
                 existingProperty.PropertyLink = property.PropertyLink ?? existingProperty.PropertyLink;
                 
-                // FIX: Allow agent to be updated to empty string (was causing the issue)
+                // Allow agent to be updated (including empty string). If assigning to a non-empty and different agent, mark as Pending.
                 existingProperty.Agent = property.Agent; // This allows setting agent to empty string
+                var agentAssignedOrChanged = !string.IsNullOrWhiteSpace(existingProperty.Agent) &&
+                    !string.Equals(originalAgent ?? string.Empty, existingProperty.Agent, StringComparison.OrdinalIgnoreCase);
+                if (agentAssignedOrChanged)
+                {
+                    existingProperty.ListingStatus = "Pending";
+                }
                 
                 existingProperty.Description = property.Description ?? existingProperty.Description;
 
@@ -341,7 +506,7 @@ namespace RealEstateCRM.Controllers
                 // Calculate DaysOnMarket
                 if (existingProperty.ListingTime != default(DateTime))
                 {
-                    existingProperty.DaysOnMarket = (DateTime.Now - existingProperty.ListingTime).Days;
+                    existingProperty.DaysOnMarket = (DateTime.UtcNow - existingProperty.ListingTime).Days;
                 }
 
                 // Handle image upload if provided
@@ -375,7 +540,50 @@ namespace RealEstateCRM.Controllers
                     
                     // Set success message in TempData
                     TempData["SuccessMessage"] = "Property Updated Successfully";
-                    
+
+                    // If a broker assigned or changed an agent, notify that agent
+                    try
+                    {
+                        var currentUser = await _userManager.GetUserAsync(User);
+                        var isBroker = currentUser != null && await _userManager.IsInRoleAsync(currentUser, "Broker");
+                        if (agentAssignedOrChanged && isBroker && !string.IsNullOrWhiteSpace(existingProperty.Agent))
+                        {
+                            string actorName = currentUser?.UserName ?? currentUser?.Email ?? "Broker";
+                            try
+                            {
+                                var claims = currentUser != null ? await _userManager.GetClaimsAsync(currentUser) : null;
+                                var fullName = claims?.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                                if (!string.IsNullOrWhiteSpace(fullName)) actorName = fullName;
+                            }
+                            catch { }
+
+                            var agentMsg = $"{actorName} assigned you a property to review: '{existingProperty.Title}'.";
+                            try
+                            {
+                                var allUsers = _userManager.Users.ToList();
+                                foreach (var u in allUsers)
+                                {
+                                    var name = u.UserName ?? u.Email ?? string.Empty;
+                                    try
+                                    {
+                                        var c = await _userManager.GetClaimsAsync(u);
+                                        var full = c.FirstOrDefault(x => x.Type == "FullName")?.Value;
+                                        if (!string.IsNullOrWhiteSpace(full)) name = full;
+                                    }
+                                    catch { }
+
+                                    if (string.Equals(name, existingProperty.Agent, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        await _notifications.NotifyUserAsync(u.Id, agentMsg, "/PendingAssignments", currentUser?.Id, "assignment:new");
+                                        break;
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+
                     return Json(new { success = true, message = "Property updated successfully" });
                 }
                 else
@@ -420,7 +628,7 @@ namespace RealEstateCRM.Controllers
                 if (dto.PropertyType != null) existingProperty.PropertyType = dto.PropertyType;
                 if (dto.Type != null) existingProperty.Type = dto.Type;
                 if (dto.ListingStatus != null) existingProperty.ListingStatus = dto.ListingStatus;
-                if (dto.ListingTime.HasValue) existingProperty.ListingTime = dto.ListingTime.Value;
+                if (dto.ListingTime.HasValue) existingProperty.ListingTime = NormalizeToUtc(dto.ListingTime.Value);
                 if (dto.PropertyLink != null) existingProperty.PropertyLink = dto.PropertyLink;
 
                 // Allow agent to be set to empty string explicitly; if dto.Agent is null, keep existing
@@ -434,7 +642,7 @@ namespace RealEstateCRM.Controllers
 
                 if (existingProperty.ListingTime != default(DateTime))
                 {
-                    existingProperty.DaysOnMarket = (DateTime.Now - existingProperty.ListingTime).Days;
+                    existingProperty.DaysOnMarket = (DateTime.UtcNow - existingProperty.ListingTime).Days;
                 }
 
                 _context.Properties.Update(existingProperty);
@@ -453,6 +661,116 @@ namespace RealEstateCRM.Controllers
                 _logger.LogError(ex, $"Error updating property (JSON) id={dto.Id}");
                 return Json(new { success = false, message = "An error occurred while updating the property. Please try again." });
             }
+        }
+
+        // POST: Properties/AcceptAssignment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AcceptAssignment(int id)
+        {
+            var prop = await _context.Properties.FindAsync(id);
+            if (prop == null) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            string? displayName = user?.UserName ?? user?.Email;
+            try
+            {
+                var claims = user != null ? await _userManager.GetClaimsAsync(user) : null;
+                var fullName = claims?.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                if (!string.IsNullOrWhiteSpace(fullName)) displayName = fullName;
+            }
+            catch { }
+
+            if (!string.IsNullOrWhiteSpace(prop.Agent) && !string.IsNullOrWhiteSpace(displayName) && !prop.Agent.Equals(displayName, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            // 1) Accept assignment: mark property Active
+            prop.ListingStatus = "Active"; // accepted -> move out of Pending
+            _context.Properties.Update(prop);
+
+            // 2) Ensure a Deal exists in "New" status for this property
+            var existingDeal = await _context.Deals.FirstOrDefaultAsync(d => d.PropertyId == prop.Id);
+            if (existingDeal == null)
+            {
+                var maxDisplayOrder = await _context.Deals
+                    .Where(d => d.Status == "New")
+                    .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+
+                var newDeal = new Deal
+                {
+                    PropertyId = prop.Id,
+                    Title = string.IsNullOrWhiteSpace(prop.Title) ? $"Property #{prop.Id}" : prop.Title,
+                    Description = prop.Description,
+                    AgentName = displayName,
+                    Status = "New",
+                    DisplayOrder = maxDisplayOrder + 1,
+                    CreatedDate = DateTime.UtcNow,
+                    LastUpdated = DateTime.UtcNow
+                };
+                _context.Deals.Add(newDeal);
+            }
+            else
+            {
+                // Move existing deal to New and assign the agent
+                var maxDisplayOrder = await _context.Deals
+                    .Where(d => d.Status == "New")
+                    .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+                existingDeal.Status = "New";
+                existingDeal.AgentName = displayName;
+                existingDeal.DisplayOrder = maxDisplayOrder + 1;
+                existingDeal.LastUpdated = DateTime.UtcNow;
+                _context.Deals.Update(existingDeal);
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Notify brokers that the agent accepted the assignment
+            try
+            {
+                var actor = await _userManager.GetUserAsync(User);
+                string actorName = displayName ?? actor?.UserName ?? actor?.Email ?? "Agent";
+                var msg = $"{actorName} accepted an assignment: '{prop.Title}'.";
+                await _notifications.NotifyRoleAsync("Broker", msg, "/Deals", actor?.Id, "assignment:accepted");
+            }
+            catch { }
+
+            TempData["SuccessMessage"] = "Assignment accepted. Deal created in 'New'.";
+            return RedirectToAction("Index", "Deals");
+        }
+
+        // POST: Properties/DeclineAssignment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeclineAssignment(int id)
+        {
+            var prop = await _context.Properties.FindAsync(id);
+            if (prop == null) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            string? displayName = user?.UserName ?? user?.Email;
+            try
+            {
+                var claims = user != null ? await _userManager.GetClaimsAsync(user) : null;
+                var fullName = claims?.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                if (!string.IsNullOrWhiteSpace(fullName)) displayName = fullName;
+            }
+            catch { }
+
+            if (!string.IsNullOrWhiteSpace(prop.Agent) && !string.IsNullOrWhiteSpace(displayName) && !prop.Agent.Equals(displayName, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            // Decline -> unassign and activate back to properties pool
+            prop.Agent = null;
+            prop.ListingStatus = "Active";
+            _context.Properties.Update(prop);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Assignment declined.";
+            return RedirectToAction("Index", "PendingAssignments");
         }
 
         // GET: Properties/GetAgents?q=searchTerm
@@ -500,9 +818,21 @@ namespace RealEstateCRM.Controllers
                             );
                         }
 
-                        var userAgents = filteredUsers
-                            .Select(u => new AgentDto { Id = $"u:{u.Id}", Name = string.IsNullOrEmpty(u.UserName) ? u.Email ?? u.Id : u.UserName })
-                            .ToList();
+                        var userAgents = new List<AgentDto>();
+                        foreach (var u in filteredUsers)
+                        {
+                            string? fullName = null;
+                            try
+                            {
+                                var claims = await _userManager.GetClaimsAsync(u);
+                                fullName = claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                            }
+                            catch { }
+                            var display = !string.IsNullOrWhiteSpace(fullName)
+                                ? fullName
+                                : (!string.IsNullOrEmpty(u.UserName) ? u.UserName : (u.Email ?? u.Id));
+                            userAgents.Add(new AgentDto { Id = $"u:{u.Id}", Name = display });
+                        }
 
                         results.AddRange(userAgents);
                     }
@@ -641,6 +971,13 @@ namespace RealEstateCRM.Controllers
                 _logger.LogError(ex, "Error computing preferred property types for occupation {Occupation}", occupation);
                 return Json(new { success = false, message = "An error occurred" });
             }
+        }
+
+        private static DateTime NormalizeToUtc(DateTime dt)
+        {
+            if (dt.Kind == DateTimeKind.Utc) return dt;
+            if (dt.Kind == DateTimeKind.Unspecified) return DateTime.SpecifyKind(dt, DateTimeKind.Local).ToUniversalTime();
+            return dt.ToUniversalTime();
         }
     }
 

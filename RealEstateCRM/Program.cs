@@ -4,14 +4,19 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Services;
+using RealEstateCRM.Services.Notifications;
+
+// Relax legacy timestamp behavior to avoid hard failures on Unspecified kinds
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -43,6 +48,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 var app = builder.Build();
 
@@ -51,11 +57,30 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        await context.Database.EnsureDeletedAsync();
-        await context.Database.EnsureCreatedAsync();
+        try
+        {
+            var context = services.GetRequiredService<AppDbContext>();
+            // Create database if needed (no migrations)
+            await context.Database.EnsureCreatedAsync();
+            // Ensure Notifications table exists when database already existed
+            try
+            {
+                var sql = @"
+CREATE TABLE IF NOT EXISTS ""Notifications"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""RecipientUserId"" TEXT NULL,
+    ""ActorUserId"" TEXT NULL,
+    ""Message"" VARCHAR(512) NOT NULL,
+    ""LinkUrl"" VARCHAR(256) NULL,
+    ""IsRead"" BOOLEAN NOT NULL DEFAULT FALSE,
+    ""CreatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ""Type"" VARCHAR(64) NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read ON ""Notifications"" (""RecipientUserId"", ""IsRead"");
+";
+                await context.Database.ExecuteSqlRawAsync(sql);
+            }
+            catch { }
 
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
@@ -127,20 +152,21 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Always send root requests to the login page so the app lands on login on start.
-// This intentionally redirects only when the request path is exactly "/" or empty.
+// Handle root requests: send unauthenticated users to login, authenticated to dashboard
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/" || string.Equals(context.Request.Path, string.Empty, StringComparison.Ordinal))
     {
-        // Prevent redirect loop: if already on the login page, continue.
-        if (!context.Request.Path.StartsWithSegments("/Identity/Account/Login", StringComparison.OrdinalIgnoreCase))
+        if (context.User?.Identity?.IsAuthenticated == true)
+        {
+            context.Response.Redirect("/Dashboard/Index");
+        }
+        else
         {
             context.Response.Redirect("/Identity/Account/Login");
-            return;
         }
+        return;
     }
-
     await next();
 });
 

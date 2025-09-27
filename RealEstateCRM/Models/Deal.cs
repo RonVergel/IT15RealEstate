@@ -27,9 +27,9 @@ namespace RealEstateCRM.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal? OfferAmount { get; set; }
         
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         
-        public DateTime? LastUpdated { get; set; } = DateTime.Now;
+        public DateTime? LastUpdated { get; set; } = DateTime.UtcNow;
         
         public int DisplayOrder { get; set; } = 0;
     }

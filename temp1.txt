@@ -1,0 +1,58 @@
+                                    var full = c.FirstOrDefault(x => x.Type == "FullName")?.Value;
+                                    if (!string.IsNullOrWhiteSpace(full)) name = full;
+                                }
+                                catch { }
+
+                                if (string.Equals(name, deal.AgentName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    await _notifications.NotifyUserAsync(u.Id, msg, "/Deals", actor?.Id, "deal:create");
+                                    break;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+
+                TempData["SuccessMessage"] = "Deal Added";
+                return RedirectToAction(nameof(Index));
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Move deal between columns
+        [HttpPost]
+        public async Task<IActionResult> MoveDeal(int dealId, string newStatus)
+        {
+            var deal = await _context.Deals.FindAsync(dealId);
+            if (deal != null)
+            {
+                // Get the next display order for the new status
+                var maxDisplayOrder = await _context.Deals
+                    .Where(d => d.Status == newStatus)
+                    .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+
+                deal.Status = newStatus;
+                deal.DisplayOrder = maxDisplayOrder + 1;
+                deal.LastUpdated = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync();
+                return Ok();
+            }
+            return BadRequest();
+        }
+    }
+
+    // DTO for deal creation
+    public class CreateDealRequest
+    {
+        public int PropertyId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? AgentName { get; set; }
+        public string? ClientName { get; set; }
+        public decimal? OfferAmount { get; set; }
+    }
+}

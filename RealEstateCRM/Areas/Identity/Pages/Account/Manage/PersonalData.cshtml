@@ -1,0 +1,17 @@
+@page
+@model RealEstateCRM.Areas.Identity.Pages.Account.Manage.PersonalDataModel
+@{
+    ViewData["Title"] = "Personal data";
+    ViewData["ActivePage"] = ManageNavPages.PersonalData;
+}
+
+<section class="bg-white border border-gray-200 rounded-lg p-6">
+    <h1 class="text-xl font-semibold text-gray-900 mb-3">Personal data</h1>
+    <p class="text-sm text-gray-600 mb-4">You can download a copy of your personal data, or permanently delete your account.</p>
+
+    <div class="flex flex-wrap gap-3">
+        <a class="px-4 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-50" asp-page="./DownloadPersonalData">Download data</a>
+        <a class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" asp-page="./DeletePersonalData">Delete account</a>
+    </div>
+</section>
+

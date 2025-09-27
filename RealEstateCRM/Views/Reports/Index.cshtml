@@ -4,7 +4,7 @@
 }
 
 <!-- Header -->
-<div class="flex justify-between items-center mb-6">
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
     <div>
         <h1 class="text-3xl font-bold text-gray-800">@ViewData["Title"]</h1>
         <p class="text-gray-500">Key metrics and performance overview.</p>
@@ -14,7 +14,7 @@
 <!-- KPI Cards -->
 <div class="mb-8">
     <h2 class="text-xl font-semibold text-gray-800 mb-4">Performance (Last 30 Days)</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Total Sales Volume -->
         <div class="bg-white p-6 rounded-lg shadow-sm">
             <p class="text-gray-500 text-sm">Total Sales Volume</p>

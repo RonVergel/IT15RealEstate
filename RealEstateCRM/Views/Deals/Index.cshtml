@@ -1,18 +1,41 @@
-﻿@*
+@*
     For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 *@
 @{
-    ViewData["Title"] = "Deals";
+    ViewData["Title"] = ViewData["Title"] ?? "Deals";
     var placeholder = Url.Content("~/assets/images/property-placeholder.jpg");
     var avatarPlaceholder = Url.Content("~/assets/images/avatar-placeholder.png");
     var dealsByStatus = ViewBag.DealsByStatus as Dictionary<string, List<RealEstateCRM.Models.Deal>> ?? new Dictionary<string, List<RealEstateCRM.Models.Deal>>();
+    var isAllDeals = (ViewData["Title"]?.ToString() ?? "") == "All Deals";
+    var allAgents = dealsByStatus.Values
+        .SelectMany(l => l)
+        .Select(d => d.AgentName)
+        .Where(n => !string.IsNullOrWhiteSpace(n))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(n => n)
+        .ToList();
 }
 
-<div class="flex items-center justify-between mb-6">
-    <h1 class="font-semibold text-2xl">Deals</h1>
-    <button id="add-deal-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-        Add Deal
-    </button>
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <h1 class="font-semibold text-2xl">@ViewData["Title"]</h1>
+    <div class="flex items-center gap-3">
+        @if (isAllDeals && allAgents.Any())
+        {
+            <div class="flex items-center gap-2">
+                <label for="agent-filter" class="text-sm text-gray-700">Filter by Agent</label>
+                <select id="agent-filter" class="text-sm border border-gray-300 rounded-md px-2 py-1">
+                    <option value="__ALL__">All Agents</option>
+                    @foreach (var a in allAgents)
+                    {
+                        <option value="@a">@a</option>
+                    }
+                </select>
+            </div>
+        }
+        <button id="add-deal-btn" class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            Add Deal
+        </button>
+    </div>
 </div>
 
 <!-- Success/Error Toast Notification -->
@@ -48,15 +71,15 @@
         <div class="bg-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="New" title="Double-click to rename">
             <span class="column-title" data-status="New">New</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("New") ? dealsByStatus["New"].Count : 0))</span>
-            <button type="button" class="ml-2 text-rose-900/70 hover:text-rose-900 edit-title-btn" aria-label="Rename">✏️</button>
+            <button type="button" class="ml-2 text-rose-900/70 hover:text-rose-900 edit-title-btn" aria-label="Rename">??</button>
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="New">
             @if (dealsByStatus.ContainsKey("New"))
             {
                 @foreach (var deal in dealsByStatus["New"])
                 {
-                    <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
-                         data-deal-id="@deal.Id">
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-default"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName" data-price="@(deal.Property?.Price ?? 0)">
                         @if (deal.Property != null)
                         {
                             var imageSrc = !string.IsNullOrEmpty(deal.Property.ImagePath) ? Url.Content(deal.Property.ImagePath) : placeholder;
@@ -67,6 +90,12 @@
                                     @deal.Property.PropertyType
                                 </span>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(deal.AgentName))
+                            {
+                                <div class="mt-1">
+                                    <span class="text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">Agent: @deal.AgentName</span>
+                                </div>
+                            }
                             <p class="text-xs text-gray-500 mt-1">@deal.Property.Address</p>
                         }
                         else
@@ -115,15 +144,15 @@
         <div class="bg-lime-200 text-lime-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="OfferMade" title="Double-click to rename">
             <span class="column-title" data-status="OfferMade">Offer Made</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("OfferMade") ? dealsByStatus["OfferMade"].Count : 0))</span>
-            <button type="button" class="ml-2 text-lime-900/70 hover:text-lime-900 edit-title-btn" aria-label="Rename">✏️</button>
+            <button type="button" class="ml-2 text-lime-900/70 hover:text-lime-900 edit-title-btn" aria-label="Rename">??</button>
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="OfferMade">
             @if (dealsByStatus.ContainsKey("OfferMade"))
             {
                 @foreach (var deal in dealsByStatus["OfferMade"])
                 {
-                    <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
-                         data-deal-id="@deal.Id">
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
                         @if (deal.Property != null)
                         {
                             var imageSrc = !string.IsNullOrEmpty(deal.Property.ImagePath) ? Url.Content(deal.Property.ImagePath) : placeholder;
@@ -134,6 +163,12 @@
                                     @deal.Property.PropertyType
                                 </span>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(deal.AgentName))
+                            {
+                                <div class="mt-1">
+                                    <span class="text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">Agent: @deal.AgentName</span>
+                                </div>
+                            }
                             <p class="text-xs text-gray-500 mt-1">@deal.Property.Address</p>
                         }
                         else
@@ -182,15 +217,15 @@
         <div class="bg-yellow-200 text-yellow-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="Negotiation" title="Double-click to rename">
             <span class="column-title" data-status="Negotiation">Negotiation</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("Negotiation") ? dealsByStatus["Negotiation"].Count : 0))</span>
-            <button type="button" class="ml-2 text-yellow-900/70 hover:text-yellow-900 edit-title-btn" aria-label="Rename">✏️</button>
+            <button type="button" class="ml-2 text-yellow-900/70 hover:text-yellow-900 edit-title-btn" aria-label="Rename">??</button>
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="Negotiation">
             @if (dealsByStatus.ContainsKey("Negotiation"))
             {
                 @foreach (var deal in dealsByStatus["Negotiation"])
                 {
-                    <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
-                         data-deal-id="@deal.Id">
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
                         @if (deal.Property != null)
                         {
                             var imageSrc = !string.IsNullOrEmpty(deal.Property.ImagePath) ? Url.Content(deal.Property.ImagePath) : placeholder;
@@ -201,6 +236,12 @@
                                     @deal.Property.PropertyType
                                 </span>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(deal.AgentName))
+                            {
+                                <div class="mt-1">
+                                    <span class="text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">Agent: @deal.AgentName</span>
+                                </div>
+                            }
                             <p class="text-xs text-gray-500 mt-1">@deal.Property.Address</p>
                         }
                         else
@@ -249,15 +290,15 @@
         <div class="bg-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="ContractDraft" title="Double-click to rename">
             <span class="column-title" data-status="ContractDraft">Contract Draft</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("ContractDraft") ? dealsByStatus["ContractDraft"].Count : 0))</span>
-            <button type="button" class="ml-2 text-emerald-900/70 hover:text-emerald-900 edit-title-btn" aria-label="Rename">✏️</button>
+            <button type="button" class="ml-2 text-emerald-900/70 hover:text-emerald-900 edit-title-btn" aria-label="Rename">??</button>
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="ContractDraft">
             @if (dealsByStatus.ContainsKey("ContractDraft"))
             {
                 @foreach (var deal in dealsByStatus["ContractDraft"])
                 {
-                    <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
-                         data-deal-id="@deal.Id">
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
                         @if (deal.Property != null)
                         {
                             var imageSrc = !string.IsNullOrEmpty(deal.Property.ImagePath) ? Url.Content(deal.Property.ImagePath) : placeholder;
@@ -268,6 +309,12 @@
                                     @deal.Property.PropertyType
                                 </span>
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(deal.AgentName))
+                            {
+                                <div class="mt-1">
+                                    <span class="text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">Agent: @deal.AgentName</span>
+                                </div>
+                            }
                             <p class="text-xs text-gray-500 mt-1">@deal.Property.Address</p>
                         }
                         else
@@ -310,6 +357,98 @@
             }
         </div>
     </div>
+</div>
+
+<!-- Edit Offer Modal -->
+<div id="offer-modal" class="fixed inset-0 z-[10001] hidden">
+    <div class="absolute inset-0 bg-black/30" id="offer-modal-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="px-4 py-3 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Set Offer Amount</h3>
+                <button id="offer-close" class="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div class="p-4">
+                <form id="offer-form" class="space-y-4">
+                    <input type="hidden" id="offer-deal-id" />
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1" for="offer-input">Offer Amount</label>
+                        <input id="offer-input" type="number" step="0.01" class="w-full border rounded-md px-3 py-2" />
+                        <p id="offer-hint" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" id="offer-cancel" class="px-3 py-2 rounded-md border">Cancel</button>
+                        <button type="submit" class="px-3 py-2 rounded-md bg-blue-600 text-white">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        (function(){
+            const modal = document.getElementById('offer-modal');
+            const closeBtn = document.getElementById('offer-close');
+            const cancelBtn = document.getElementById('offer-cancel');
+            const form = document.getElementById('offer-form');
+            const dealIdEl = document.getElementById('offer-deal-id');
+            const inputEl = document.getElementById('offer-input');
+            const hintEl = document.getElementById('offer-hint');
+
+            function open(id, price){
+                dealIdEl.value = String(id);
+                // Set min/max based on property price (10% below to 100%)
+                const max = Number(price || 0);
+                const min = Math.round(max * 0.9 * 100) / 100;
+                if (max > 0){
+                    inputEl.min = String(min);
+                    inputEl.max = String(max);
+                    hintEl.textContent = `Allowed range: ${min.toLocaleString()} - ${max.toLocaleString()}`;
+                } else {
+                    inputEl.removeAttribute('min');
+                    inputEl.removeAttribute('max');
+                    hintEl.textContent = '';
+                }
+                inputEl.value = '';
+                modal.classList.remove('hidden');
+            }
+            function close(){ modal.classList.add('hidden'); }
+
+            window.openOfferModal = open;
+            closeBtn.addEventListener('click', close);
+            cancelBtn.addEventListener('click', close);
+            document.getElementById('offer-modal-backdrop').addEventListener('click', close);
+
+            form.addEventListener('submit', function(ev){
+                ev.preventDefault();
+                const id = dealIdEl.value;
+                const amount = inputEl.value;
+                fetch('/Deals/SetOffer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `dealId=${encodeURIComponent(id)}&offerAmount=${encodeURIComponent(amount)}`
+                }).then(r => {
+                    if(!r.ok){ return r.text().then(t => { throw new Error(t || 'Failed'); }); }
+                }).then(() => { location.reload(); })
+                .catch(err => { alert(err.message || 'Failed to save offer'); });
+            });
+
+            function attachNewCardHandlers(){
+                const newCol = document.querySelector('.deal-cards[data-stage="New"]');
+                if (!newCol) return;
+                newCol.querySelectorAll('.deal-card').forEach(c => {
+                    c.style.cursor = 'pointer';
+                    c.addEventListener('click', function(){
+                        const id = this.getAttribute('data-deal-id');
+                        const price = this.getAttribute('data-price');
+                        window.openOfferModal(id, Number(price || 0));
+                    });
+                });
+            }
+            if (document.readyState !== 'loading') attachNewCardHandlers();
+            document.addEventListener('DOMContentLoaded', attachNewCardHandlers);
+        })();
+    </script>
 </div>
 
 <!-- Add Deal Modal -->
@@ -411,10 +550,11 @@
 
                             <!-- Offer Amount -->
                             <div>
-                                <label for="offer-amount" class="block text-sm font-medium text-gray-700 mb-1">Offer Amount (₱)</label>
+                                <label for="offer-amount" class="block text-sm font-medium text-gray-700 mb-1">Offer Amount (?)</label>
                                 <input type="number" id="offer-amount" name="OfferAmount" min="0" step="0.01"
-                                       placeholder="e.g., 4500000"
+                                       placeholder="e.g., 4,500,000 (leave blank if none)"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <p id="offer-amount-hint" class="mt-1 text-xs text-gray-500"></p>
                             </div>
 
                             <div class="flex gap-3 pt-6">
@@ -486,6 +626,13 @@
                 showToast('@Html.Raw(TempData["SuccessMessage"])', 'success');
                 </text>
             }
+            // Check for error message from TempData
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <text>
+                showToast('@Html.Raw(TempData["ErrorMessage"])', 'error');
+                </text>
+            }
 
             // ----- Column name persistence (localStorage) -----
             const defaultColumnNames = {
@@ -513,7 +660,7 @@
                 if (names[status]) span.textContent = names[status];
             });
 
-            // Inline rename: double-click header OR click ✏️ button
+            // Inline rename: double-click header OR click ?? button
             function beginRename(headerEl) {
                 const titleSpan = headerEl.querySelector('.column-title');
                 const status = titleSpan.dataset.status;
@@ -560,43 +707,75 @@
 
             // ----- Drag-n-drop (existing) + live count update -----
             const pipelines = document.querySelectorAll('.deal-cards');
+            const isAllDeals = @(isAllDeals.ToString().ToLower());
             function refreshCounts() {
                 document.querySelectorAll('.editable-column-header').forEach(h => {
                     const status = h.dataset.status;
                     const list = document.querySelector(`.deal-cards[data-stage="${status}"]`);
                     const countEl = h.querySelector('.column-count');
-                    if (list && countEl) countEl.textContent = `(${list.children.length})`;
+                    if (list && countEl) {
+                        const visibleCount = isAllDeals
+                            ? Array.from(list.children).filter(el => !el.classList.contains('hidden')).length
+                            : list.children.length;
+                        countEl.textContent = `(${visibleCount})`;
+                    }
                 });
             }
 
-            pipelines.forEach(column => {
-                new Sortable(column, {
-                    group: 'deals',
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    dragClass: 'sortable-drag',
-                    onEnd: function (evt) {
-                        const dealId = evt.item.dataset.dealId;
-                        const newStatus = evt.to.dataset.stage;
+            // Only enable drag-and-drop when not viewing All Deals
+            if (!isAllDeals) {
+                pipelines.forEach(column => {
+                    const stage = column.getAttribute('data-stage');
+                    if (stage === 'New') return; // Disable dragging in New column
+                    // Sortable provided elsewhere globally
+                    new Sortable(column, {
+                        group: 'deals',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        onEnd: function (evt) {
+                            const dealId = evt.item.dataset.dealId;
+                            const newStatus = evt.to.dataset.stage;
 
-                        fetch('/Deals/MoveDeal', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `dealId=${dealId}&newStatus=${newStatus}`
-                        }).then(response => {
-                            if (!response.ok) {
-                                console.error('Failed to move deal');
-                                location.reload();
-                            } else {
-                                refreshCounts();
-                            }
-                        }).catch(() => refreshCounts());
-                    }
+                            fetch('/Deals/MoveDeal', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `dealId=${dealId}&newStatus=${newStatus}`
+                            }).then(response => {
+                                if (!response.ok) {
+                                    console.error('Failed to move deal');
+                                    location.reload();
+                                } else {
+                                    refreshCounts();
+                                }
+                            }).catch(() => refreshCounts());
+                        }
+                    });
                 });
-            });
+            }
 
             // Initial count sync (in case client moves later)
             refreshCounts();
+
+            // Agent filter for All Deals
+            if (isAllDeals) {
+                const agentFilter = document.getElementById('agent-filter');
+                const applyFilter = () => {
+                    const sel = agentFilter ? agentFilter.value : '__ALL__';
+                    const nodes = document.querySelectorAll('.deal-card');
+                    nodes.forEach(card => {
+                        const agent = (card.getAttribute('data-agent') || '').trim();
+                        const match = !sel || sel === '__ALL__' || agent.localeCompare(sel, undefined, { sensitivity: 'accent' }) === 0;
+                        if (match) card.classList.remove('hidden'); else card.classList.add('hidden');
+                    });
+                    refreshCounts();
+                };
+                if (agentFilter) {
+                    agentFilter.addEventListener('change', applyFilter);
+                    // Apply once on load to normalize counts
+                    applyFilter();
+                }
+            }
 
             // ----- Existing Add Deal modal JS updated to load Agents/Clients -----
             const addDealBtn = document.getElementById('add-deal-btn');
@@ -653,7 +832,7 @@
                     const opt = document.createElement('option');
                     // value posts AgentName/ClientName as text (UserName or Contact.Name)
                     opt.value = i.name;
-                    opt.textContent = i.name + (i.email ? (' — ' + i.email) : '');
+                    opt.textContent = i.name + (i.email ? (' � ' + i.email) : '');
                     selectEl.appendChild(opt);
                 });
             }
@@ -721,7 +900,7 @@
                         </div>
                         <p class="text-xs text-gray-600 mb-2 truncate">${property.address}</p>
                         <div class="flex justify-between items-center text-xs text-gray-500">
-                            <span>${property.bedrooms} 🛏️ ${property.bathrooms} 🛁</span>
+                            <span>${property.bedrooms} ??? ${property.bathrooms} ??</span>
                             <span class="font-semibold text-gray-900">₱ ${property.price.toLocaleString()}</span>
                         </div>
                     </div>
@@ -733,6 +912,16 @@
                         const propertyId = parseInt(this.dataset.propertyId);
                         selectedProperty = allProperties.find(p => p.id === propertyId);
                         nextStepBtn.disabled = false;
+                        // Set offer constraints when a property is selected
+                        const offerInput = document.getElementById('offer-amount');
+                        const hint = document.getElementById('offer-amount-hint');
+                        if (offerInput && selectedProperty) {
+                            const max = Number(selectedProperty.price || 0);
+                            const min = Math.round(max * 0.9 * 100) / 100; // 10% below price
+                            offerInput.min = String(min);
+                            offerInput.max = String(max);
+                            if (hint) hint.textContent = `Allowed range: ${min.toLocaleString()} - ${max.toLocaleString()}`;
+                        }
                     });
                 });
             }
@@ -746,7 +935,7 @@
                             <h5 class="font-semibold text-gray-900">${selectedProperty.title}</h5>
                             <p class="text-sm text-gray-600">${selectedProperty.address}</p>
                             <div class="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                                <span>${selectedProperty.bedrooms} 🛏️ ${selectedProperty.bathrooms} 🛁</span>
+                                <span>${selectedProperty.bedrooms} ??? ${selectedProperty.bathrooms} ??</span>
                                 <span>${selectedProperty.area} sqm</span>
                             </div>
                         </div>
@@ -760,6 +949,16 @@
                 `;
                 document.getElementById('selected-property-id').value = selectedProperty.id;
                 document.getElementById('deal-title').value = `Deal for ${selectedProperty.title}`;
+                // Ensure constraints are set on entering details step
+                const offerInput = document.getElementById('offer-amount');
+                const hint = document.getElementById('offer-amount-hint');
+                if (offerInput && selectedProperty) {
+                    const max = Number(selectedProperty.price || 0);
+                    const min = Math.round(max * 0.9 * 100) / 100;
+                    offerInput.min = String(min);
+                    offerInput.max = String(max);
+                    if (hint) hint.textContent = `Allowed range: ${min.toLocaleString()} - ${max.toLocaleString()}`;
+                }
             }
             function showPropertySelectionStep() {
                 dealDetailsStep.classList.add('hidden');
@@ -780,6 +979,40 @@
                     closeDealModal();
                 }
             });
+
+            // Validate offer amount on input and on submit
+            (function wireOfferValidation(){
+                const offerInput = document.getElementById('offer-amount');
+                const form = document.getElementById('deal-form');
+                const hint = document.getElementById('offer-amount-hint');
+                if (!offerInput || !form) return;
+
+                function checkOffer(e) {
+                    const raw = (offerInput.value || '').trim();
+                    // Allow empty offer amount — can be set later in Deals screen
+                    if (raw === '') {
+                        offerInput.classList.remove('border-red-500', 'focus:ring-red-400');
+                        return true;
+                    }
+
+                    const max = parseFloat(offerInput.max || '0');
+                    const min = parseFloat(offerInput.min || '0');
+                    const val = parseFloat(raw);
+                    const ok = !isNaN(val) && (val >= min) && (val <= max);
+                    offerInput.classList.toggle('border-red-500', !ok);
+                    offerInput.classList.toggle('focus:ring-red-400', !ok);
+                    if (!ok && e && e.type === 'submit') {
+                        e.preventDefault();
+                        const range = `between ${min.toLocaleString()} and ${max.toLocaleString()}`;
+                        showToast(`Offer must be ${range}.`, 'error');
+                        offerInput.focus();
+                    }
+                    return ok;
+                }
+
+                offerInput.addEventListener('input', () => checkOffer());
+                form.addEventListener('submit', (e) => checkOffer(e));
+            })();
         });
     </script>
 }

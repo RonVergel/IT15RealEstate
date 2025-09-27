@@ -43,7 +43,7 @@ namespace RealEstateCRM.Models
         public string? ListingStatus { get; set; }
         
         [Display(Name = "Listing Time")]
-        public DateTime ListingTime { get; set; } = DateTime.Now;
+        public DateTime ListingTime { get; set; } = DateTime.UtcNow;
         
         [Display(Name = "Days on Market")]
         public int? DaysOnMarket { get; set; }

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Models;
@@ -12,11 +12,13 @@ namespace RealEstateCRM.Controllers
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ContactsController> _logger;
+        private readonly Microsoft.AspNetCore.Identity.UI.Services.IEmailSender _emailSender;
 
-        public ContactsController(AppDbContext db, ILogger<ContactsController> logger)
+        public ContactsController(AppDbContext db, ILogger<ContactsController> logger, Microsoft.AspNetCore.Identity.UI.Services.IEmailSender emailSender)
         {
             _db = db;
             _logger = logger;
+            _emailSender = emailSender;
         }
 
         // GET: /Contacts/Index?page=1 - Exclude contacts with Type = "Lead" (paged)
@@ -56,6 +58,78 @@ namespace RealEstateCRM.Controllers
             }
         }
 
+        // GET: /Contacts/GetContact?id=123
+        [HttpGet]
+        public async Task<IActionResult> GetContact(int id)
+        {
+            try
+            {
+                var c = await _db.Contacts.FirstOrDefaultAsync(x => x.Id == id && x.IsActive);
+                if (c == null)
+                {
+                    return Json(new { success = false, message = "Contact not found" });
+                }
+                return Json(new
+                {
+                    success = true,
+                    id = c.Id,
+                    name = c.Name,
+                    email = c.Email,
+                    phone = c.Phone,
+                    type = c.Type,
+                    agent = c.Agent,
+                    // No Address field on Contact model; return empty for UI placeholder
+                    address = "",
+                    occupation = c.Occupation,
+                    salary = c.Salary,
+                    notes = c.Notes,
+                    dateCreated = c.DateCreated.ToString("MMM dd, yyyy"),
+                    lastContacted = c.LastContacted?.ToString("MMM dd, yyyy")
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving contact details for {Id}", id);
+                return Json(new { success = false, message = "An error occurred while retrieving the contact" });
+            }
+        }
+
+        // POST: /Contacts/SendEmail
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendEmail(int contactId, string subject, string body)
+        {
+            try
+            {
+                var c = await _db.Contacts.FindAsync(contactId);
+                if (c == null || !c.IsActive)
+                {
+                    return Json(new { success = false, message = "Contact not found or inactive." });
+                }
+                if (string.IsNullOrWhiteSpace(c.Email))
+                {
+                    return Json(new { success = false, message = "This contact has no email address." });
+                }
+                if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(body))
+                {
+                    return Json(new { success = false, message = "Subject and message are required." });
+                }
+
+                await _emailSender.SendEmailAsync(c.Email!, subject.Trim(), body);
+
+                // Update LastContacted
+                c.LastContacted = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Email sent.", lastContacted = c.LastContacted?.ToString("MMM dd, yyyy") });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send email to contact {Id}", contactId);
+                return Json(new { success = false, message = "Failed to send email. Please try again." });
+            }
+        }
+
         // POST: /Contacts/CreateContact
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -66,7 +140,7 @@ namespace RealEstateCRM.Controllers
             {
                 try
                 {
-                    contact.DateCreated = DateTime.Now;
+                    contact.DateCreated = DateTime.UtcNow;
                     contact.IsActive = true;
 
                     _db.Contacts.Add(contact);
@@ -102,7 +176,7 @@ namespace RealEstateCRM.Controllers
                 }
             }
 
-            // If we got this far, something failed � display first page with validation errors
+            // If we got this far, something failed — display first page with validation errors
             var totalCount = await _db.Contacts.Where(c => c.IsActive && c.Type != "Lead").CountAsync();
             var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
             var page = 1;
@@ -274,7 +348,19 @@ namespace RealEstateCRM.Controllers
                 {
                     if (DateTime.TryParse(lastContacted, out DateTime parsedDate))
                     {
-                        newLastContacted = parsedDate;
+                        // Normalize to UTC for PostgreSQL timestamptz
+                        if (parsedDate.Kind == DateTimeKind.Unspecified)
+                        {
+                            newLastContacted = DateTime.SpecifyKind(parsedDate, DateTimeKind.Local).ToUniversalTime();
+                        }
+                        else if (parsedDate.Kind == DateTimeKind.Local)
+                        {
+                            newLastContacted = parsedDate.ToUniversalTime();
+                        }
+                        else
+                        {
+                            newLastContacted = parsedDate;
+                        }
                     }
                     else
                     {
@@ -346,3 +432,4 @@ namespace RealEstateCRM.Controllers
         }
     }
 }
+

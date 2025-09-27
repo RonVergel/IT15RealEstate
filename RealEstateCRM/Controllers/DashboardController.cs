@@ -10,6 +10,7 @@ using System;
 
 namespace RealEstateCRM.Controllers
 {
+    [Authorize]
     public class DashboardController : Controller
     {
         private readonly AppDbContext _context;
@@ -19,7 +20,6 @@ namespace RealEstateCRM.Controllers
             _context = context;
         }
 
-        [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
             var pipelineData = await _context.Deals
@@ -195,12 +195,12 @@ namespace RealEstateCRM.Controllers
 
             // Build last 12 month windows (from oldest -> newest)
             var monthWindows = Enumerable.Range(0, 12)
-                .Select(i => DateTime.Now.AddMonths(-11 + i))
+                .Select(i => DateTime.UtcNow.AddMonths(-11 + i))
                 .Select(d => new { Year = d.Year, Month = d.Month, Label = d.ToString("MMM yyyy") })
                 .ToList();
 
             var startDate = monthWindows.First();
-            DateTime fromDate = new DateTime(startDate.Year, startDate.Month, 1);
+            DateTime fromDate = new DateTime(startDate.Year, startDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
             // Query DB for averages per year/month for clients with salary
             var monthlyAvgQuery = await _context.Contacts

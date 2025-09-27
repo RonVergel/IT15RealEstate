@@ -16,6 +16,7 @@ namespace RealEstateCRM.Data
         public DbSet<Lead> Leads { get; set; }
         public DbSet<Property> Properties { get; set; }
         public DbSet<Deal> Deals { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
