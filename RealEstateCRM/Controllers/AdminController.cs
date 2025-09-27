@@ -10,6 +10,10 @@ using System.Linq; // added for LINQ
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using RealEstateCRM.Data;
 
 namespace RealEstateCRM.Controllers
 {
@@ -20,17 +24,20 @@ namespace RealEstateCRM.Controllers
         private readonly RoleManager<IdentityRole> _role_manager;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<AdminController> _logger;
+        private readonly AppDbContext _context;
 
         public AdminController(
             UserManager<IdentityUser> userManager,
             RoleManager<IdentityRole> roleManager,
             IEmailSender emailSender,
-            ILogger<AdminController> logger)
+            ILogger<AdminController> logger,
+            AppDbContext context)
         {
             _userManager = userManager;
             _role_manager = roleManager; // kept name consistent below
             _emailSender = emailSender;
             _logger = logger;
+            _context = context;
         }
 
         // GET: /Admin
@@ -56,10 +63,12 @@ namespace RealEstateCRM.Controllers
 
                 // Try to read FullName claim
                 string? fullName = null;
+                string? avatar = null;
                 try
                 {
                     var claims = await _userManager.GetClaimsAsync(u);
                     fullName = claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                    avatar = claims.FirstOrDefault(c => c.Type == "AvatarUrl")?.Value;
                 }
                 catch { }
 
@@ -72,11 +81,155 @@ namespace RealEstateCRM.Controllers
                     LockoutEnd = u.LockoutEnd,
                     IsBroker = false,
                     FullName = fullName,
-                    PhoneNumber = u.PhoneNumber
+                    PhoneNumber = u.PhoneNumber,
+                    AvatarUrl = avatar
                 });
             }
 
             return View(model);
+        }
+
+        // Quick JSON summary for a given agent
+        [HttpGet]
+        public async Task<IActionResult> AgentSummary(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            string displayName = user.UserName ?? user.Email ?? string.Empty;
+            string? fullName = null; string? avatar = null;
+            try
+            {
+                var claims = await _userManager.GetClaimsAsync(user);
+                fullName = claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                avatar = claims.FirstOrDefault(c => c.Type == "AvatarUrl")?.Value;
+            }
+            catch { }
+            if (!string.IsNullOrWhiteSpace(fullName)) displayName = fullName;
+
+            // Aggregate deals assigned to this agent (match on AgentName)
+            var dealsQuery = _context.Deals.Include(d => d.Property)
+                .Where(d => d.AgentName != null && (EF.Functions.ILike(d.AgentName!, displayName) || EF.Functions.ILike(d.AgentName!, (user.UserName ?? string.Empty)) || EF.Functions.ILike(d.AgentName!, (user.Email ?? string.Empty))));
+
+            var byStatus = await dealsQuery
+                .GroupBy(d => d.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            int get(string s) => byStatus.FirstOrDefault(x => x.Status == s)?.Count ?? 0;
+            var total = byStatus.Sum(x => x.Count);
+
+            var recentDeals = await dealsQuery
+                .OrderByDescending(d => d.LastUpdated)
+                .Take(5)
+                .Select(d => new {
+                    id = d.Id,
+                    title = d.Title,
+                    property = d.Property != null ? d.Property.Title : "",
+                    price = d.Property != null ? d.Property.Price : 0,
+                    offerAmount = d.OfferAmount,
+                    status = d.Status,
+                    lastUpdated = d.LastUpdated
+                })
+                .ToListAsync();
+
+            var payload = new {
+                id = user.Id,
+                name = displayName,
+                email = user.Email,
+                phone = user.PhoneNumber,
+                emailConfirmed = user.EmailConfirmed,
+                lockoutEnd = user.LockoutEnd,
+                avatarUrl = avatar,
+                deals = new {
+                    total,
+                    newCount = get("New"),
+                    offerMade = get("OfferMade"),
+                    negotiation = get("Negotiation"),
+                    contractDraft = get("ContractDraft"),
+                    closed = get("Closed"),
+                    recent = recentDeals
+                }
+            };
+
+            return Json(payload);
+        }
+
+        // Manage actions
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LockAgent(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+            user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
+            await _userManager.UpdateAsync(user);
+            // Force current sessions to revalidate and sign out
+            try { await _userManager.UpdateSecurityStampAsync(user); } catch { }
+            return Ok();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UnlockAgent(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+            user.LockoutEnd = null;
+            await _userManager.UpdateAsync(user);
+            // Optionally rotate stamp to ensure clean sign-in next request
+            try { await _userManager.UpdateSecurityStampAsync(user); } catch { }
+            return Ok();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendConfirmation(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+            if (string.IsNullOrWhiteSpace(user.Email)) return BadRequest("User has no email.");
+
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+            var callbackUrl = Url.Page(
+                "/Account/ConfirmEmail",
+                pageHandler: null,
+                values: new { area = "Identity", userId = user.Id, code = code, returnUrl = "/Dashboard" },
+                protocol: Request.Scheme);
+
+            var body = $@"<p>Please confirm your account for Real Estate CRM:</p><p><a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Confirm Email</a></p>";
+            await _emailSender.SendEmailAsync(user.Email, "Confirm your email", body);
+            return Ok();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAgent(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            // Don't allow deleting brokers
+            if (await _userManager.IsInRoleAsync(user, "Broker")) return BadRequest("Cannot delete a Broker.");
+
+            // Prevent deletion if user is referenced as Agent on any deal
+            string display = user.UserName ?? user.Email ?? string.Empty;
+            try
+            {
+                var claims = await _userManager.GetClaimsAsync(user);
+                var full = claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+                if (!string.IsNullOrWhiteSpace(full)) display = full;
+            }
+            catch { }
+
+            var hasDeals = await _context.Deals.AnyAsync(d => d.AgentName != null &&
+                (d.AgentName == display || d.AgentName == user.UserName || d.AgentName == user.Email));
+            if (hasDeals) return BadRequest("Cannot delete agent with existing deals.");
+
+            await _userManager.DeleteAsync(user);
+            return Ok();
         }
 
         // Promote an existing user (by email) to Broker
@@ -159,7 +312,7 @@ namespace RealEstateCRM.Controllers
         // Create an agent account (used by admin modal)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateAgent([FromForm] CreateAgentRequest model, string returnUrl = "/Dashboard")
+        public async Task<IActionResult> CreateAgent([FromForm] CreateAgentRequest model, IFormFile? Photo, string returnUrl = "/Dashboard")
         {
             if (!ModelState.IsValid)
             {
@@ -207,6 +360,42 @@ namespace RealEstateCRM.Controllers
             {
                 await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim("FullName", model.Name.Trim()));
             }
+
+            // Optional: handle agent photo upload and store as claim AvatarUrl
+            try
+            {
+                if (Photo != null && Photo.Length > 0)
+                {
+                    var allowed = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+                    if (allowed.Contains(Photo.ContentType) && Photo.Length <= 5 * 1024 * 1024)
+                    {
+                        var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "agents");
+                        if (!Directory.Exists(uploadsRoot)) Directory.CreateDirectory(uploadsRoot);
+                        var ext = Path.GetExtension(Photo.FileName);
+                        if (string.IsNullOrWhiteSpace(ext))
+                        {
+                            // fallback by content type
+                            ext = Photo.ContentType switch
+                            {
+                                "image/jpeg" => ".jpg",
+                                "image/png" => ".png",
+                                "image/gif" => ".gif",
+                                "image/webp" => ".webp",
+                                _ => ".img"
+                            };
+                        }
+                        var fileName = $"agent_{Guid.NewGuid():N}{ext}";
+                        var filePath = Path.Combine(uploadsRoot, fileName);
+                        using (var stream = System.IO.File.Create(filePath))
+                        {
+                            await Photo.CopyToAsync(stream);
+                        }
+                        var relative = $"/uploads/agents/{fileName}";
+                        await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim("AvatarUrl", relative));
+                    }
+                }
+            }
+            catch { }
 
             // Ensure Agent role exists and add user to it
             if (!await _role_manager.RoleExistsAsync("Agent"))
@@ -305,6 +494,9 @@ namespace RealEstateCRM.Controllers
         // New: preferred display name and phone
         public string? FullName { get; set; }
         public string? PhoneNumber { get; set; }
+
+        // New: avatar url (claim stored)
+        public string? AvatarUrl { get; set; }
     }
 }
 

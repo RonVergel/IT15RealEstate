@@ -21,37 +21,198 @@ else
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr class="text-left text-sm text-gray-600">
-                    <th class="px-4 py-3">Name</th>
+                    <th class="px-4 py-3">Agent</th>
                     <th class="px-4 py-3">Email</th>
                     <th class="px-4 py-3">Username</th>
                     <th class="px-4 py-3">Phone</th>
                     <th class="px-4 py-3">Email Confirmed</th>
                     <th class="px-4 py-3">Lockout</th>
-                    <th class="px-4 py-3">Actions</th>
                 </tr>
             </thead>
             <tbody class="text-sm text-gray-700 divide-y divide-gray-100">
                 @foreach (var agent in Model)
                 {
-                    <tr>
-                        <td class="px-4 py-3">@(string.IsNullOrWhiteSpace(agent.FullName) ? (agent.UserName ?? agent.Email) : agent.FullName)</td>
+                    <tr class="hover:bg-gray-50 cursor-pointer agent-row" data-agent-id="@agent.Id">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <img src="@(string.IsNullOrWhiteSpace(agent.AvatarUrl) ? "/assets/images/buildingblack.png" : agent.AvatarUrl)" class="w-8 h-8 rounded-full object-cover border" alt="avatar" />
+                                <span>@(string.IsNullOrWhiteSpace(agent.FullName) ? (agent.UserName ?? agent.Email) : agent.FullName)</span>
+                            </div>
+                        </td>
                         <td class="px-4 py-3">@agent.Email</td>
                         <td class="px-4 py-3">@agent.UserName</td>
                         <td class="px-4 py-3">@(string.IsNullOrWhiteSpace(agent.PhoneNumber) ? "-" : agent.PhoneNumber)</td>
                         <td class="px-4 py-3">@((agent.EmailConfirmed) ? "Yes" : "No")</td>
                         <td class="px-4 py-3">@((agent.LockoutEnd.HasValue) ? agent.LockoutEnd.Value.LocalDateTime.ToString("g") : "-")</td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-2">
-                                <form method="post" asp-controller="Admin" asp-action="PromoteToBroker" onsubmit="return confirm('Promote this user to Broker?');">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="email" value="@agent.Email" />
-                                    <button type="submit" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Promote to Broker</button>
-                                </form>
-                            </div>
-                        </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+}
+
+<!-- Hidden management forms with anti-forgery tokens -->
+<form id="agent-lock-form" method="post" asp-controller="Admin" asp-action="LockAgent" class="hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" />
+    <button type="submit" hidden></button>
+    </form>
+<form id="agent-unlock-form" method="post" asp-controller="Admin" asp-action="UnlockAgent" class="hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" />
+    <button type="submit" hidden></button>
+    </form>
+<form id="agent-resend-form" method="post" asp-controller="Admin" asp-action="ResendConfirmation" class="hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" />
+    <button type="submit" hidden></button>
+    </form>
+<form id="agent-delete-form" method="post" asp-controller="Admin" asp-action="DeleteAgent" class="hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" />
+    <button type="submit" hidden></button>
+    </form>
+
+<!-- Agent Details Modal -->
+<div id="agent-modal" class="fixed inset-0 z-[10000] hidden">
+    <div class="absolute inset-0 bg-black/30" id="agent-modal-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+            <div class="px-5 py-3 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Agent Details</h3>
+                <button id="agent-close" class="text-gray-500 hover:text-gray-700">×</button>
+            </div>
+            <div class="p-5" id="agent-modal-body">
+                <!-- content filled by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function(){
+        const rows = document.querySelectorAll('.agent-row');
+        const modal = document.getElementById('agent-modal');
+        const body = document.getElementById('agent-modal-body');
+        const closeBtn = document.getElementById('agent-close');
+        const backdrop = document.getElementById('agent-modal-backdrop');
+
+        function open(){ modal.classList.remove('hidden'); }
+        function close(){ modal.classList.add('hidden'); }
+
+        function render(data){
+            const a = data;
+            const avatar = a.avatarUrl || '/assets/images/buildingblack.png';
+            const fmt = (n) => (n || n === 0) ? Number(n).toLocaleString() : '-';
+            const recent = (a.deals?.recent || []).map(d => `
+                <li class="flex justify-between py-1">
+                    <div>
+                        <div class="font-medium">${d.title} <span class="text-xs text-gray-500">(${d.status})</span></div>
+                        <div class="text-xs text-gray-500">${d.property || ''}</div>
+                    </div>
+                    <div class="text-sm text-gray-700">₱ ${fmt(d.offerAmount || d.price)}</div>
+                </li>
+            `).join('');
+
+            body.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <img src="${avatar}" class="w-16 h-16 rounded-full object-cover border" alt="avatar"/>
+                    <div class="flex-1">
+                        <div class="text-lg font-semibold text-gray-900">${a.name}</div>
+                        <div class="text-sm text-gray-600">${a.email || ''} · ${a.phone || ''}</div>
+                        <div class="text-xs text-gray-500 mt-1">${a.emailConfirmed ? 'Email confirmed' : 'Email not confirmed'}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
+                    <div class="p-3 rounded bg-gray-50">
+                        <div class="text-xs text-gray-500">New</div>
+                        <div class="text-lg font-semibold">${fmt(a.deals?.newCount)}</div>
+                    </div>
+                    <div class="p-3 rounded bg-gray-50">
+                        <div class="text-xs text-gray-500">Offer Made</div>
+                        <div class="text-lg font-semibold">${fmt(a.deals?.offerMade)}</div>
+                    </div>
+                    <div class="p-3 rounded bg-gray-50">
+                        <div class="text-xs text-gray-500">Negotiation</div>
+                        <div class="text-lg font-semibold">${fmt(a.deals?.negotiation)}</div>
+                    </div>
+                    <div class="p-3 rounded bg-gray-50">
+                        <div class="text-xs text-gray-500">Contract Draft</div>
+                        <div class="text-lg font-semibold">${fmt(a.deals?.contractDraft)}</div>
+                    </div>
+                    <div class="p-3 rounded bg-gray-50">
+                        <div class="text-xs text-gray-500">Closed</div>
+                        <div class="text-lg font-semibold">${fmt(a.deals?.closed)}</div>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <div class="text-sm font-medium text-gray-900 mb-2">Recent Deals</div>
+                    <ul class="divide-y divide-gray-100">${recent || '<li class="py-2 text-sm text-gray-500">No deals yet</li>'}</ul>
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-2 border-t pt-4">
+                    <button class="px-3 py-2 text-sm rounded border" data-action="lock" data-id="${a.id}">Lock</button>
+                    <button class="px-3 py-2 text-sm rounded border" data-action="unlock" data-id="${a.id}">Unlock</button>
+                    <button class="px-3 py-2 text-sm rounded border" data-action="resend" data-id="${a.id}">Resend Confirmation</button>
+                    <button class="px-3 py-2 text-sm rounded border text-red-600" data-action="delete" data-id="${a.id}">Delete</button>
+                </div>
+            `;
+        }
+
+        rows.forEach(r => r.addEventListener('click', () => {
+            const id = r.getAttribute('data-agent-id');
+            fetch(`/Admin/AgentSummary?id=${encodeURIComponent(id)}`)
+                .then(r => r.ok ? r.json() : Promise.reject())
+                .then(data => { render(data); open(); })
+                .catch(() => { body.innerHTML = '<div class="text-red-600">Failed to load agent details.</div>'; open(); });
+        }));
+        closeBtn.addEventListener('click', close);
+        backdrop.addEventListener('click', close);
+
+        // Delegate action buttons to AJAX posts so we stay on this page
+        document.addEventListener('click', function(e){
+            const btn = e.target.closest('[data-action][data-id]');
+            if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            const action = btn.getAttribute('data-action');
+            const urlMap = {
+                lock: '/Admin/LockAgent',
+                unlock: '/Admin/UnlockAgent',
+                resend: '/Admin/ResendConfirmation',
+                delete: '/Admin/DeleteAgent'
+            };
+            const formIdMap = {
+                lock: 'agent-lock-form',
+                unlock: 'agent-unlock-form',
+                resend: 'agent-resend-form',
+                delete: 'agent-delete-form'
+            };
+            const url = urlMap[action];
+            const form = document.getElementById(formIdMap[action]);
+            if (!url || !form) return;
+
+            if (action === 'delete' && !confirm('Delete this agent? This cannot be undone.')) return;
+            if (action === 'lock' && !confirm('Lock this agent account?')) return;
+            if (action === 'resend' && !confirm('Resend confirmation email to this agent?')) return;
+
+            const tokenInput = form.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+                body: `id=${encodeURIComponent(id)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+            }).then(async r => {
+                if (!r.ok) {
+                    const t = await r.text();
+                    throw new Error(t || 'Request failed');
+                }
+            }).then(() => { location.reload(); })
+              .catch(err => { alert(err.message || 'Action failed'); });
+        });
+    })();
+</script>
 }

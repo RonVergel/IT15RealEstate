@@ -65,20 +65,20 @@
 </div>
 
 <!-- Deals Pipeline -->
-<div id="deals-pipeline" class="flex gap-5 overflow-x-auto min-h-[600px]">
+<div id="deals-pipeline" class="flex flex-nowrap items-start gap-5 overflow-x-auto min-h-[600px]" style="display:grid;grid-auto-flow:column;grid-auto-columns:18rem;gap:20px;align-items:start;">
     <!-- Column: New -->
     <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
         <div class="bg-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="New" title="Double-click to rename">
             <span class="column-title" data-status="New">New</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("New") ? dealsByStatus["New"].Count : 0))</span>
-            <button type="button" class="ml-2 text-rose-900/70 hover:text-rose-900 edit-title-btn" aria-label="Rename">??</button>
+            
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="New">
             @if (dealsByStatus.ContainsKey("New"))
             {
                 @foreach (var deal in dealsByStatus["New"])
                 {
-                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-default"
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
                          data-deal-id="@deal.Id" data-agent="@deal.AgentName" data-price="@(deal.Property?.Price ?? 0)">
                         @if (deal.Property != null)
                         {
@@ -144,7 +144,7 @@
         <div class="bg-lime-200 text-lime-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="OfferMade" title="Double-click to rename">
             <span class="column-title" data-status="OfferMade">Offer Made</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("OfferMade") ? dealsByStatus["OfferMade"].Count : 0))</span>
-            <button type="button" class="ml-2 text-lime-900/70 hover:text-lime-900 edit-title-btn" aria-label="Rename">??</button>
+            
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="OfferMade">
             @if (dealsByStatus.ContainsKey("OfferMade"))
@@ -217,7 +217,7 @@
         <div class="bg-yellow-200 text-yellow-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="Negotiation" title="Double-click to rename">
             <span class="column-title" data-status="Negotiation">Negotiation</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("Negotiation") ? dealsByStatus["Negotiation"].Count : 0))</span>
-            <button type="button" class="ml-2 text-yellow-900/70 hover:text-yellow-900 edit-title-btn" aria-label="Rename">??</button>
+            
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="Negotiation">
             @if (dealsByStatus.ContainsKey("Negotiation"))
@@ -225,7 +225,7 @@
                 @foreach (var deal in dealsByStatus["Negotiation"])
                 {
                     <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
-                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName" data-price="@(deal.Property?.Price ?? 0)">
                         @if (deal.Property != null)
                         {
                             var imageSrc = !string.IsNullOrEmpty(deal.Property.ImagePath) ? Url.Content(deal.Property.ImagePath) : placeholder;
@@ -278,6 +278,9 @@
                                     </div>
                                 </div>
                             }
+                            <div class="flex justify-end gap-2 pt-1">
+                                <button type="button" class="px-2 py-1 text-xs rounded border deal-offer-btn" data-deal-id="@deal.Id" data-price="@(deal.Property?.Price ?? 0)">Set Offer</button>
+                            </div>
                         </div>
                     </div>
                 }
@@ -290,7 +293,7 @@
         <div class="bg-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="ContractDraft" title="Double-click to rename">
             <span class="column-title" data-status="ContractDraft">Contract Draft</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("ContractDraft") ? dealsByStatus["ContractDraft"].Count : 0))</span>
-            <button type="button" class="ml-2 text-emerald-900/70 hover:text-emerald-900 edit-title-btn" aria-label="Rename">??</button>
+            
         </div>
         <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="ContractDraft">
             @if (dealsByStatus.ContainsKey("ContractDraft"))
@@ -356,8 +359,130 @@
                 }
             }
         </div>
+    <!-- Column: Under Contract -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="UnderContract" title="Double-click to rename">
+            <span class="column-title" data-status="UnderContract">Under Contract</span>
+            <span class="column-count">(@(dealsByStatus.ContainsKey("UnderContract") ? dealsByStatus["UnderContract"].Count : 0))</span>
+            
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="UnderContract">
+            @if (dealsByStatus.ContainsKey("UnderContract"))
+            {
+                @foreach (var deal in dealsByStatus["UnderContract"])
+                {
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
+                        @if (deal.Property != null)
+                        {
+                            var imageSrc = !string.IsNullOrEmpty(deal.Property.ImagePath) ? Url.Content(deal.Property.ImagePath) : placeholder;
+                            <img src="@imageSrc" alt="Property - @deal.Property.Title" class="w-full h-32 object-cover rounded-md mb-3" />
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-bold text-sm">@deal.Property.Title</h4>
+                                <span class="text-xs font-medium bg-blue-600 text-white px-2 py-0.5 rounded">
+                                    @deal.Property.PropertyType
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">@deal.Property.Address</p>
+                        }
+                        else
+                        {
+                            <div class="h-32 bg-gray-200 rounded-md mb-3 flex items-center justify-center">
+                                <span class="text-gray-500 text-sm">No Property</span>
+                            </div>
+                            <h4 class="font-bold text-sm">@deal.Title</h4>
+                        }
+                        @if (deal.OfferAmount.HasValue)
+                        {
+                            <p class="text-sm font-semibold text-green-600 mt-2">₱ @deal.OfferAmount.Value.ToString("N0")</p>
+                        }
+                        @* Deadlines placeholder for Under Contract summary *@
+                        <div class="mt-2" data-deadlines="@deal.Id"></div>
+                    </div>
+                }
+            }
+        </div>
     </div>
-</div>
+
+    <!-- Column: Clear To Close -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-green-200 text-green-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="ClearToClose" title="Double-click to rename">
+            <span class="column-title" data-status="ClearToClose">Clear To Close</span>
+            <span class="column-count">(@(dealsByStatus.ContainsKey("ClearToClose") ? dealsByStatus["ClearToClose"].Count : 0))</span>
+            
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="ClearToClose">
+            @if (dealsByStatus.ContainsKey("ClearToClose"))
+            {
+                @foreach (var deal in dealsByStatus["ClearToClose"])
+                {
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
+                        <h4 class="font-bold text-sm">@deal.Title</h4>
+                        @if (deal.Property != null)
+                        {
+                            <p class="text-xs text-gray-500 mt-1">@deal.Property.Title</p>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Column: Closed -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-slate-200 text-slate-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="Closed" title="Double-click to rename">
+            <span class="column-title" data-status="Closed">Closed</span>
+            <span class="column-count">(@(dealsByStatus.ContainsKey("Closed") ? dealsByStatus["Closed"].Count : 0))</span>
+            
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="Closed">
+            @if (dealsByStatus.ContainsKey("Closed"))
+            {
+                @foreach (var deal in dealsByStatus["Closed"])
+                {
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
+                        <h4 class="font-bold text-sm">@deal.Title</h4>
+                        @if (deal.Property != null)
+                        {
+                            <p class="text-xs text-gray-500 mt-1">@deal.Property.Title</p>
+                        }
+                        @if (deal.OfferAmount.HasValue)
+                        {
+                            <p class="text-sm font-semibold text-green-600 mt-2">₱ @deal.OfferAmount.Value.ToString("N0")</p>
+                        }
+                        
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Column: Fell Through -->
+    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+        <div class="bg-gray-200 text-gray-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="FellThrough" title="Double-click to rename">
+            <span class="column-title" data-status="FellThrough">Fell Through</span>
+            <span class="column-count">(@(dealsByStatus.ContainsKey("FellThrough") ? dealsByStatus["FellThrough"].Count : 0))</span>
+            
+        </div>
+        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="FellThrough">
+            @if (dealsByStatus.ContainsKey("FellThrough"))
+            {
+                @foreach (var deal in dealsByStatus["FellThrough"])
+                {
+                    <div class="deal-card bg-white p-3 rounded-md shadow-sm border border-gray-200 @(isAllDeals ? "" : "cursor-grab active:cursor-grabbing")"
+                         data-deal-id="@deal.Id" data-agent="@deal.AgentName">
+                        <h4 class="font-bold text-sm">@deal.Title</h4>
+                        @if (deal.Property != null)
+                        {
+                            <p class="text-xs text-gray-500 mt-1">@deal.Property.Title</p>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
 
 <!-- Edit Offer Modal -->
 <div id="offer-modal" class="fixed inset-0 z-[10001] hidden">
@@ -366,7 +491,7 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div class="px-4 py-3 border-b flex items-center justify-between">
                 <h3 class="font-semibold text-gray-900">Set Offer Amount</h3>
-                <button id="offer-close" class="text-gray-500 hover:text-gray-700">✕</button>
+                <button id="offer-close" class="text-gray-500 hover:text-gray-700" aria-label="Close">&times;</button>
             </div>
             <div class="p-4">
                 <form id="offer-form" class="space-y-4">
@@ -376,9 +501,13 @@
                         <input id="offer-input" type="number" step="0.01" class="w-full border rounded-md px-3 py-2" />
                         <p id="offer-hint" class="text-xs text-gray-500 mt-1"></p>
                     </div>
+                    <div id="offer-list" class="mt-3 hidden">
+                        <div class="text-sm font-medium text-gray-900 mb-2">Existing Offers</div>
+                        <ul id="offer-items" class="divide-y divide-gray-100 text-sm"></ul>
+                    </div>
                     <div class="flex justify-end gap-2 pt-2">
                         <button type="button" id="offer-cancel" class="px-3 py-2 rounded-md border">Cancel</button>
-                        <button type="submit" class="px-3 py-2 rounded-md bg-blue-600 text-white">Save</button>
+                        <button type="submit" class="px-3 py-2 rounded-md bg-blue-600 text-white">Save Offer</button>
                     </div>
                 </form>
             </div>
@@ -394,6 +523,51 @@
             const dealIdEl = document.getElementById('offer-deal-id');
             const inputEl = document.getElementById('offer-input');
             const hintEl = document.getElementById('offer-hint');
+            const listWrap = document.getElementById('offer-list');
+            const listEl = document.getElementById('offer-items');
+            const financingEl = document.getElementById('offer-financing');
+            const earnestEl = document.getElementById('offer-earnest');
+            const closeDateEl = document.getElementById('offer-close-date');
+            const notesEl = document.getElementById('offer-notes');
+
+            function setHint(text, isError){
+                hintEl.textContent = text || '';
+                hintEl.classList.toggle('text-red-600', !!isError);
+                hintEl.classList.toggle('text-gray-500', !isError);
+            }
+
+            function renderOffers(items){
+                if (!items || !items.length){ listWrap.classList.add('hidden'); listEl.innerHTML=''; return; }
+                listWrap.classList.remove('hidden');
+                listEl.innerHTML = items.map(o => `
+                    <li class="py-2 flex justify-between items-center">
+                        <div>
+                            <div class="font-medium">₱ ${Number(o.amount).toLocaleString()} <span class="text-xs text-gray-500">(${o.status})</span></div>
+                            ${o.financingType ? `<div class='text-xs text-gray-500'>${o.financingType}</div>` : ''}
+                            ${o.earnestMoney ? `<div class='text-xs text-gray-500'>Earnest: ₱ ${Number(o.earnestMoney).toLocaleString()}</div>` : ''}
+                            ${o.closeDate ? `<div class='text-xs text-gray-500'>Close: ${new Date(o.closeDate).toLocaleDateString()}</div>` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            ${o.status === 'Proposed' ? `<button type='button' data-accept='${o.id}' class='px-2 py-1 text-xs rounded border'>Accept</button>` : ''}
+                            ${o.status === 'Proposed' ? `<button type='button' data-decline='${o.id}' class='px-2 py-1 text-xs rounded border'>Decline</button>` : ''}
+                        </div>
+                    </li>
+                `).join('');
+                listEl.querySelectorAll('[data-accept]').forEach(b => b.addEventListener('click', function(){
+                    const oid = this.getAttribute('data-accept');
+                    fetch('/Deals/AcceptOffer', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`offerId=${encodeURIComponent(oid)}` })
+                        .then(r=>{ if(!r.ok) return r.text().then(t=>{throw new Error(t)}); })
+                        .then(()=>{ try{ showToast('Offer accepted','success'); }catch(e){} location.reload(); })
+                        .catch(err=>alert(err.message||'Failed'));
+                }));
+                listEl.querySelectorAll('[data-decline]').forEach(b => b.addEventListener('click', function(){
+                    const oid = this.getAttribute('data-decline');
+                    fetch('/Deals/DeclineOffer', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`offerId=${encodeURIComponent(oid)}` })
+                        .then(r=>{ if(!r.ok) return r.text().then(t=>{throw new Error(t)}); })
+                        .then(()=>{ try{ showToast('Offer declined','success'); }catch(e){} location.reload(); })
+                        .catch(err=>alert(err.message||'Failed'));
+                }));
+            }
 
             function open(id, price){
                 dealIdEl.value = String(id);
@@ -403,13 +577,14 @@
                 if (max > 0){
                     inputEl.min = String(min);
                     inputEl.max = String(max);
-                    hintEl.textContent = `Allowed range: ${min.toLocaleString()} - ${max.toLocaleString()}`;
+                    setHint(`Allowed range: ${min.toLocaleString()} - ${max.toLocaleString()}` , false);
                 } else {
                     inputEl.removeAttribute('min');
                     inputEl.removeAttribute('max');
-                    hintEl.textContent = '';
+                    setHint('', false);
                 }
                 inputEl.value = '';
+                fetch(`/Deals/GetOffers?dealId=${encodeURIComponent(id)}`).then(r=>r.json()).then(renderOffers).catch(()=>{ listWrap.classList.add('hidden'); });
                 modal.classList.remove('hidden');
             }
             function close(){ modal.classList.add('hidden'); }
@@ -419,34 +594,55 @@
             cancelBtn.addEventListener('click', close);
             document.getElementById('offer-modal-backdrop').addEventListener('click', close);
 
+            function validate(){
+                const raw = (inputEl.value || '').trim();
+                const min = parseFloat(inputEl.min || '0');
+                const max = parseFloat(inputEl.max || '0');
+
+                if (raw === ''){
+                    inputEl.classList.add('border-red-500','focus:ring-red-400');
+                    setHint('Please enter an offer amount.', true);
+                    return false;
+                }
+                const val = parseFloat(raw);
+                if (isNaN(val)){
+                    inputEl.classList.add('border-red-500','focus:ring-red-400');
+                    setHint('Enter a valid number.', true);
+                    return false;
+                }
+                if (!isNaN(min) && val < min){
+                    inputEl.classList.add('border-red-500','focus:ring-red-400');
+                    setHint(`Minimum required offer: ${min.toLocaleString()}`, true);
+                    return false;
+                }
+                if (!isNaN(max) && val > max){
+                    inputEl.classList.add('border-red-500','focus:ring-red-400');
+                    setHint(`Maximum allowed offer: ${max.toLocaleString()}`, true);
+                    return false;
+                }
+                inputEl.classList.remove('border-red-500','focus:ring-red-400');
+                setHint(`Allowed range: ${min.toLocaleString()} - ${max.toLocaleString()}`, false);
+                return true;
+            }
+
+            inputEl.addEventListener('input', validate);
+
             form.addEventListener('submit', function(ev){
                 ev.preventDefault();
-                const id = dealIdEl.value;
-                const amount = inputEl.value;
-                fetch('/Deals/SetOffer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `dealId=${encodeURIComponent(id)}&offerAmount=${encodeURIComponent(amount)}`
-                }).then(r => {
-                    if(!r.ok){ return r.text().then(t => { throw new Error(t || 'Failed'); }); }
-                }).then(() => { location.reload(); })
-                .catch(err => { alert(err.message || 'Failed to save offer'); });
+                if (!validate()) return; // Block submit if invalid
+                const id = dealIdEl.value; const amount = inputEl.value;
+                const financing = (financingEl && financingEl.value ? financingEl.value : '').trim();
+                const earnest = (earnestEl && earnestEl.value ? earnestEl.value : '').trim();
+                const closeDate = (closeDateEl && closeDateEl.value ? closeDateEl.value : '').trim();
+                const notes = (notesEl && notesEl.value ? notesEl.value : '').trim();
+                const body = `dealId=${encodeURIComponent(id)}&amount=${encodeURIComponent(amount)}&financingType=${encodeURIComponent(financing)}&earnestMoney=${encodeURIComponent(earnest)}&closeDate=${encodeURIComponent(closeDate)}&notes=${encodeURIComponent(notes)}`;
+                fetch('/Deals/CreateOffer', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body })
+                    .then(async r=>{ if(!r.ok){ const t = await r.text(); setHint(t||'Failed to save offer', true); throw new Error(t||'Failed'); } })
+                    .then(()=>{ try{ showToast('Offer saved','success'); } catch(e){} window.setTimeout(()=>location.reload(), 300); })
+                    .catch(()=>{});
             });
 
-            function attachNewCardHandlers(){
-                const newCol = document.querySelector('.deal-cards[data-stage="New"]');
-                if (!newCol) return;
-                newCol.querySelectorAll('.deal-card').forEach(c => {
-                    c.style.cursor = 'pointer';
-                    c.addEventListener('click', function(){
-                        const id = this.getAttribute('data-deal-id');
-                        const price = this.getAttribute('data-price');
-                        window.openOfferModal(id, Number(price || 0));
-                    });
-                });
-            }
-            if (document.readyState !== 'loading') attachNewCardHandlers();
-            document.addEventListener('DOMContentLoaded', attachNewCardHandlers);
+            // Disabled: offers are only set in Negotiation
         })();
     </script>
 </div>
@@ -639,7 +835,11 @@
                 New: 'New',
                 OfferMade: 'Offer Made',
                 Negotiation: 'Negotiation',
-                ContractDraft: 'Contract Draft'
+                ContractDraft: 'Contract Draft',
+                UnderContract: 'Under Contract',
+                ClearToClose: 'Clear To Close',
+                FellThrough: 'Fell Through',
+                Closed: 'Closed'
             };
 
             function getStoredNames() {
@@ -722,12 +922,11 @@
                 });
             }
 
-            // Only enable drag-and-drop when not viewing All Deals
+            // Enable drag-and-drop when not viewing All Deals, with rules:
+            // - From New: can drop only to OfferMade or Negotiation
+            // - To UnderContract: only allowed when dragging from ContractDraft
             if (!isAllDeals) {
                 pipelines.forEach(column => {
-                    const stage = column.getAttribute('data-stage');
-                    if (stage === 'New') return; // Disable dragging in New column
-                    // Sortable provided elsewhere globally
                     new Sortable(column, {
                         group: 'deals',
                         animation: 150,
@@ -735,7 +934,19 @@
                         dragClass: 'sortable-drag',
                         onEnd: function (evt) {
                             const dealId = evt.item.dataset.dealId;
+                            const fromStatus = evt.from.dataset.stage;
                             const newStatus = evt.to.dataset.stage;
+
+                            let valid = true;
+                            if (fromStatus === 'New' && !(newStatus === 'OfferMade' || newStatus === 'Negotiation')) valid = false;
+                            if (fromStatus === 'Negotiation' && !(newStatus === 'Negotiation' || newStatus === 'OfferMade')) valid = false;
+                            if (newStatus === 'UnderContract' && fromStatus !== 'ContractDraft') valid = false;
+
+                            if (!valid) {
+                                try { evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); } catch {}
+                                try { showToast('Move not allowed for this stage', 'error'); } catch {}
+                                return;
+                            }
 
                             fetch('/Deals/MoveDeal', {
                                 method: 'POST',
@@ -756,6 +967,55 @@
 
             // Initial count sync (in case client moves later)
             refreshCounts();
+
+            // ----- Load deadlines for Under Contract cards -----
+            function loadDeadlines(){
+                const nodes = document.querySelectorAll('[data-deadlines]');
+                nodes.forEach(el => {
+                    const id = el.getAttribute('data-deadlines');
+                    fetch(`/Deals/GetDeadlines?dealId=${encodeURIComponent(id)}`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(items => {
+                            if (!items || !items.length){ el.innerHTML = ''; return; }
+                            const today = new Date();
+                            el.innerHTML = `<div class="text-xs text-gray-500 mb-1">Deadlines</div>` +
+                                '<div class="flex flex-wrap gap-1">' + items.map(d => {
+                                    const due = new Date(d.dueDate);
+                                    const done = !!d.completedAtUtc;
+                                    const overdue = !done && due < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                    const cls = done ? 'bg-emerald-100 text-emerald-700' : (overdue ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800');
+                                    return `<span class="px-2 py-0.5 rounded ${cls} text-[11px]">${d.type}: ${due.toLocaleDateString()}</span>`;
+                                }).join('') + '</div>';
+                        })
+                        .catch(()=>{ el.innerHTML=''; });
+                });
+            }
+            loadDeadlines();
+
+            // Inject Close buttons into Under Contract and Clear To Close
+            document.querySelectorAll('.deal-cards[data-stage="UnderContract"], .deal-cards[data-stage="ClearToClose"]').forEach(list => {
+                list.querySelectorAll('.deal-card').forEach(card => {
+                    if (card.querySelector('.close-deal')) return;
+                    const btnRow = document.createElement('div');
+                    btnRow.className = 'flex justify-end gap-2 pt-2';
+                    btnRow.innerHTML = `<button class="px-2 py-1 text-xs rounded border close-deal">Close</button>`;
+                    card.appendChild(btnRow);
+                });
+            });
+
+            function wireCloseArchiveButtons(){
+                document.querySelectorAll('.close-deal').forEach(b => {
+                    if (b._wired) return; b._wired = true;
+                    b.addEventListener('click', function(){
+                        const id = this.closest('.deal-card').getAttribute('data-deal-id');
+                        fetch('/Deals/CloseDeal', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`dealId=${encodeURIComponent(id)}` })
+                            .then(r=>{ if(!r.ok) throw new Error('Failed to close'); })
+                            .then(()=>{ try{ showToast('Deal closed','success'); }catch(e){} location.reload(); })
+                            .catch(()=>alert('Failed to close'));
+                    });
+                });
+            }
+            wireCloseArchiveButtons();
 
             // Agent filter for All Deals
             if (isAllDeals) {
@@ -832,7 +1092,7 @@
                     const opt = document.createElement('option');
                     // value posts AgentName/ClientName as text (UserName or Contact.Name)
                     opt.value = i.name;
-                    opt.textContent = i.name + (i.email ? (' � ' + i.email) : '');
+                    opt.textContent = i.name + (i.email ? (' · ' + i.email) : '');
                     selectEl.appendChild(opt);
                 });
             }
@@ -1017,8 +1277,191 @@
     </script>
 }
 
+    <script>
+        // Augment Deals board with search, type filter, offer buttons, header tools, sums, and drag from New
+        (function(){
+            const pipeline = document.getElementById('deals-pipeline');
+            if (!pipeline) return;
+
+            // Inject secondary controls row
+            try {
+                const controls = document.createElement('div');
+                controls.className = 'flex flex-col md:flex-row gap-3 md:items-center mb-4';
+                controls.innerHTML = `
+                    <div class="flex-1">
+                        <label for="board-search" class="sr-only">Search</label>
+                        <input id="board-search" type="text" placeholder="Search deals, properties, clients..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="type-filter" class="text-sm text-gray-700">Type</label>
+                        <select id="type-filter" class="text-sm border border-gray-300 rounded-md px-2 py-1 min-w-[140px]">
+                            <option value="__ALL__">All</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="status-toggle-empty" class="text-sm text-gray-700">Hide empty columns</label>
+                        <input id="status-toggle-empty" type="checkbox" class="h-4 w-4" />
+                    </div>`;
+                pipeline.parentElement.insertBefore(controls, pipeline);
+            } catch {}
+
+            // Add edit buttons and sum placeholders to headers
+            try {
+                document.querySelectorAll('.editable-column-header').forEach(h => {
+                    if (!h.querySelector('.column-sum')){
+                        const sum = document.createElement('span');
+                        sum.className = 'column-sum text-xs ml-2 opacity-80';
+                        h.appendChild(sum);
+                    }
+                    if (!h.querySelector('.edit-title-btn')){
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'edit-title-btn ml-auto text-black/60 hover:text-black';
+                        btn.title = 'Rename column';
+                        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
+                        btn.addEventListener('click', (e)=>{ e.stopPropagation(); try{ h.dispatchEvent(new Event('dblclick')); }catch{} });
+                        h.appendChild(btn);
+                    }
+                });
+            } catch {}
+
+            // Ensure data attributes for filtering
+            document.querySelectorAll('.deal-card').forEach(card => {
+                // type
+                if (!card.getAttribute('data-type')){
+                    const typeText = (card.querySelector('span.bg-blue-600')?.textContent || '').trim();
+                    if (typeText) card.setAttribute('data-type', typeText);
+                }
+                // offer
+                if (!card.getAttribute('data-offer')){
+                    const offerText = (Array.from(card.querySelectorAll('p')).map(p=>p.textContent).find(t=>t && t.trim().startsWith('₱')) || '').replace(/[^0-9.]/g,'');
+                    if (offerText) card.setAttribute('data-offer', offerText);
+                }
+            });
+
+            // Populate type filter options
+            try {
+                const typeFilter = document.getElementById('type-filter');
+                const types = Array.from(new Set(Array.from(document.querySelectorAll('.deal-card')).map(c => (c.getAttribute('data-type') || '').trim()).filter(Boolean))).sort();
+                types.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; typeFilter.appendChild(o); });
+            } catch {}
+
+            // Offer buttons per card
+            function wireOfferButtons(){
+                document.querySelectorAll('.deal-cards[data-stage="Negotiation"] .deal-card').forEach(card => {
+                    if (card.querySelector('.deal-offer-btn')) return;
+                    const price = card.getAttribute('data-price') || '0';
+                    const row = document.createElement('div');
+                    row.className = 'flex justify-end gap-2 pt-2';
+                    row.innerHTML = `<button type="button" class="px-2 py-1 text-xs rounded border deal-offer-btn" data-deal-id="${card.getAttribute('data-deal-id') || ''}" data-price="${price}">Set Offer</button>`;
+                    card.appendChild(row);
+                });
+                document.querySelectorAll('.deal-offer-btn').forEach(btn => {
+                    if (btn._wired) return; btn._wired = true;
+                    btn.addEventListener('click', function(e){
+                        e.stopPropagation();
+                        const id = this.getAttribute('data-deal-id');
+                        const price = this.getAttribute('data-price');
+                        try { window.openOfferModal && window.openOfferModal(id, Number(price||0)); } catch {}
+                    });
+                });
+            }
+            wireOfferButtons();
+
+            // Drag from New as well (when not All Deals)
+            try {
+                const isAllDeals = @(isAllDeals.ToString().ToLower());
+                if (!isAllDeals) {
+                    const newList = document.querySelector('.deal-cards[data-stage="New"]');
+                    if (newList && window.Sortable) {
+                        new Sortable(newList, { group:'deals', animation:150, ghostClass:'sortable-ghost', dragClass:'sortable-drag', onEnd: function(evt){
+                            const dealId = evt.item.dataset.dealId;
+                            const newStatus = evt.to.dataset.stage;
+                            fetch('/Deals/MoveDeal', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:`dealId=${dealId}&newStatus=${newStatus}` })
+                                .then(r=>{ if(!r.ok) location.reload(); else try{ refreshCounts(); }catch{} })
+                                .catch(()=>{ try{ refreshCounts(); }catch{} });
+                        }});
+                    }
+                }
+            } catch {}
+
+            // Counts and sums
+            function refreshSums(){
+                document.querySelectorAll('.editable-column-header').forEach(h => {
+                    const status = h.getAttribute('data-status');
+                    const list = document.querySelector(`.deal-cards[data-stage="${status}"]`);
+                    const sumEl = h.querySelector('.column-sum');
+                    if (!list || !sumEl) return;
+                    const cards = Array.from(list.children).filter(el => !el.classList.contains('hidden'));
+                    const sum = cards.reduce((acc, el) => acc + (parseFloat(el.getAttribute('data-offer') || '0') || 0), 0);
+                    sumEl.textContent = sum > 0 ? `₱ ${sum.toLocaleString()}` : '';
+                });
+            }
+            function refreshCounts(){
+                document.querySelectorAll('.editable-column-header').forEach(h => {
+                    const status = h.getAttribute('data-status');
+                    const list = document.querySelector(`.deal-cards[data-stage="${status}"]`);
+                    const countEl = h.querySelector('.column-count');
+                    if (!list || !countEl) return;
+                    const visibleCount = Array.from(list.children).filter(el => !el.classList.contains('hidden')).length;
+                    countEl.textContent = `(${visibleCount})`;
+                });
+                refreshSums();
+            }
+            try { refreshCounts(); } catch {}
+
+            // Board-wide filters
+            function applyBoardFilters(){
+                const searchEl = document.getElementById('board-search');
+                const typeFilter = document.getElementById('type-filter');
+                const hideEmptyToggle = document.getElementById('status-toggle-empty');
+                const q = (searchEl?.value || '').trim().toLowerCase();
+                const t = (typeFilter?.value || '__ALL__');
+                document.querySelectorAll('.deal-card').forEach(card => {
+                    const text = [
+                        card.querySelector('h4')?.textContent || '',
+                        card.querySelector('p.text-xs.text-gray-500')?.textContent || '',
+                        card.getAttribute('data-agent') || '',
+                        card.getAttribute('data-client') || ''
+                    ].join(' ').toLowerCase();
+                    const typeOk = t === '__ALL__' || (card.getAttribute('data-type') || '') === t;
+                    const match = (!q || text.includes(q)) && typeOk;
+                    card.classList.toggle('hidden', !match);
+                });
+                const hideEmpty = hideEmptyToggle?.checked;
+                document.querySelectorAll('.deal-cards').forEach(list => {
+                    const wrap = list.closest('.w-72');
+                    if (!wrap) return;
+                    const visibleCount = Array.from(list.children).filter(el => !el.classList.contains('hidden')).length;
+                    wrap.classList.toggle('hidden', !!hideEmpty && visibleCount === 0);
+                });
+                refreshCounts();
+            }
+            try{
+                document.getElementById('board-search')?.addEventListener('input', applyBoardFilters);
+                document.getElementById('type-filter')?.addEventListener('change', applyBoardFilters);
+                document.getElementById('status-toggle-empty')?.addEventListener('change', applyBoardFilters);
+                applyBoardFilters();
+            } catch {}
+        })();
+    </script>
+
 @section Styles {
     <style>
+        /* Board: single row that fits within viewport width */
+        #deals-pipeline {
+            display: grid !important;
+            grid-auto-flow: column !important;
+            grid-auto-columns: minmax(220px, 1fr) !important;
+            gap: 16px !important;
+            align-items: start;
+            overflow-x: auto;
+        }
+        #deals-pipeline > .w-72 { width: auto !important; }
+        /* Keep columns compact and readable */
+        .editable-column-header { border: 1px solid rgba(0,0,0,.06); border-radius: 8px; }
+        .deal-cards { min-height: 220px; max-height: calc(100vh - 320px); overflow-y: auto; }
+
         .sortable-ghost {
             background-color: #cce5ff;
             border: 2px dashed #007bff;
@@ -1028,8 +1471,13 @@
             opacity: 1 !important;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        .edit-title-btn { visibility: hidden; font-size: 12px; }
-        .editable-column-header:hover .edit-title-btn { visibility: visible; }
+        /* Sleeker cards */
+        .deal-card { transition: box-shadow 150ms ease, transform 150ms ease; }
+        .deal-card:hover { box-shadow: 0 10px 20px -5px rgba(0,0,0,.1), 0 6px 10px -4px rgba(0,0,0,.06); transform: translateY(-2px); }
+        /* Column headers */
+        .editable-column-header { border: 1px solid rgba(0,0,0,.06); }
+        /* Column body */
+        .deal-cards { min-height: 220px; }
     </style>
 }
 

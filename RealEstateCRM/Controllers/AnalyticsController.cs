@@ -44,7 +44,7 @@ namespace RealEstateCRM.Controllers
         public async Task<IActionResult> GetDealPipeline()
         {
             var pipelineData = await _context.Deals
-                .Where(d => d.Status != "Closed") // Only active deals
+                .Where(d => d.Status != "Closed" && d.Status != "Archived") // Only active deals
                 .GroupBy(d => d.Status)
                 .Select(g => new
                 {
@@ -74,7 +74,7 @@ namespace RealEstateCRM.Controllers
         public async Task<IActionResult> ExportDealPipeline()
         {
             var pipelineData = await _context.Deals
-                .Where(d => d.Status != "Closed")
+                .Where(d => d.Status != "Closed" && d.Status != "Archived")
                 .GroupBy(d => d.Status)
                 .Select(g => new
                 {

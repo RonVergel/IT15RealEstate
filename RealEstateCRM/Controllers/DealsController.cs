@@ -322,6 +322,28 @@ namespace RealEstateCRM.Controllers
             var deal = await _context.Deals.FindAsync(dealId);
             if (deal != null)
             {
+                // Enforce transition rules
+                var fromStatus = deal.Status ?? "";
+                if (string.Equals(newStatus, "ContractDraft", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Only allowed via SetOffer/CreateOffer; block manual drag
+                    return BadRequest();
+                }
+                if (string.Equals(fromStatus, "New", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!(string.Equals(newStatus, "OfferMade", StringComparison.OrdinalIgnoreCase) || string.Equals(newStatus, "Negotiation", StringComparison.OrdinalIgnoreCase)))
+                        return BadRequest();
+                }
+                else if (string.Equals(fromStatus, "Negotiation", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!(string.Equals(newStatus, "Negotiation", StringComparison.OrdinalIgnoreCase) || string.Equals(newStatus, "OfferMade", StringComparison.OrdinalIgnoreCase)))
+                        return BadRequest();
+                }
+                if (string.Equals(newStatus, "UnderContract", StringComparison.OrdinalIgnoreCase) && !string.Equals(fromStatus, "ContractDraft", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest();
+                }
+
                 // Get the next display order for the new status
                 var maxDisplayOrder = await _context.Deals
                     .Where(d => d.Status == newStatus)
@@ -330,41 +352,261 @@ namespace RealEstateCRM.Controllers
                 deal.Status = newStatus;
                 deal.DisplayOrder = maxDisplayOrder + 1;
                 deal.LastUpdated = DateTime.UtcNow;
-                
+
+                // If moved into UnderContract, seed default deadlines for calculations if none exist
+                if (string.Equals(newStatus, "UnderContract", StringComparison.OrdinalIgnoreCase))
+                {
+                    var hasDeadlines = await _context.DealDeadlines.AnyAsync(dd => dd.DealId == deal.Id);
+                    if (!hasDeadlines)
+                    {
+                        try
+                        {
+                            var now = DateTime.UtcNow.Date;
+                            var list = new List<DealDeadline>
+                            {
+                                new DealDeadline { DealId = deal.Id, Type = "Inspection", DueDate = now.AddDays(7) },
+                                new DealDeadline { DealId = deal.Id, Type = "Appraisal", DueDate = now.AddDays(14) },
+                                new DealDeadline { DealId = deal.Id, Type = "LoanCommitment", DueDate = now.AddDays(21) },
+                                new DealDeadline { DealId = deal.Id, Type = "Closing", DueDate = now.AddDays(30) }
+                            };
+                            _context.DealDeadlines.AddRange(list);
+                        }
+                        catch { }
+                    }
+                }
+
                 await _context.SaveChangesAsync();
                 return Ok();
             }
             return BadRequest();
         }
 
-        // Set or edit an offer for a deal and move it to OfferMade
+        // Set or edit an offer for a deal and move it to ContractDraft (offers only in Negotiation)
         [HttpPost]
         public async Task<IActionResult> SetOffer(int dealId, decimal offerAmount)
         {
             var deal = await _context.Deals.Include(d => d.Property).FirstOrDefaultAsync(d => d.Id == dealId);
             if (deal == null) return NotFound();
 
+            if (!string.Equals(deal.Status, "Negotiation", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Offers can only be set in the Negotiation stage.");
+
             // Validate against property price if known (10% below up to 100%)
             if (deal.Property != null)
             {
                 var max = deal.Property.Price;
                 var min = Math.Round(max * 0.9m, 2, MidpointRounding.AwayFromZero);
-                if (offerAmount > max || offerAmount < min)
-                {
-                    return BadRequest($"Offer must be between {min:N0} and {max:N0}.");
-                }
+                if (offerAmount < min)
+                    return BadRequest($"Minimum required offer: {min:N0}");
+                if (offerAmount > max)
+                    return BadRequest($"Maximum allowed offer: {max:N0}");
             }
 
-            // Move to OfferMade column
+            // Move to ContractDraft column
             var maxDisplayOrder = await _context.Deals
-                .Where(d => d.Status == "OfferMade")
+                .Where(d => d.Status == "ContractDraft")
                 .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
 
             deal.OfferAmount = offerAmount;
-            deal.Status = "OfferMade";
+            deal.Status = "ContractDraft";
             deal.DisplayOrder = maxDisplayOrder + 1;
             deal.LastUpdated = DateTime.UtcNow;
 
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        // --- Offers API ---
+        [HttpGet]
+        public async Task<IActionResult> GetOffers(int dealId)
+        {
+            var offers = await _context.Offers
+                .Where(o => o.DealId == dealId)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new { o.Id, o.Amount, o.Status, o.FinancingType, o.EarnestMoney, o.CloseDate, o.Notes, o.CreatedAtUtc })
+                .ToListAsync();
+            return Json(offers);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateOffer(int dealId, decimal amount, string? financingType, decimal? earnestMoney, DateTime? closeDate, string? notes)
+        {
+            var deal = await _context.Deals.Include(d => d.Property).FirstOrDefaultAsync(d => d.Id == dealId);
+            if (deal == null) return NotFound();
+
+            // Offers can only be created while in Negotiation stage
+            if (!string.Equals(deal.Status, "Negotiation", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Offers can only be added in the Negotiation stage.");
+
+            if (deal.Property != null)
+            {
+                var max = deal.Property.Price;
+                var min = Math.Round(max * 0.9m, 2, MidpointRounding.AwayFromZero);
+                if (amount < min) return BadRequest($"Minimum required offer: {min:N0}");
+                if (amount > max) return BadRequest($"Maximum allowed offer: {max:N0}");
+            }
+
+            var offer = new Offer
+            {
+                DealId = dealId,
+                Amount = amount,
+                FinancingType = financingType,
+                EarnestMoney = earnestMoney,
+                CloseDate = closeDate,
+                Notes = notes,
+                Status = "Proposed",
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+            _context.Offers.Add(offer);
+            await _context.SaveChangesAsync();
+
+            // After setting an offer, move the deal to ContractDraft
+            var maxDisplayOrder = await _context.Deals
+                .Where(d => d.Status == "ContractDraft")
+                .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+            deal.OfferAmount = amount;
+            deal.Status = "ContractDraft";
+            deal.DisplayOrder = maxDisplayOrder + 1;
+            deal.LastUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AcceptOffer(int offerId)
+        {
+            var offer = await _context.Offers.Include(o => o.Deal).ThenInclude(d => d.Property).FirstOrDefaultAsync(o => o.Id == offerId);
+            if (offer == null) return NotFound();
+
+            // Validate again against property price
+            if (offer.Deal?.Property != null)
+            {
+                var max = offer.Deal.Property.Price;
+                var min = Math.Round(max * 0.9m, 2, MidpointRounding.AwayFromZero);
+                if (offer.Amount < min) return BadRequest($"Minimum required offer: {min:N0}");
+                if (offer.Amount > max) return BadRequest($"Maximum allowed offer: {max:N0}");
+            }
+
+            // Mark other offers declined
+            var others = _context.Offers.Where(o => o.DealId == offer.DealId && o.Id != offer.Id && o.Status != "Declined");
+            await others.ForEachAsync(o => { o.Status = "Declined"; o.UpdatedAtUtc = DateTime.UtcNow; });
+
+            offer.Status = "Accepted";
+            offer.UpdatedAtUtc = DateTime.UtcNow;
+
+            // Move deal to UnderContract and set OfferAmount
+            var deal = offer.Deal!;
+            var maxDisplayOrder = await _context.Deals.Where(d => d.Status == "UnderContract").MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+            deal.Status = "UnderContract";
+            deal.OfferAmount = offer.Amount;
+            deal.DisplayOrder = maxDisplayOrder + 1;
+            deal.LastUpdated = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Generate default deadlines
+            try
+            {
+                var now = DateTime.UtcNow.Date;
+                var list = new List<DealDeadline>
+                {
+                    new DealDeadline { DealId = deal.Id, Type = "Inspection", DueDate = now.AddDays(7) },
+                    new DealDeadline { DealId = deal.Id, Type = "Appraisal", DueDate = now.AddDays(14) },
+                    new DealDeadline { DealId = deal.Id, Type = "LoanCommitment", DueDate = now.AddDays(21) },
+                    new DealDeadline { DealId = deal.Id, Type = "Closing", DueDate = now.AddDays(30) }
+                };
+                _context.DealDeadlines.AddRange(list);
+                await _context.SaveChangesAsync();
+            }
+            catch { }
+
+            return Ok();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeclineOffer(int offerId)
+        {
+            var offer = await _context.Offers.FindAsync(offerId);
+            if (offer == null) return NotFound();
+            offer.Status = "Declined";
+            offer.UpdatedAtUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDeadlines(int dealId)
+        {
+            var items = await _context.DealDeadlines
+                .Where(d => d.DealId == dealId)
+                .OrderBy(d => d.DueDate)
+                .Select(d => new { d.Id, d.Type, d.DueDate, d.CompletedAtUtc, d.Notes })
+                .ToListAsync();
+            return Json(items);
+        }
+
+        // Mark/unmark a deadline as completed
+        [HttpPost]
+        public async Task<IActionResult> SetDeadlineCompleted(int id, bool completed)
+        {
+            var item = await _context.DealDeadlines.FindAsync(id);
+            if (item == null) return NotFound();
+            item.CompletedAtUtc = completed ? DateTime.UtcNow : null;
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        // Move a deal to Closed status
+        [HttpPost]
+        public async Task<IActionResult> CloseDeal(int dealId)
+        {
+            var deal = await _context.Deals.FindAsync(dealId);
+            if (deal == null) return NotFound();
+
+            var maxDisplayOrder = await _context.Deals
+                .Where(d => d.Status == "Closed")
+                .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+
+            deal.Status = "Closed";
+            deal.DisplayOrder = maxDisplayOrder + 1;
+            deal.LastUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        // Archive/unarchive a deal (uses simple status swap to avoid schema changes)
+        [HttpPost]
+        public async Task<IActionResult> ArchiveDeal(int dealId)
+        {
+            var deal = await _context.Deals.FindAsync(dealId);
+            if (deal == null) return NotFound();
+
+            var maxDisplayOrder = await _context.Deals
+                .Where(d => d.Status == "Archived")
+                .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+
+            deal.Status = "Archived";
+            deal.DisplayOrder = maxDisplayOrder + 1;
+            deal.LastUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UnarchiveDeal(int dealId)
+        {
+            var deal = await _context.Deals.FindAsync(dealId);
+            if (deal == null) return NotFound();
+
+            // Return to Closed column when unarchiving
+            var maxDisplayOrder = await _context.Deals
+                .Where(d => d.Status == "Closed")
+                .MaxAsync(d => (int?)d.DisplayOrder) ?? 0;
+
+            deal.Status = "Closed";
+            deal.DisplayOrder = maxDisplayOrder + 1;
+            deal.LastUpdated = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return Ok();
         }

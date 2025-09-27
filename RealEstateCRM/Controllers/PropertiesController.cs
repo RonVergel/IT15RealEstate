@@ -54,6 +54,10 @@ namespace RealEstateCRM.Controllers
                 // Base query
                 var query = _context.Properties.AsQueryable();
 
+                // Hide properties that already have a Closed or Archived deal
+                // (treated as sold/removed and should not appear in the properties catalog)
+                query = query.Where(p => !_context.Deals.Any(d => d.PropertyId == p.Id && (d.Status == "Closed" || d.Status == "Archived")));
+
                 // Apply filters
                 if (!string.IsNullOrWhiteSpace(q))
                 {

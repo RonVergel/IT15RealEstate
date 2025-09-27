@@ -112,7 +112,7 @@ else
                 </button>
             </div>
             <div class="p-6">
-                <form asp-controller="Admin" asp-action="CreateAgent" method="post" id="create-agent-form" class="space-y-4">
+                <form asp-controller="Admin" asp-action="CreateAgent" method="post" enctype="multipart/form-data" id="create-agent-form" class="space-y-4">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnUrl" value="/Dashboard" />
 
@@ -164,6 +164,17 @@ else
                                     <circle cx="12" cy="12" r="3" stroke-width="2" />
                                 </svg>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Agent Photo (optional) -->
+                    <div>
+                        <label for="agent-photo" class="block text-sm font-medium text-neutral-700">Agent Photo (optional)</label>
+                        <input id="agent-photo" name="Photo" type="file" accept="image/*"
+                               class="mt-2 block w-full text-sm text-neutral-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                        <p class="mt-1 text-xs text-neutral-500">PNG or JPG up to 5 MB.</p>
+                        <div class="mt-2">
+                            <img id="agent-photo-preview" class="hidden w-20 h-20 rounded-full object-cover border" alt="Preview" />
                         </div>
                     </div>
 
@@ -255,6 +266,18 @@ else
     })();
 
     (function () {
+        // Simple image preview for agent photo
+        const photoInput = document.getElementById('agent-photo');
+        const preview = document.getElementById('agent-photo-preview');
+        if (photoInput && preview) {
+            photoInput.addEventListener('change', function(){
+                const f = this.files && this.files[0];
+                if (!f) { preview.classList.add('hidden'); preview.src = ''; return; }
+                const url = URL.createObjectURL(f);
+                preview.src = url; preview.classList.remove('hidden');
+            });
+        }
+
         const pwd = document.getElementById('create-agent-password');
         const toggle = document.getElementById('toggle-create-agent-password');
         const icon = document.getElementById('create-eye-icon');

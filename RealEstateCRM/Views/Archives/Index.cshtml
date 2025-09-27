@@ -1,0 +1,132 @@
+@{
+    ViewData["Title"] = ViewData["Title"] ?? "Archives";
+    var archived = ViewBag.Archived as List<RealEstateCRM.Models.Deal> ?? new();
+    var closed = ViewBag.Closed as List<RealEstateCRM.Models.Deal> ?? new();
+}
+
+<div class="flex items-center justify-between mb-6">
+    <h1 class="font-semibold text-2xl">Archives</h1>
+    <form method="get" class="flex gap-2">
+        <input type="text" name="q" value="@Context.Request.Query["q"]" placeholder="Search archived & closed deals..." class="w-72 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+        <button type="submit" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm">Search</button>
+    </form>
+    
+</div>
+
+<div class="space-y-10">
+    <section>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-lg">Closed</h2>
+            <span class="text-sm text-gray-500">@closed.Count item(s)</span>
+        </div>
+        @if (!closed.Any())
+        {
+            <div class="text-gray-500 text-sm">No closed deals.</div>
+        }
+        else
+        {
+            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Deal</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Property</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Agent</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Client</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-700">Offer</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-700">Last Updated</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-700">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach (var d in closed)
+                        {
+                            <tr>
+                                <td class="px-4 py-2">@d.Title</td>
+                                <td class="px-4 py-2">@d.Property?.Title</td>
+                                <td class="px-4 py-2">@d.AgentName</td>
+                                <td class="px-4 py-2">@d.ClientName</td>
+                                <td class="px-4 py-2 text-right">@(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")</td>
+                                <td class="px-4 py-2 text-right">@d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="px-4 py-2 text-right">
+                                    <button type="button" class="px-2 py-1 rounded border text-xs archive-btn" data-id="@d.Id">Archive</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-lg">Archived</h2>
+            <span class="text-sm text-gray-500">@archived.Count item(s)</span>
+        </div>
+        @if (!archived.Any())
+        {
+            <div class="text-gray-500 text-sm">No archived deals.</div>
+        }
+        else
+        {
+            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Deal</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Property</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Agent</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Client</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-700">Offer</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-700">Last Updated</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-700">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach (var d in archived)
+                        {
+                            <tr>
+                                <td class="px-4 py-2">@d.Title</td>
+                                <td class="px-4 py-2">@d.Property?.Title</td>
+                                <td class="px-4 py-2">@d.AgentName</td>
+                                <td class="px-4 py-2">@d.ClientName</td>
+                                <td class="px-4 py-2 text-right">@(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")</td>
+                                <td class="px-4 py-2 text-right">@d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="px-4 py-2 text-right">
+                                    <button type="button" class="px-2 py-1 rounded border text-xs unarchive-btn" data-id="@d.Id">Unarchive</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const qs = (s, r=document) => r.querySelector(s);
+            const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+            qsa('.archive-btn').forEach(b => b.addEventListener('click', () => {
+                const id = b.getAttribute('data-id');
+                fetch('/Deals/ArchiveDeal', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`dealId=${encodeURIComponent(id)}` })
+                    .then(r => { if(!r.ok) throw new Error('Failed'); })
+                    .then(() => location.reload())
+                    .catch(() => alert('Failed to archive'));
+            }));
+
+            qsa('.unarchive-btn').forEach(b => b.addEventListener('click', () => {
+                const id = b.getAttribute('data-id');
+                fetch('/Deals/UnarchiveDeal', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`dealId=${encodeURIComponent(id)}` })
+                    .then(r => { if(!r.ok) throw new Error('Failed'); })
+                    .then(() => location.reload())
+                    .catch(() => alert('Failed to unarchive'));
+            }));
+        });
+    </script>
+}
+

@@ -50,6 +50,12 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// Ensure security stamp is validated every request so locked users are signed out immediately
+builder.Services.Configure<SecurityStampValidatorOptions>(o =>
+{
+    o.ValidationInterval = TimeSpan.Zero;
+});
+
 var app = builder.Build();
 
 // Database initialization (unchanged)...
@@ -77,6 +83,34 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
     ""Type"" VARCHAR(64) NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read ON ""Notifications"" (""RecipientUserId"", ""IsRead"");
+-- Offers table
+CREATE TABLE IF NOT EXISTS ""Offers"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""DealId"" INT NOT NULL,
+    ""Amount"" NUMERIC(18,2) NOT NULL,
+    ""Status"" VARCHAR(32) NOT NULL DEFAULT 'Proposed',
+    ""FinancingType"" VARCHAR(64) NULL,
+    ""EarnestMoney"" NUMERIC(18,2) NULL,
+    ""CloseDate"" DATE NULL,
+    ""Notes"" VARCHAR(512) NULL,
+    ""CreatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ""UpdatedAtUtc"" TIMESTAMPTZ NULL,
+    CONSTRAINT fk_offers_deal FOREIGN KEY (""DealId"") REFERENCES ""Deals"" (""Id"") ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_offers_dealid ON ""Offers"" (""DealId"");
+
+-- Deadlines table
+CREATE TABLE IF NOT EXISTS ""DealDeadlines"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""DealId"" INT NOT NULL,
+    ""Type"" VARCHAR(64) NOT NULL,
+    ""DueDate"" DATE NOT NULL,
+    ""CreatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ""CompletedAtUtc"" TIMESTAMPTZ NULL,
+    ""Notes"" VARCHAR(512) NULL,
+    CONSTRAINT fk_deadlines_deal FOREIGN KEY (""DealId"") REFERENCES ""Deals"" (""Id"") ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_deadlines_dealid ON ""DealDeadlines"" (""DealId"");
 ";
                 await context.Database.ExecuteSqlRawAsync(sql);
             }
@@ -151,6 +185,24 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// If a logged-in user becomes locked, sign them out and send to login
+app.Use(async (context, next) =>
+{
+    if (context.User?.Identity?.IsAuthenticated == true)
+    {
+        var userManager = context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
+        var signInManager = context.RequestServices.GetRequiredService<SignInManager<IdentityUser>>();
+        var user = await userManager.GetUserAsync(context.User);
+        if (user != null && await userManager.IsLockedOutAsync(user))
+        {
+            await signInManager.SignOutAsync();
+            context.Response.Redirect("/Identity/Account/Login");
+            return;
+        }
+    }
+    await next();
+});
 
 // Handle root requests: send unauthenticated users to login, authenticated to dashboard
 app.Use(async (context, next) =>
