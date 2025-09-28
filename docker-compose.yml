@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-realestatecrm}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - realnet
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      # Compose will expand from .env if present. Provide production secrets via your host or CI.
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - DATABASE_URL=${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}}
+      - Mailjet__ApiKey=${Mailjet__ApiKey}
+      - Mailjet__SecretKey=${Mailjet__SecretKey}
+      - Mailjet__SenderEmail=${Mailjet__SenderEmail}
+      - BrokerCredentials__Email=${BrokerCredentials__Email}
+      - BrokerCredentials__Password=${BrokerCredentials__Password}
+    ports:
+      - "5000:80"
+    networks:
+      - realnet
+    depends_on:
+      - db
+
+volumes:
+  db-data:
+
+networks:
+  realnet:
