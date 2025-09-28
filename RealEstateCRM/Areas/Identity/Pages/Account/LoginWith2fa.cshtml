@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model RealEstateCRM.Areas.Identity.Pages.Account.LoginWith2faModel
 @{
     Layout = "/Views/Shared/_AuthLayout.cshtml";
@@ -9,16 +9,32 @@
 <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 rounded-3xl overflow-hidden shadow-lg bg-white">
         <!-- Illustration -->
-        <div class="bg-[#e9e9eb] hidden md:flex items-center justify-center p-8">
+        <div class="bg-[#e9eeb] hidden md:flex items-center justify-center p-8">
             <img src="~/assets/images/Homey_transparent.png" asp-append-version="true" alt="Homey" class="w-full max-w-md h-auto object-contain" />
         </div>
 
         <!-- 2FA Panel -->
         <div class="bg-white p-8 md:p-12">
-            <h1 class="text-2xl md:text-3xl font-semibold text-neutral-900 text-center">Email Verification</h1>
-            <p class="text-center text-sm text-neutral-500 mt-2">
-                Enter the security code we sent to your email.
-            </p>
+            <h1 class="text-2xl md:text-3xl font-semibold text-neutral-900 text-center">Two‑Factor Verification</h1>
+
+            @if (Model.UseAuthenticator && !Model.UseEmail)
+            {
+                <p class="text-center text-sm text-neutral-500 mt-2">
+                    Enter the code from your authenticator app (Google Authenticator, Microsoft Authenticator, etc.).
+                </p>
+            }
+            else if (!Model.UseAuthenticator && Model.UseEmail)
+            {
+                <p class="text-center text-sm text-neutral-500 mt-2">
+                    Enter the security code we sent to your email.
+                </p>
+            }
+            else
+            {
+                <p class="text-center text-sm text-neutral-500 mt-2">
+                    Enter the verification code from your authenticator app or from the email we sent.
+                </p>
+            }
 
             @if (!string.IsNullOrEmpty(Model.InfoMessage))
             {
@@ -42,10 +58,11 @@
             }
 
             <form method="post" class="mt-8 space-y-6">
+                @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="text-red-600 text-sm" role="alert"></div>
 
-                <input type="hidden" asp-for="ReturnUrl" value="@Model.ReturnUrl" />
-                <input type="hidden" name="rememberMe" value="@Model.RememberMe" />
+                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="RememberMe" />
 
                 <div>
                     <label asp-for="Input.TwoFactorCode" class="block text-sm font-medium text-neutral-700">
@@ -65,9 +82,14 @@
                         <input asp-for="Input.RememberMachine" class="accent-neutral-900" />
                         <span>Remember this machine</span>
                     </label>
-                    <button form="resend-form" class="text-neutral-600 hover:underline" type="submit">
-                        Resend code
-                    </button>
+
+                    @* Only show resend when Email provider is available *@
+                    @if (Model.UseEmail)
+                    {
+                        <button form="resend-form" class="text-neutral-600 hover:underline" type="submit">
+                            Resend code
+                        </button>
+                    }
                 </div>
 
                 <button type="submit" class="w-full h-12 rounded-full bg-neutral-900 text-white font-medium hover:bg-neutral-800 transition">
@@ -86,4 +108,3 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
-

@@ -16,8 +16,29 @@ var builder = WebApplication.CreateBuilder(args);
 QuestPDF.Settings.License = LicenseType.Community;
 
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Check for Render's DATABASE_URL environment variable for production
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    var databaseUri = new Uri(databaseUrl);
+    var userInfo = databaseUri.UserInfo.Split(':');
+    var dbHost = databaseUri.Host;
+    var dbPort = databaseUri.Port;
+    var dbUser = userInfo[0];
+    var dbPass = userInfo[1];
+    var dbName = databaseUri.LocalPath.TrimStart('/');
+
+    // Build the connection string for Npgsql, including SSL settings required by Render
+    connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPass};SslMode=Require;Trust Server Certificate=true;";
+}
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found or DATABASE_URL is not set.");
+}
+
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -67,162 +88,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(o =>
 
 var app = builder.Build();
 
-// Database initialization
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        // Create database if needed (no migrations)
-        await context.Database.EnsureCreatedAsync();
-        
-        // Ensure tables exist - Fixed SQL syntax
-        try
-        {
-            var sql = """
-                CREATE TABLE IF NOT EXISTS "Notifications" (
-                    "Id" SERIAL PRIMARY KEY,
-                    "RecipientUserId" TEXT NULL,
-                    "ActorUserId" TEXT NULL,
-                    "Message" VARCHAR(512) NOT NULL,
-                    "LinkUrl" VARCHAR(256) NULL,
-                    "IsRead" BOOLEAN NOT NULL DEFAULT FALSE,
-                    "CreatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    "Type" VARCHAR(64) NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read ON "Notifications" ("RecipientUserId", "IsRead");
-                
-                -- Offers table
-                CREATE TABLE IF NOT EXISTS "Offers" (
-                    "Id" SERIAL PRIMARY KEY,
-                    "DealId" INT NOT NULL,
-                    "Amount" NUMERIC(18,2) NOT NULL,
-                    "Status" VARCHAR(32) NOT NULL DEFAULT 'Proposed',
-                    "FinancingType" VARCHAR(64) NULL,
-                    "EarnestMoney" NUMERIC(18,2) NULL,
-                    "CloseDate" DATE NULL,
-                    "Notes" VARCHAR(512) NULL,
-                    "CreatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    "UpdatedAtUtc" TIMESTAMPTZ NULL,
-                    CONSTRAINT fk_offers_deal FOREIGN KEY ("DealId") REFERENCES "Deals" ("Id") ON DELETE CASCADE
-                );
-                CREATE INDEX IF NOT EXISTS idx_offers_dealid ON "Offers" ("DealId");
 
-                -- Deadlines table
-                CREATE TABLE IF NOT EXISTS "DealDeadlines" (
-                    "Id" SERIAL PRIMARY KEY,
-                    "DealId" INT NOT NULL,
-                    "Type" VARCHAR(64) NOT NULL,
-                    "DueDate" DATE NOT NULL,
-                    "CreatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    "CompletedAtUtc" TIMESTAMPTZ NULL,
-                    "Notes" VARCHAR(512) NULL,
-                    CONSTRAINT fk_deadlines_deal FOREIGN KEY ("DealId") REFERENCES "Deals" ("Id") ON DELETE CASCADE
-                );
-                CREATE INDEX IF NOT EXISTS idx_deadlines_dealid ON "DealDeadlines" ("DealId");
-
-                -- AgencySettings table (single-row configuration)
-                CREATE TABLE IF NOT EXISTS "AgencySettings" (
-                    "Id" SERIAL PRIMARY KEY,
-                    "BrokerCommissionPercent" NUMERIC(5,2) NOT NULL DEFAULT 10.00,
-                    "AgentCommissionPercent" NUMERIC(5,2) NOT NULL DEFAULT 5.00,
-                    "UpdatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    "MonthlyRevenueGoal" NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-                    "LastNotifiedAchievedPeriod" INT NULL,
-                    "LastNotifiedBehindPeriod" INT NULL
-                );
-                
-                -- Seed a default row if table is empty
-                INSERT INTO "AgencySettings" ("BrokerCommissionPercent", "AgentCommissionPercent")
-                SELECT 10.00, 5.00
-                WHERE NOT EXISTS (SELECT 1 FROM "AgencySettings");
-
-                -- Add closed tracking to Deals for revenue analytics
-                ALTER TABLE "Deals" ADD COLUMN IF NOT EXISTS "ClosedAtUtc" TIMESTAMPTZ NULL;
-                ALTER TABLE "Deals" ADD COLUMN IF NOT EXISTS "ClosedByUserId" TEXT NULL;
-                CREATE INDEX IF NOT EXISTS idx_deals_closedat ON "Deals" ("ClosedAtUtc");
-                CREATE INDEX IF NOT EXISTS idx_deals_closedby ON "Deals" ("ClosedByUserId");
-
-                -- Add new columns to AgencySettings if table existed before
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "MonthlyRevenueGoal" NUMERIC(18,2) NOT NULL DEFAULT 0.00;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "LastNotifiedAchievedPeriod" INT NULL;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "LastNotifiedBehindPeriod" INT NULL;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "InspectionDays" INT NOT NULL DEFAULT 7;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "AppraisalDays" INT NOT NULL DEFAULT 14;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "LoanCommitmentDays" INT NOT NULL DEFAULT 21;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "ClosingDays" INT NOT NULL DEFAULT 30;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "MaxActiveAssignmentsPerAgent" INT NOT NULL DEFAULT 5;
-                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "MaxDeclinesPerAgentPerMonth" INT NOT NULL DEFAULT 3;
-                """;
-            await context.Database.ExecuteSqlRawAsync(sql);
-        }
-        catch { }
-
-        // Contact table alterations - Fixed SQL syntax
-        try
-        {
-            var contactSql = """
-                ALTER TABLE "Contacts" ADD COLUMN IF NOT EXISTS "NextFollowUpUtc" TIMESTAMPTZ NULL;
-                ALTER TABLE "Contacts" ADD COLUMN IF NOT EXISTS "FollowUpNotifiedUtc" TIMESTAMPTZ NULL;
-                ALTER TABLE "Contacts" ADD COLUMN IF NOT EXISTS "ArchivedAtUtc" TIMESTAMPTZ NULL;
-                """;
-            await context.Database.ExecuteSqlRawAsync(contactSql);
-        }
-        catch { }
-
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
-
-        var roles = new[] { "Broker", "Agent" };
-        foreach (var roleName in roles)
-        {
-            if (!await roleManager.RoleExistsAsync(roleName))
-            {
-                await roleManager.CreateAsync(new IdentityRole(roleName));
-            }
-        }
-
-        var brokerEmail = "maevenr81@gmail.com";
-        var brokerPassword = "User@123";
-
-        var existingBroker = await userManager.FindByEmailAsync(brokerEmail);
-        if (existingBroker == null)
-        {
-            var brokerUser = new IdentityUser
-            {
-                UserName = brokerEmail,
-                Email = brokerEmail,
-                EmailConfirmed = true
-            };
-
-            var createResult = await userManager.CreateAsync(brokerUser, brokerPassword);
-            if (createResult.Succeeded)
-            {
-                await userManager.AddToRoleAsync(brokerUser, "Broker");
-            }
-        }
-        else
-        {
-            if (!await userManager.IsInRoleAsync(existingBroker, "Broker"))
-            {
-                await userManager.AddToRoleAsync(existingBroker, "Broker");
-            }
-            if (!existingBroker.EmailConfirmed)
-            {
-                existingBroker.EmailConfirmed = true;
-                await userManager.UpdateAsync(existingBroker);
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger2 = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger2.LogError(ex, "An error occurred while initializing the database.");
-        throw;
-    }
-}
 
 if (app.Environment.IsDevelopment())
 {
@@ -258,8 +124,24 @@ app.Use(async (ctx, next) =>
     }
 });
 
+// Seed the database with initial data (roles and broker account)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var configuration = services.GetRequiredService<IConfiguration>();
+        await RealEstateCRM.Data.SeedData.Initialize(services, configuration);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the database.");
+    }
+}
+
 app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthorization()
 
 // If a logged-in user becomes locked, sign them out and send to login
 app.Use(async (context, next) =>
@@ -296,40 +178,6 @@ app.Use(async (context, next) =>
     }
     await next();
 });
-
-// Dev-only maintenance endpoint to disable 2FA when recovery codes are lost
-if (app.Environment.IsDevelopment())
-{
-    app.MapGet("/maintenance/disable-2fa", async (HttpContext ctx, UserManager<IdentityUser> userManager, IConfiguration config) =>
-    {
-        var secret = config["Maintenance:Secret"] ?? string.Empty;
-        var provided = ctx.Request.Query["secret"].ToString();
-        if (string.IsNullOrWhiteSpace(secret) || !string.Equals(secret, provided))
-        {
-            ctx.Response.StatusCode = 403;
-            await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "Forbidden" });
-            return;
-        }
-        var email = ctx.Request.Query["email"].ToString();
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            ctx.Response.StatusCode = 400;
-            await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "Missing email" });
-            return;
-        }
-        var user = await userManager.FindByEmailAsync(email);
-        if (user == null)
-        {
-            ctx.Response.StatusCode = 404;
-            await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "User not found" });
-            return;
-        }
-        await userManager.SetTwoFactorEnabledAsync(user, false);
-        await userManager.ResetAuthenticatorKeyAsync(user);
-        await userManager.UpdateAsync(user);
-        await ctx.Response.WriteAsJsonAsync(new { ok = true, message = "2FA disabled and authenticator key reset. You can log in with password and re-enable 2FA." });
-    });
-}
 
 // Default MVC route
 app.MapControllerRoute(

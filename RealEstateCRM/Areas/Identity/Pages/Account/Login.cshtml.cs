@@ -127,11 +127,28 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
 
             if (result.RequiresTwoFactor)
             {
+                // Diagnostic logging: record providers and two-factor user id for debugging
                 var twoFactorUser = await _signInManager.GetTwoFactorAuthenticationUserAsync() ?? user;
+                try
+                {
+                    if (twoFactorUser != null)
+                    {
+                        var providers = await _userManager.GetValidTwoFactorProvidersAsync(twoFactorUser);
+                        _logger.LogInformation("PasswordSignInRequires2FA: email={Email} userId={UserId} providers={Providers}",
+                            Input.Email, twoFactorUser.Id, string.Join(",", providers));
+                        try { await _appLogger.LogAsync("INFO", "Auth", "PasswordSignInRequires2FA", new { email = Input.Email, userId = twoFactorUser.Id, providers = providers }); } catch { }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("PasswordSignInRequires2FA: no two-factor user in context for email={Email}", Input.Email);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to log 2FA providers for {Email}", Input.Email);
+                }
 
                 // ===== ACTIVE 2FA BYPASS =====
-                // You requested the bypass be brought back. This block signs the user in immediately
-                // when 2FA is required. Disable by setting TwoFactor:Bypass = false in configuration.
                 if (Bypass2FAEnabled && twoFactorUser != null)
                 {
                     await _signInManager.SignInAsync(twoFactorUser, Input.RememberMe);
