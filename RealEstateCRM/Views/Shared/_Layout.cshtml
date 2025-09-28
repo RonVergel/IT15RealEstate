@@ -248,6 +248,218 @@
             btn.addEventListener('click', () => { if (!dd.classList.contains('hidden')) fetchRecent(); });
         })();
     </script>
+    <!-- Floating Helpdesk Chat -->
+<div id="crm-chat-button"
+     class="fixed bottom-4 right-4 z-[11000]">
+    <button id="crm-chat-toggle"
+            class="shadow-lg rounded-full bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-blue-300 transition"
+            aria-label="Open helpdesk chat">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 10h8M8 14h5m3 7-4-4H9a7 7 0 1 1 0-14h6a7 7 0 0 1 7 7c0 2.03-.86 3.87-2.24 5.16-.38.36-.54.91-.39 1.43l.63 2.27z" />
+        </svg>
+    </button>
+</div>
+
+<div id="crm-chat-panel"
+     class="fixed bottom-24 right-4 w-96 max-w-[95vw] h-[480px] bg-white border border-gray-200 rounded-xl shadow-2xl z-[11000] flex flex-col overflow-hidden hidden">
+    <div class="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
+        <div>
+            <div class="font-semibold text-gray-800 text-sm">Helpdesk Assistant</div>
+            <div class="text-[11px] text-gray-500">Answers only about this CRM</div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="crm-chat-minimize" class="text-gray-500 hover:text-gray-700" title="Minimize">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                </svg>
+            </button>
+            <button id="crm-chat-close" class="text-gray-500 hover:text-gray-700" title="Close">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="crm-chat-messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-4 text-sm bg-white">
+        <div class="text-gray-600 text-xs">Type a CRM-related question (e.g. "How do deal stages work?")</div>
+    </div>
+    <div id="crm-chat-suggestions" class="px-4 pb-2 pt-1 flex flex-wrap gap-2"></div>
+    <form id="crm-chat-form" class="px-3 pb-3 pt-1">
+        <div class="flex items-end gap-2">
+            <textarea id="crm-chat-input"
+                      class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      rows="2"
+                      placeholder="Ask about Deals, Offers, Deadlines, Leads..."
+                      maxlength="400"></textarea>
+            <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-300">
+                Send
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    #crm-chat-messages::-webkit-scrollbar { width: 8px; }
+    #crm-chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+    .crm-chat-bubble { max-width: 85%; line-height: 1.25rem; }
+    .crm-chat-user { background:#2563eb; color:#fff; }
+    .crm-chat-bot { background:#f3f4f6; color:#111827; }
+    .crm-chat-ts { font-size:10px; margin-top:2px; opacity:.55; }
+</style>
+
+<script>
+(function(){
+    const btn = document.getElementById('crm-chat-toggle');
+    const panel = document.getElementById('crm-chat-panel');
+    const closeBtn = document.getElementById('crm-chat-close');
+    const minBtn = document.getElementById('crm-chat-minimize');
+    const form = document.getElementById('crm-chat-form');
+    const input = document.getElementById('crm-chat-input');
+    const messages = document.getElementById('crm-chat-messages');
+    const suggestionsWrap = document.getElementById('crm-chat-suggestions');
+
+    const LS_KEY = 'crmChatHistoryV1';
+    let minimized = false;
+
+    function now(){
+        const d = new Date();
+        return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function loadHistory(){
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (!raw) return [];
+            return JSON.parse(raw);
+        } catch { return []; }
+    }
+    function saveHistory(arr){
+        try { localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(-50))); } catch {}
+    }
+
+    let history = loadHistory();
+    if (history.length){
+        history.forEach(m => appendMessage(m.role, m.content, false, m.ts));
+    }
+
+    function appendMessage(role, text, persist=true, timestamp){
+        const bubble = document.createElement('div');
+        const ts = timestamp || now();
+        bubble.className = 'flex flex-col ' + (role === 'user' ? 'items-end' : 'items-start');
+        const inner = document.createElement('div');
+        inner.className = 'crm-chat-bubble rounded-xl px-3 py-2 text-sm shadow ' + (role === 'user' ? 'crm-chat-user' : 'crm-chat-bot');
+        inner.textContent = text;
+        const meta = document.createElement('div');
+        meta.className = 'crm-chat-ts text-gray-500';
+        meta.textContent = ts + (role === 'bot' ? ' · Helpdesk' : '');
+        bubble.appendChild(inner);
+        bubble.appendChild(meta);
+        messages.appendChild(bubble);
+        messages.scrollTop = messages.scrollHeight;
+        if (persist){
+            history.push({ role, content: text, ts });
+            saveHistory(history);
+        }
+    }
+
+    function setSuggestions(list){
+        suggestionsWrap.innerHTML = '';
+        (list || []).forEach(s => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'text-[11px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full';
+            b.textContent = s;
+            b.addEventListener('click', ()=> {
+                input.value = s;
+                input.focus();
+            });
+            suggestionsWrap.appendChild(b);
+        });
+    }
+
+    function setLoading(on){
+        if (on){
+            appendMessage('bot','Thinking...',true);
+        } else {
+            // remove last thinking bubble
+            const last = messages.querySelectorAll('.crm-chat-bot');
+        }
+    }
+
+    async function ask(question){
+        appendMessage('user', question);
+        // placeholder spinner
+        const placeholder = document.createElement('div');
+        placeholder.className = 'flex flex-col items-start';
+        placeholder.innerHTML = '<div class="crm-chat-bubble crm-chat-bot rounded-xl px-3 py-2 text-sm shadow animate-pulse">...</div>';
+        messages.appendChild(placeholder);
+        messages.scrollTop = messages.scrollHeight;
+
+        try {
+            const res = await fetch('/api/chat/ask', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ message: question })
+            });
+            const data = await res.json();
+            placeholder.remove();
+            appendMessage('bot', data.reply);
+            setSuggestions(data.suggested || []);
+        } catch (e){
+            placeholder.remove();
+            appendMessage('bot', 'Failed to get a reply. Please try again.');
+        }
+    }
+
+    form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const q = (input.value || '').trim();
+        if (!q) return;
+        input.value = '';
+        ask(q);
+    });
+
+    btn.addEventListener('click', function(){
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')){
+            input.focus();
+        }
+    });
+    closeBtn.addEventListener('click', function(){
+        panel.classList.add('hidden');
+    });
+    minBtn.addEventListener('click', function(){
+        minimized = !minimized;
+        panel.style.height = minimized ? '64px' : '480px';
+        panel.classList.toggle('overflow-hidden', minimized);
+        minBtn.innerHTML = minimized
+            ? '<svg class="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" fill="none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14"/></svg>'
+            : '<svg class="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" fill="none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>';
+    });
+
+    // Keyboard shortcut: Ctrl+/
+    document.addEventListener('keydown', function(e){
+        if (e.ctrlKey && e.key === '/'){
+            e.preventDefault();
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) input.focus();
+        }
+    });
+
+    // Initial default suggestions
+    if (!history.length){
+        setSuggestions([
+            "How do deal stages work?",
+            "How do I set or accept an offer?",
+            "What happens Under Contract?",
+            "Difference between Leads and Contacts?"
+        ]);
+    }
+})();
+</script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

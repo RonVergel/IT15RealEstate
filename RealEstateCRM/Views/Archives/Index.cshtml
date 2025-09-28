@@ -10,7 +10,6 @@
         <input type="text" name="q" value="@Context.Request.Query["q"]" placeholder="Search archived & closed deals..." class="w-72 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         <button type="submit" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm">Search</button>
     </form>
-    
 </div>
 
 @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
@@ -35,6 +34,7 @@
 }
 
 <div class="space-y-10">
+    <!-- Closed -->
     <section>
         <div class="flex items-center justify-between mb-3">
             <h2 class="font-semibold text-lg">Closed</h2>
@@ -50,8 +50,9 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-2"><input type="checkbox" class="row-select-toggle" data-table="closed" /></th>
-                            <th class="px-4 py-2"><input type="checkbox" class="row-select-toggle" data-table="arch" /></th>
+                            <th class="px-4 py-2">
+                                <input type="checkbox" class="row-select-toggle" data-table="closed" />
+                            </th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Deal</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Property</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Agent</th>
@@ -65,15 +66,23 @@
                         @foreach (var d in closed)
                         {
                             <tr>
-                                <td class="px-4 py-2"><input type="checkbox" class="row-select" value="@d.Id" data-table="closed" /></td>
+                                <td class="px-4 py-2">
+                                    <input type="checkbox" class="row-select" value="@d.Id" data-table="closed" />
+                                </td>
                                 <td class="px-4 py-2">@d.Title</td>
                                 <td class="px-4 py-2">@d.Property?.Title</td>
                                 <td class="px-4 py-2">@d.AgentName</td>
                                 <td class="px-4 py-2">@d.ClientName</td>
-                                <td class="px-4 py-2 text-right">@(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")</td>
-                                <td class="px-4 py-2 text-right">@d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                                 <td class="px-4 py-2 text-right">
-                                    <button type="button" class="px-2 py-1 rounded border text-xs archive-btn" data-id="@d.Id" data-ask="true">Archive</button>
+                                    @(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    @d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    <button type="button" class="px-2 py-1 rounded border text-xs archive-btn hover:bg-gray-100" data-id="@d.Id" data-ask="true">
+                                        Archive
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -83,6 +92,7 @@
         }
     </section>
 
+    <!-- Archived (FIXED ALIGNMENT) -->
     <section>
         <div class="flex items-center justify-between mb-3">
             <h2 class="font-semibold text-lg">Archived</h2>
@@ -98,7 +108,9 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-2"><input type="checkbox" class="row-select-toggle" data-table="arch" /></th>
+                            <th class="px-4 py-2">
+                                <input type="checkbox" class="row-select-toggle" data-table="arch" />
+                            </th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Deal</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Property</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Agent</th>
@@ -112,14 +124,30 @@
                         @foreach (var d in archived)
                         {
                             <tr>
+                                <!-- FIX: added checkbox here to align columns -->
+                                <td class="px-4 py-2">
+                                    <input type="checkbox" class="row-select" value="@d.Id" data-table="arch" />
+                                </td>
                                 <td class="px-4 py-2">@d.Title</td>
                                 <td class="px-4 py-2">@d.Property?.Title</td>
                                 <td class="px-4 py-2">@d.AgentName</td>
                                 <td class="px-4 py-2">@d.ClientName</td>
-                                <td class="px-4 py-2 text-right">@(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")</td>
-                                <td class="px-4 py-2 text-right">@d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                                 <td class="px-4 py-2 text-right">
-                                    <button type="button" class="px-2 py-1 rounded border text-xs unarchive-btn" data-id="@d.Id">Unarchive</button>
+                                    @(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    @d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </td>
+                                <td class="px-4 py-2 text-right space-x-1">
+                                    <button type="button" class="px-2 py-1 rounded border text-xs unarchive-btn hover:bg-gray-100" data-id="@d.Id">
+                                        Unarchive
+                                    </button>
+                                    <button type="button" class="px-2 py-1 rounded border text-xs hold-toggle-btn hover:bg-gray-100" data-id="@d.Id" data-hold="on">
+                                        Hold On
+                                    </button>
+                                    <button type="button" class="px-2 py-1 rounded border text-xs purge-btn hover:bg-red-50 text-red-600 border-red-300" data-id="@d.Id">
+                                        Purge
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -140,31 +168,66 @@
                 return qsa(`input.row-select[data-table="${which}"]:checked`).map(x => x.value).join(',');
             }
 
+            // Add row highlighting for selection usability
+            function syncHighlight(cb){
+                const tr = cb.closest('tr');
+                if(tr) tr.classList.toggle('bg-blue-50', cb.checked);
+            }
+            qsa('.row-select').forEach(cb => cb.addEventListener('change', () => syncHighlight(cb)));
+
+            // Archive (single)
             qsa('.archive-btn').forEach(b => b.addEventListener('click', () => {
-                const id = b.getAttribute('data-id');
-                let reason = '';
-                let retention = '';
-                if (b.dataset.ask === 'true') {
-                    reason = prompt('Archive reason (optional):') || '';
-                    retention = prompt('Retention days (optional, e.g., 180):') || '';
-                }
-                const body = new URLSearchParams({ dealIds: id, reason, retentionDays: retention });
-                fetch('/Archives/BulkArchive', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body })
-                    .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
-                    .then(() => location.reload())
-                    .catch(() => alert('Failed to archive'));
+                const id = b.dataset.id;
+                let reason = prompt('Archive reason (optional):') || '';
+                let retention = prompt('Retention days (optional, e.g., 180):') || '';
+                fetch('/Archives/BulkArchive', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: id, reason, retentionDays: retention })
+                }).then(r => { if(!r.ok) throw 0; return r.json(); })
+                  .then(()=>location.reload())
+                  .catch(()=>alert('Failed to archive'));
             }));
 
+            // Unarchive (single)
             qsa('.unarchive-btn').forEach(b => b.addEventListener('click', () => {
-                const id = b.getAttribute('data-id');
-                const body = new URLSearchParams({ dealIds: id });
-                fetch('/Archives/BulkUnarchive', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body })
-                    .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
-                    .then(() => location.reload())
-                    .catch(() => alert('Failed to unarchive'));
+                const id = b.dataset.id;
+                fetch('/Archives/BulkUnarchive', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: id })
+                }).then(r => { if(!r.ok) throw 0; return r.json(); })
+                  .then(()=>location.reload())
+                  .catch(()=>alert('Failed to unarchive'));
             }));
 
-            // Bulk toolbar events
+            // Hold toggle (single) – simple toggle: On -> Off after server refresh
+            qsa('.hold-toggle-btn').forEach(b => b.addEventListener('click', () => {
+                const id = b.dataset.id;
+                const toHold = b.dataset.hold === 'on';
+                fetch('/Archives/SetHold', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: id, hold: String(toHold) })
+                }).then(r => { if(!r.ok) throw 0; return r.json(); })
+                  .then(()=>location.reload())
+                  .catch(()=>alert('Failed to toggle hold'));
+            }));
+
+            // Purge (single)
+            qsa('.purge-btn').forEach(b => b.addEventListener('click', () => {
+                const id = b.dataset.id;
+                const c = prompt('Type PURGE to permanently delete this archived deal (legal hold respected).');
+                if(!c) return;
+                fetch('/Archives/BulkPurge', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: id, confirm: c })
+                }).then(r => r.json())
+                  .then(r => { if(r.ok) location.reload(); else alert('Failed'); });
+            }));
+
+            // Bulk toolbar
             const selectAll = qs('#select-all');
             const clearSel = qs('#clear-sel');
             const bulkUnarchive = qs('#bulk-unarchive');
@@ -175,46 +238,70 @@
             const autoBtn = qs('#run-auto');
             const autoDays = qs('#auto-days');
 
-            qsa('.row-select-toggle').forEach(t => {
-                t.addEventListener('change', () => {
-                    qsa(`input.row-select[data-table="${t.dataset.table}"]`).forEach(cb => cb.checked = t.checked);
+            qsa('.row-select-toggle').forEach(t => t.addEventListener('change', () => {
+                qsa(`input.row-select[data-table="${t.dataset.table}"]`).forEach(cb => {
+                    cb.checked = t.checked;
+                    syncHighlight(cb);
                 });
-            });
-            if (selectAll) selectAll.addEventListener('click', () => qsa('input.row-select').forEach(cb => cb.checked = true));
-            if (clearSel) clearSel.addEventListener('click', () => qsa('input.row-select').forEach(cb => cb.checked = false));
+            }));
+
+            if (selectAll) selectAll.addEventListener('click', () =>
+                qsa('input.row-select').forEach(cb => { cb.checked = true; syncHighlight(cb); }));
+            if (clearSel) clearSel.addEventListener('click', () =>
+                qsa('input.row-select').forEach(cb => { cb.checked = false; syncHighlight(cb); }));
+
             if (bulkUnarchive) bulkUnarchive.addEventListener('click', () => {
-                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
-                fetch('/Archives/BulkUnarchive', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids }) })
-                    .then(r => r.ok ? location.reload() : alert('Failed'));
+                const ids = gatherSelected('arch');
+                if(!ids) return alert('Select archived rows');
+                fetch('/Archives/BulkUnarchive', {
+                    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: ids })
+                }).then(r => r.ok ? location.reload() : alert('Failed'));
             });
+
             if (holdOn) holdOn.addEventListener('click', () => {
-                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
-                fetch('/Archives/SetHold', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids, hold: 'true' }) })
-                    .then(r => r.ok ? location.reload() : alert('Failed'));
+                const ids = gatherSelected('arch');
+                if(!ids) return alert('Select archived rows');
+                fetch('/Archives/SetHold', {
+                    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: ids, hold: 'true' })
+                }).then(r => r.ok ? location.reload() : alert('Failed'));
             });
+
             if (holdOff) holdOff.addEventListener('click', () => {
-                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
-                fetch('/Archives/SetHold', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids, hold: 'false' }) })
-                    .then(r => r.ok ? location.reload() : alert('Failed'));
+                const ids = gatherSelected('arch');
+                if(!ids) return alert('Select archived rows');
+                fetch('/Archives/SetHold', {
+                    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: ids, hold: 'false' })
+                }).then(r => r.ok ? location.reload() : alert('Failed'));
             });
+
             if (bulkPurge) bulkPurge.addEventListener('click', () => {
-                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
-                const confirmText = prompt('Type PURGE to permanently delete selected archived deals (legal hold will be respected).');
-                if (!confirmText) return;
-                fetch('/Archives/BulkPurge', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids, confirm: confirmText }) })
-                    .then(r => r.json())
-                    .then(r => { if (r.ok) location.reload(); else alert('Failed'); })
+                const ids = gatherSelected('arch');
+                if(!ids) return alert('Select archived rows');
+                const confirmText = prompt('Type PURGE to permanently delete selected archived deals (holds respected).');
+                if(!confirmText) return;
+                fetch('/Archives/BulkPurge', {
+                    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ dealIds: ids, confirm: confirmText })
+                }).then r => r.json())
+                  .then(r => { if(r.ok) location.reload(); else alert('Failed'); });
             });
-            if (exportCsv) exportCsv.addEventListener('click', (e) => {
+
+            if (exportCsv) exportCsv.addEventListener('click', e => {
                 e.preventDefault();
                 const ids = gatherSelected('arch');
                 exportCsv.href = '/Archives/ExportCsv' + (ids ? ('?ids=' + encodeURIComponent(ids)) : '');
                 window.location.href = exportCsv.href;
             });
+
             if (autoBtn) autoBtn.addEventListener('click', () => {
-                const days = parseInt(autoDays.value||'90', 10);
-                fetch('/Archives/AutoArchiveClosed', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ olderThanDays: String(days) }) })
-                    .then(r => r.ok ? location.reload() : alert('Failed to auto-archive'));
+                const days = parseInt(autoDays.value || '90', 10);
+                fetch('/Archives/AutoArchiveClosed', {
+                    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ olderThanDays: String(days) })
+                }).then(r => r.ok ? location.reload() : alert('Failed to auto-archive'));
             });
         });
     </script>
