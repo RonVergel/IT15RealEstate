@@ -65,15 +65,16 @@
 </div>
 
 <!-- Deals Pipeline -->
-<div id="deals-pipeline" class="flex flex-nowrap items-start gap-5 overflow-x-auto min-h-[600px]" style="display:grid;grid-auto-flow:column;grid-auto-columns:18rem;gap:20px;align-items:start;">
+<div id="deals-pipeline" class="grid items-start min-h-[600px]"
+     style="display:grid;grid-auto-flow:column;grid-auto-columns:minmax(280px,320px);gap:18px;align-items:start;overflow-x:auto;padding-bottom:8px;">
     <!-- Column: New -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-rose-200 text-rose-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="New" title="Double-click to rename">
             <span class="column-title" data-status="New">New</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("New") ? dealsByStatus["New"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="New">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="New">
             @if (dealsByStatus.ContainsKey("New"))
             {
                 @foreach (var deal in dealsByStatus["New"])
@@ -156,13 +157,13 @@
     </div>
 
     <!-- Column: Offer Made -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-lime-200 text-lime-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="OfferMade" title="Double-click to rename">
             <span class="column-title" data-status="OfferMade">Offer Made</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("OfferMade") ? dealsByStatus["OfferMade"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="OfferMade">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="OfferMade">
             @if (dealsByStatus.ContainsKey("OfferMade"))
             {
                 @foreach (var deal in dealsByStatus["OfferMade"])
@@ -229,13 +230,13 @@
     </div>
 
     <!-- Column: Negotiation -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-yellow-200 text-yellow-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="Negotiation" title="Double-click to rename">
             <span class="column-title" data-status="Negotiation">Negotiation</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("Negotiation") ? dealsByStatus["Negotiation"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="Negotiation">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="Negotiation">
             @if (dealsByStatus.ContainsKey("Negotiation"))
             {
                 @foreach (var deal in dealsByStatus["Negotiation"])
@@ -305,13 +306,13 @@
     </div>
 
     <!-- Column: Contract Draft -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="ContractDraft" title="Double-click to rename">
             <span class="column-title" data-status="ContractDraft">Contract Draft</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("ContractDraft") ? dealsByStatus["ContractDraft"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="ContractDraft">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="ContractDraft">
             @if (dealsByStatus.ContainsKey("ContractDraft"))
             {
                 @foreach (var deal in dealsByStatus["ContractDraft"])
@@ -375,14 +376,16 @@
                 }
             }
         </div>
+    </div>
+
     <!-- Column: Under Contract -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-emerald-200 text-emerald-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="UnderContract" title="Double-click to rename">
             <span class="column-title" data-status="UnderContract">Under Contract</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("UnderContract") ? dealsByStatus["UnderContract"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="UnderContract">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="UnderContract">
             @if (dealsByStatus.ContainsKey("UnderContract"))
             {
                 @foreach (var deal in dealsByStatus["UnderContract"])
@@ -425,13 +428,13 @@
     </div>
 
     <!-- Column: Clear To Close -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-green-200 text-green-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="ClearToClose" title="Double-click to rename">
             <span class="column-title" data-status="ClearToClose">Clear To Close</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("ClearToClose") ? dealsByStatus["ClearToClose"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="ClearToClose">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="ClearToClose">
             @if (dealsByStatus.ContainsKey("ClearToClose"))
             {
                 @foreach (var deal in dealsByStatus["ClearToClose"])
@@ -450,13 +453,13 @@
     </div>
 
     <!-- Column: Closed -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-slate-200 text-slate-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="Closed" title="Double-click to rename">
             <span class="column-title" data-status="Closed">Closed</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("Closed") ? dealsByStatus["Closed"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="Closed">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="Closed">
             @if (dealsByStatus.ContainsKey("Closed"))
             {
                 @foreach (var deal in dealsByStatus["Closed"])
@@ -480,13 +483,13 @@
     </div>
 
     <!-- Column: Fell Through -->
-    <div class="w-72 bg-gray-50 rounded-lg p-2 flex-shrink-0">
+    <div class="w-full bg-gray-50 rounded-lg p-2">
         <div class="bg-gray-200 text-gray-800 px-3 py-2 rounded-md text-sm font-medium editable-column-header" data-status="FellThrough" title="Double-click to rename">
             <span class="column-title" data-status="FellThrough">Fell Through</span>
             <span class="column-count">(@(dealsByStatus.ContainsKey("FellThrough") ? dealsByStatus["FellThrough"].Count : 0))</span>
             
         </div>
-        <div class="deal-cards mt-4 space-y-4 p-1 h-full" data-stage="FellThrough">
+        <div class="deal-cards mt-2 space-y-2 p-1 h-full" data-stage="FellThrough">
             @if (dealsByStatus.ContainsKey("FellThrough"))
             {
                 @foreach (var deal in dealsByStatus["FellThrough"])
@@ -1727,16 +1730,16 @@
 </script>
 @section Styles {
     <style>
-        /* Board: single row that fits within viewport width */
+        /* Board: comfortable horizontal Kanban with wide columns */
         #deals-pipeline {
             display: grid !important;
             grid-auto-flow: column !important;
-            grid-auto-columns: minmax(220px, 1fr) !important;
-            gap: 16px !important;
+            grid-auto-columns: minmax(280px, 320px) !important;
+            gap: 18px !important;
             align-items: start;
             overflow-x: auto;
+            padding-bottom: 8px;
         }
-        #deals-pipeline > .w-72 { width: auto !important; }
         /* Keep columns compact and readable */
         .editable-column-header { border: 1px solid rgba(0,0,0,.06); border-radius: 8px; }
         .deal-cards { min-height: 220px; max-height: calc(100vh - 320px); overflow-y: auto; }
@@ -1759,5 +1762,6 @@
         .deal-cards { min-height: 220px; }
     </style>
 }
+
 
 

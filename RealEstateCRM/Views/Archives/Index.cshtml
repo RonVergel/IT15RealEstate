@@ -13,6 +13,27 @@
     
 </div>
 
+@if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
+{
+    <div class="sticky top-16 z-[5] bg-white/80 backdrop-blur border-y border-gray-200 py-3 px-3 rounded mb-4">
+        <div class="flex flex-wrap gap-2 items-center">
+            <div class="text-sm font-medium text-gray-700">Bulk actions:</div>
+            <button id="select-all" class="px-3 py-1 border rounded text-sm">Select All</button>
+            <button id="clear-sel" class="px-3 py-1 border rounded text-sm">Clear</button>
+            <button id="bulk-unarchive" class="px-3 py-1 bg-emerald-600 text-white rounded text-sm">Unarchive</button>
+            <button id="bulk-hold-on" class="px-3 py-1 border rounded text-sm">Hold On</button>
+            <button id="bulk-hold-off" class="px-3 py-1 border rounded text-sm">Hold Off</button>
+            <button id="bulk-purge" class="px-3 py-1 bg-red-600 text-white rounded text-sm">Purge</button>
+            <a id="export-csv" class="px-3 py-1 border rounded text-sm" href="#">Export CSV</a>
+            <div class="ml-auto flex items-center gap-2">
+                <label class="text-sm text-gray-600">Auto-archive closed ≥</label>
+                <input type="number" id="auto-days" value="90" min="30" class="w-20 border rounded px-2 py-1 text-sm" />
+                <button id="run-auto" class="px-3 py-1 border rounded text-sm">Run</button>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="space-y-10">
     <section>
         <div class="flex items-center justify-between mb-3">
@@ -29,6 +50,8 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-2"><input type="checkbox" class="row-select-toggle" data-table="closed" /></th>
+                            <th class="px-4 py-2"><input type="checkbox" class="row-select-toggle" data-table="arch" /></th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Deal</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Property</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Agent</th>
@@ -42,6 +65,7 @@
                         @foreach (var d in closed)
                         {
                             <tr>
+                                <td class="px-4 py-2"><input type="checkbox" class="row-select" value="@d.Id" data-table="closed" /></td>
                                 <td class="px-4 py-2">@d.Title</td>
                                 <td class="px-4 py-2">@d.Property?.Title</td>
                                 <td class="px-4 py-2">@d.AgentName</td>
@@ -49,7 +73,7 @@
                                 <td class="px-4 py-2 text-right">@(d.OfferAmount.HasValue ? $"₱ {d.OfferAmount.Value:N0}" : "-")</td>
                                 <td class="px-4 py-2 text-right">@d.LastUpdated?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                                 <td class="px-4 py-2 text-right">
-                                    <button type="button" class="px-2 py-1 rounded border text-xs archive-btn" data-id="@d.Id">Archive</button>
+                                    <button type="button" class="px-2 py-1 rounded border text-xs archive-btn" data-id="@d.Id" data-ask="true">Archive</button>
                                 </td>
                             </tr>
                         }
@@ -74,6 +98,7 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-2"><input type="checkbox" class="row-select-toggle" data-table="arch" /></th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Deal</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Property</th>
                             <th class="px-4 py-2 text-left font-medium text-gray-700">Agent</th>
@@ -111,22 +136,91 @@
             const qs = (s, r=document) => r.querySelector(s);
             const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
 
+            function gatherSelected(which) {
+                return qsa(`input.row-select[data-table="${which}"]:checked`).map(x => x.value).join(',');
+            }
+
             qsa('.archive-btn').forEach(b => b.addEventListener('click', () => {
                 const id = b.getAttribute('data-id');
-                fetch('/Deals/ArchiveDeal', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`dealId=${encodeURIComponent(id)}` })
-                    .then(r => { if(!r.ok) throw new Error('Failed'); })
+                let reason = '';
+                let retention = '';
+                if (b.dataset.ask === 'true') {
+                    reason = prompt('Archive reason (optional):') || '';
+                    retention = prompt('Retention days (optional, e.g., 180):') || '';
+                }
+                const body = new URLSearchParams({ dealIds: id, reason, retentionDays: retention });
+                fetch('/Archives/BulkArchive', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body })
+                    .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
                     .then(() => location.reload())
                     .catch(() => alert('Failed to archive'));
             }));
 
             qsa('.unarchive-btn').forEach(b => b.addEventListener('click', () => {
                 const id = b.getAttribute('data-id');
-                fetch('/Deals/UnarchiveDeal', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`dealId=${encodeURIComponent(id)}` })
-                    .then(r => { if(!r.ok) throw new Error('Failed'); })
+                const body = new URLSearchParams({ dealIds: id });
+                fetch('/Archives/BulkUnarchive', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body })
+                    .then(r => { if(!r.ok) throw new Error('Failed'); return r.json(); })
                     .then(() => location.reload())
                     .catch(() => alert('Failed to unarchive'));
             }));
+
+            // Bulk toolbar events
+            const selectAll = qs('#select-all');
+            const clearSel = qs('#clear-sel');
+            const bulkUnarchive = qs('#bulk-unarchive');
+            const holdOn = qs('#bulk-hold-on');
+            const holdOff = qs('#bulk-hold-off');
+            const bulkPurge = qs('#bulk-purge');
+            const exportCsv = qs('#export-csv');
+            const autoBtn = qs('#run-auto');
+            const autoDays = qs('#auto-days');
+
+            qsa('.row-select-toggle').forEach(t => {
+                t.addEventListener('change', () => {
+                    qsa(`input.row-select[data-table="${t.dataset.table}"]`).forEach(cb => cb.checked = t.checked);
+                });
+            });
+            if (selectAll) selectAll.addEventListener('click', () => qsa('input.row-select').forEach(cb => cb.checked = true));
+            if (clearSel) clearSel.addEventListener('click', () => qsa('input.row-select').forEach(cb => cb.checked = false));
+            if (bulkUnarchive) bulkUnarchive.addEventListener('click', () => {
+                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
+                fetch('/Archives/BulkUnarchive', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids }) })
+                    .then(r => r.ok ? location.reload() : alert('Failed'));
+            });
+            if (holdOn) holdOn.addEventListener('click', () => {
+                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
+                fetch('/Archives/SetHold', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids, hold: 'true' }) })
+                    .then(r => r.ok ? location.reload() : alert('Failed'));
+            });
+            if (holdOff) holdOff.addEventListener('click', () => {
+                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
+                fetch('/Archives/SetHold', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids, hold: 'false' }) })
+                    .then(r => r.ok ? location.reload() : alert('Failed'));
+            });
+            if (bulkPurge) bulkPurge.addEventListener('click', () => {
+                const ids = gatherSelected('arch'); if (!ids) return alert('Select archived rows');
+                const confirmText = prompt('Type PURGE to permanently delete selected archived deals (legal hold will be respected).');
+                if (!confirmText) return;
+                fetch('/Archives/BulkPurge', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ dealIds: ids, confirm: confirmText }) })
+                    .then(r => r.json())
+                    .then(r => { if (r.ok) location.reload(); else alert('Failed'); })
+            });
+            if (exportCsv) exportCsv.addEventListener('click', (e) => {
+                e.preventDefault();
+                const ids = gatherSelected('arch');
+                exportCsv.href = '/Archives/ExportCsv' + (ids ? ('?ids=' + encodeURIComponent(ids)) : '');
+                window.location.href = exportCsv.href;
+            });
+            if (autoBtn) autoBtn.addEventListener('click', () => {
+                const days = parseInt(autoDays.value||'90', 10);
+                fetch('/Archives/AutoArchiveClosed', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ olderThanDays: String(days) }) })
+                    .then(r => r.ok ? location.reload() : alert('Failed to auto-archive'));
+            });
         });
     </script>
 }
+
+
+
+
 

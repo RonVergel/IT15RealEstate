@@ -48,6 +48,20 @@
         </div>
     </div>
 
+    <!-- Pagination (top) -->
+    <div class="mt-2 flex justify-end">
+        @{
+            var rangeKeyTop = (Model.RevenueRangeKey ?? "month").ToLower();
+            var topPage1Url = $"/Dashboard?revRange={rangeKeyTop}&convMonth={Model.ConversionMonthKey}&page=1";
+            var topPage2Url = $"/Dashboard?revRange={rangeKeyTop}&convMonth={Model.ConversionMonthKey}&page=2";
+        }
+        <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <a href="@topPage1Url" class="px-3 py-1 border text-sm @(Model.Page==1?"bg-blue-50 border-blue-300 text-blue-700":"bg-white border-gray-300 text-gray-700 hover:bg-gray-50")">1</a>
+            <a href="@topPage2Url" class="px-3 py-1 border text-sm @(Model.Page==2?"bg-blue-50 border-blue-300 text-blue-700":"bg-white border-gray-300 text-gray-700 hover:bg-gray-50")">2</a>
+        </nav>
+    </div>
+
+    @if (Model.Page == 1) {
     <!-- Main Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Properties Card -->
@@ -209,7 +223,54 @@
                 @if (rk == "quarter") { <option value="quarter" selected>Last 90 days</option> } else { <option value="quarter">Last 90 days</option> }
                 @if (rk == "year") { <option value="year" selected>Last 365 days</option> } else { <option value="year">Last 365 days</option> }
             </select>
+            <input type="hidden" name="convMonth" value="@Model.ConversionMonthKey" />
+            <input type="hidden" name="page" value="@Model.Page" />
         </form>
+    </div>
+    }
+
+    @if (Model.Page == 2)
+    {
+    <!-- Deal Conversion Rate (Monthly) -->
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold text-gray-900">Deal Conversion Rate</h3>
+                <form method="get" class="flex items-center gap-2">
+                    <input type="hidden" name="revRange" value="@Model.RevenueRangeKey" />
+                    <input type="hidden" name="page" value="2" />
+                    <label class="text-sm text-gray-600">Month</label>
+                    <select name="convMonth" class="border rounded px-2 py-1 text-sm" onchange="this.form.submit()">
+                        @{
+                            var months = Enumerable.Range(0, 12)
+                                .Select(i => DateTime.UtcNow.AddMonths(-i))
+                                .Select(d => new { Key = d.ToString("yyyy-MM"), Label = d.ToString("MMMM yyyy") })
+                                .ToList();
+                            var selected = string.IsNullOrWhiteSpace(Model.ConversionMonthKey) ? DateTime.UtcNow.ToString("yyyy-MM") : Model.ConversionMonthKey;
+                        }
+                        @foreach (var m in months)
+                        {
+                            if (m.Key == selected)
+                            {
+                                <option value="@m.Key" selected>@m.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@m.Key">@m.Label</option>
+                            }
+                        }
+                    </select>
+                </form>
+            </div>
+
+            <div class="flex items-end gap-6">
+                <div>
+                    <div class="text-4xl font-extrabold text-gray-900">@Model.ConversionRate.ToString("N1")%</div>
+                    <div class="text-sm text-gray-600">@Model.ConversionClosed closed / @Model.ConversionCreated created</div>
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">@Model.ConversionMonthLabel</div>
+        </div>
     </div>
 
     <!-- Top Monthly Agent -->
@@ -463,7 +524,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- New: Preferred Property Type by Occupation -->
     <div class="bg-white border border-gray-200 rounded-lg p-6">
         <div class="flex items-center justify-between mb-4">
@@ -507,6 +568,7 @@
             </div>
         </div>
     </div>
+    }
 </div>
 
 @section Scripts {

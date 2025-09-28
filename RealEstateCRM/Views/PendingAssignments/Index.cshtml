@@ -11,6 +11,19 @@
     <p class="text-sm text-gray-500">Properties assigned to you that require action.</p>
 </div>
 
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="mb-4 p-3 rounded border border-red-200 bg-red-50 text-red-700">@TempData["ErrorMessage"]</div>
+}
+@if (TempData["WarningMessage"] != null)
+{
+    <div class="mb-4 p-3 rounded border border-amber-200 bg-amber-50 text-amber-800">@TempData["WarningMessage"]</div>
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="mb-4 p-3 rounded border border-green-200 bg-green-50 text-green-700">@TempData["SuccessMessage"]</div>
+}
+
 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
     @if (Model != null && Model.Any())
     {

@@ -116,5 +116,35 @@ namespace RealEstateCRM.Controllers
             TempData["SuccessMessage"] = "Deadline defaults saved.";
             return RedirectToAction("Index");
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveAssignmentLimits(int maxActive, int maxDeclines)
+        {
+            maxActive = Math.Max(0, maxActive);
+            maxDeclines = Math.Max(0, maxDeclines);
+
+            var settings = await _db.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+            if (settings == null)
+            {
+                settings = new AgencySettings
+                {
+                    MaxActiveAssignmentsPerAgent = maxActive,
+                    MaxDeclinesPerAgentPerMonth = maxDeclines,
+                    UpdatedAtUtc = DateTime.UtcNow
+                };
+                _db.AgencySettings.Add(settings);
+            }
+            else
+            {
+                settings.MaxActiveAssignmentsPerAgent = maxActive;
+                settings.MaxDeclinesPerAgentPerMonth = maxDeclines;
+                settings.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Assignment limits saved.";
+            return RedirectToAction("Index");
+        }
     }
 }

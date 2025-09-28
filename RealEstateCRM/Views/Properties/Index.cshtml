@@ -620,11 +620,19 @@
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
                         </div>
 
-                        <!-- Area -->
+                        <!-- Lot Area -->
                         <div>
-                            <label for="property-area" class="block text-sm font-medium text-gray-700 mb-1">Area (sqm)</label>
+                            <label for="property-area" class="block text-sm font-medium text-gray-700 mb-1">Lot Area (sqm)</label>
                             <input type="number" id="property-area" name="Area" min="0"
                                    placeholder="e.g., 120"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
+                        </div>
+
+                        <!-- Floor Area (sqft) -->
+                        <div>
+                            <label for="property-floor-sqft" class="block text-sm font-medium text-gray-700 mb-1">Floor Area (sqft)</label>
+                            <input type="number" id="property-floor-sqft" name="SQFT" min="0" step="0.01"
+                                   placeholder="e.g., 1291.67"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200" />
                         </div>
 
@@ -665,7 +673,7 @@
                                 <span id="calculated-price-per-sqft" class="font-medium text-gray-900">-</span>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">Values are automatically calculated based on Area (sqm) and Price</p>
+                        <p class="text-xs text-gray-500 mt-2">Values are automatically calculated from Lot Area (sqm) or Floor Area (sqft) and Price</p>
                     </div>
 
                     <!-- Property Type (Required) -->
@@ -779,6 +787,7 @@
 
             // Calculation elements
             var areaInput = document.getElementById('property-area');
+            var floorInput = document.getElementById('property-floor-sqft');
             var priceInput = document.getElementById('property-price');
             var calculatedSqft = document.getElementById('calculated-sqft');
             var calculatedPricePerSqft = document.getElementById('calculated-price-per-sqft');
@@ -1048,11 +1057,17 @@
                 if (!calculatedPricePerSqft) return;
 
                 var areaVal = areaInput ? parseFloat(areaInput.value) : NaN;
+                var floorVal = floorInput ? parseFloat(floorInput.value) : NaN;
                 var priceVal = priceInput ? parseFloat(priceInput.value) : NaN;
 
-                // compute SQFT (1 sqm = 10.7639 sqft)
-                if (!isNaN(areaVal) && areaVal > 0) {
-                    var sqft = areaVal * 10.7639;
+                // compute SQFT (prefer floor area if provided; else convert from lot area)
+                var sqft = NaN;
+                if (!isNaN(floorVal) && floorVal > 0) {
+                    sqft = floorVal;
+                } else if (!isNaN(areaVal) && areaVal > 0) {
+                    sqft = areaVal * 10.7639;
+                }
+                if (!isNaN(sqft) && sqft > 0) {
                     // display with 2 decimals
                     calculatedSqft.textContent = sqft.toFixed(2);
                 } else {
@@ -1060,8 +1075,8 @@
                 }
 
                 // compute Price Per SQFT
-                if (!isNaN(priceVal) && priceVal > 0 && !isNaN(areaVal) && areaVal > 0) {
-                    var sqftForCalc = areaVal * 10.7639;
+                if (!isNaN(priceVal) && priceVal > 0 && !isNaN(sqft) && sqft > 0) {
+                    var sqftForCalc = sqft;
                     if (sqftForCalc > 0) {
                         var pricePerSqft = priceVal / sqftForCalc;
                         // Format with currency and 2 decimals
@@ -1081,6 +1096,9 @@
             // Listen for input changes
             if (areaInput) {
                 areaInput.addEventListener('input', computeCalculatedValues);
+            }
+            if (floorInput) {
+                floorInput.addEventListener('input', computeCalculatedValues);
             }
             if (priceInput) {
                 priceInput.addEventListener('input', computeCalculatedValues);

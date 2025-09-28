@@ -42,6 +42,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
     .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddTransient<IEmailSender, EmailSender>();
+builder.Services.AddScoped<RealEstateCRM.Services.Logging.IAppLogger, RealEstateCRM.Services.Logging.AppLogger>();
 builder.Services.Configure<AuthMessageSenderOptions>(builder.Configuration.GetSection("Mailjet"));
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -51,7 +52,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<RealEstateCRM.Services.Logging.ActionAuditFilter>();
+});
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton<RealEstateCRM.Services.ContractPdfGenerator>();
 
@@ -146,6 +150,8 @@ ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""InspectionDays"" INT N
 ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""AppraisalDays"" INT NOT NULL DEFAULT 14;
 ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LoanCommitmentDays"" INT NOT NULL DEFAULT 21;
 ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""ClosingDays"" INT NOT NULL DEFAULT 30;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""MaxActiveAssignmentsPerAgent"" INT NOT NULL DEFAULT 5;
+ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""MaxDeclinesPerAgentPerMonth"" INT NOT NULL DEFAULT 3;
 ";
                 await context.Database.ExecuteSqlRawAsync(sql);
             }
@@ -218,6 +224,25 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Minimal error logging middleware to capture unhandled exceptions to SystemLog
+app.Use(async (ctx, next) =>
+{
+    try { await next(); }
+    catch (Exception ex)
+    {
+        try
+        {
+            var logger = ctx.RequestServices.GetService<RealEstateCRM.Services.Logging.IAppLogger>();
+            if (logger != null)
+            {
+                await logger.LogAsync("ERROR", "Unhandled", ex.Message, new { path = ctx.Request.Path.Value, stack = ex.ToString() });
+            }
+        }
+        catch { }
+        throw;
+    }
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -256,6 +281,40 @@ app.Use(async (context, next) =>
     }
     await next();
 });
+
+// Dev-only maintenance endpoint to disable 2FA when recovery codes are lost
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/maintenance/disable-2fa", async (HttpContext ctx, UserManager<IdentityUser> userManager, IConfiguration config) =>
+    {
+        var secret = config["Maintenance:Secret"] ?? string.Empty;
+        var provided = ctx.Request.Query["secret"].ToString();
+        if (string.IsNullOrWhiteSpace(secret) || !string.Equals(secret, provided))
+        {
+            ctx.Response.StatusCode = 403;
+            await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "Forbidden" });
+            return;
+        }
+        var email = ctx.Request.Query["email"].ToString();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "Missing email" });
+            return;
+        }
+        var user = await userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            ctx.Response.StatusCode = 404;
+            await ctx.Response.WriteAsJsonAsync(new { ok = false, error = "User not found" });
+            return;
+        }
+        await userManager.SetTwoFactorEnabledAsync(user, false);
+        await userManager.ResetAuthenticatorKeyAsync(user);
+        await userManager.UpdateAsync(user);
+        await ctx.Response.WriteAsJsonAsync(new { ok = true, message = "2FA disabled and authenticator key reset. You can log in with password and re-enable 2FA." });
+    });
+}
 
 // Default MVC route
 app.MapControllerRoute(

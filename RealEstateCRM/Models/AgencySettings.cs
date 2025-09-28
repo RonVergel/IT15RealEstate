@@ -19,5 +19,9 @@ namespace RealEstateCRM.Models
         public int AppraisalDays { get; set; } = 14;
         public int LoanCommitmentDays { get; set; } = 21;
         public int ClosingDays { get; set; } = 30;
+
+        // Assignment limits
+        public int MaxActiveAssignmentsPerAgent { get; set; } = 5;
+        public int MaxDeclinesPerAgentPerMonth { get; set; } = 3;
     }
 }

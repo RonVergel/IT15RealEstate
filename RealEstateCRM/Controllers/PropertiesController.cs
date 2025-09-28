@@ -189,8 +189,11 @@ namespace RealEstateCRM.Controllers
                 property.ListingStatus = !string.IsNullOrWhiteSpace(property.Agent) ? "Pending" : (property.ListingStatus ?? "Active");
                 property.ListingTime = property.ListingTime == default ? DateTime.UtcNow : NormalizeToUtc(property.ListingTime);
 
-                // Automatically calculate SQFT from Area (sqm)
-                property.CalculateSQFT();
+                // Calculate SQFT from Area (sqm) only if Floor Area (SQFT) not provided
+                if (!property.SQFT.HasValue || property.SQFT <= 0)
+                {
+                    property.CalculateSQFT();
+                }
                 
                 // Automatically calculate Price Per SQFT
                 property.CalculatePricePerSQFT();
@@ -728,6 +731,23 @@ namespace RealEstateCRM.Controllers
                 return Forbid();
             }
 
+            // Enforce max active assignments per agent
+            try
+            {
+                var settings = await _context.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+                var maxActive = settings?.MaxActiveAssignmentsPerAgent ?? 5;
+                if (!string.IsNullOrWhiteSpace(displayName) && maxActive > 0)
+                {
+                    var activeCount = await _context.Deals.CountAsync(d => d.AgentName != null && d.AgentName.ToLower() == displayName!.ToLower() && d.Status != "Closed" && d.Status != "Archived");
+                    if (activeCount >= maxActive)
+                    {
+                        TempData["ErrorMessage"] = $"You have reached the maximum of {maxActive} active assignments. Finish some deals before accepting new ones.";
+                        return RedirectToAction("Index", "PendingAssignments");
+                    }
+                }
+            }
+            catch { }
+
             // 1) Accept assignment: mark property Active
             prop.ListingStatus = "Active"; // accepted -> move out of Pending
             _context.Properties.Update(prop);
@@ -805,11 +825,41 @@ namespace RealEstateCRM.Controllers
                 return Forbid();
             }
 
+            // Enforce monthly decline limit
+            try
+            {
+                var settings = await _context.AgencySettings.OrderBy(s => s.Id).FirstOrDefaultAsync();
+                var maxDeclines = settings?.MaxDeclinesPerAgentPerMonth ?? 3;
+                if (user != null && maxDeclines > 0)
+                {
+                    var start = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                    var end = start.AddMonths(1);
+                    var declinesThisMonth = await _context.Notifications.CountAsync(n => n.Type == "assignment:declined" && n.RecipientUserId == user.Id && n.CreatedAtUtc >= start && n.CreatedAtUtc < end);
+                    if (declinesThisMonth >= maxDeclines)
+                    {
+                        TempData["ErrorMessage"] = $"You have reached the monthly decline limit of {maxDeclines}.";
+                        return RedirectToAction("Index", "PendingAssignments");
+                    }
+                }
+            }
+            catch { }
+
             // Decline -> unassign and activate back to properties pool
             prop.Agent = null;
             prop.ListingStatus = "Active";
             _context.Properties.Update(prop);
             await _context.SaveChangesAsync();
+
+            // Track decline for stats and notify
+            try
+            {
+                if (user != null)
+                {
+                    await _notifications.NotifyUserAsync(user.Id, $"You declined an assignment: '{prop.Title}'.", "/PendingAssignments", user.Id, "assignment:declined");
+                    await _notifications.NotifyRoleAsync("Broker", $"{displayName ?? "Agent"} declined an assignment: '{prop.Title}'.", "/Properties", user.Id, "assignment:declined-broadcast");
+                }
+            }
+            catch { }
 
             TempData["SuccessMessage"] = "Assignment declined.";
             return RedirectToAction("Index", "PendingAssignments");

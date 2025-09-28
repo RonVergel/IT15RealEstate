@@ -376,6 +376,54 @@ namespace RealEstateCRM.Controllers
             dashboardData.AvgClientSalaryLabels = labels;
             dashboardData.AvgClientSalaryValues = values;
 
+            // ==============================
+            // Deal Conversion Rate (filterable by month)
+            // ==============================
+            // convMonth accepted formats: "YYYY-MM" or "YYYYMM"; default = current month
+            var convParam = (Request.Query["convMonth"].FirstOrDefault() ?? string.Empty).Trim();
+            DateTime nowLocal = DateTime.UtcNow;
+            int y = nowLocal.Year, convMonth = nowLocal.Month;
+            if (!string.IsNullOrWhiteSpace(convParam))
+            {
+                try
+                {
+                    if (convParam.Contains("-"))
+                    {
+                        var parts = convParam.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length == 2 && int.TryParse(parts[0], out var yy) && int.TryParse(parts[1], out var mm) && mm >= 1 && mm <= 12)
+                        {
+                            y = yy; convMonth = mm;
+                        }
+                    }
+                    else if (convParam.Length == 6 && int.TryParse(convParam.Substring(0, 4), out var yy2) && int.TryParse(convParam.Substring(4, 2), out var mm2) && mm2 >= 1 && mm2 <= 12)
+                    {
+                        y = yy2; convMonth = mm2;
+                    }
+                }
+                catch { }
+            }
+
+            var convStart = new DateTime(y, convMonth, 1, 0, 0, 0, DateTimeKind.Utc);
+            var convEnd = convStart.AddMonths(1).AddSeconds(-1);
+
+            var totalCreated = await _context.Deals.CountAsync(d => d.CreatedDate >= convStart && d.CreatedDate <= convEnd);
+            var totalClosed = await _context.Deals.CountAsync(d => d.Status == "Closed" && (d.ClosedAtUtc ?? d.LastUpdated) >= convStart && (d.ClosedAtUtc ?? d.LastUpdated) <= convEnd);
+
+            dashboardData.ConversionMonthKey = $"{y:0000}-{convMonth:00}";
+            dashboardData.ConversionMonthLabel = new DateTime(y, convMonth, 1).ToString("MMMM yyyy");
+            dashboardData.ConversionCreated = totalCreated;
+            dashboardData.ConversionClosed = totalClosed;
+            dashboardData.ConversionRate = totalCreated == 0 ? 0m : Math.Round((decimal)totalClosed * 100m / totalCreated, 2);
+
+            // Simple 2-page pagination for dashboard sections
+            var pageStr = Request.Query["page"].FirstOrDefault();
+            int page = 1;
+            if (!string.IsNullOrWhiteSpace(pageStr) && int.TryParse(pageStr, out var parsed))
+                page = parsed;
+            if (page < 1) page = 1; if (page > 2) page = 2;
+            dashboardData.Page = page;
+            dashboardData.TotalPages = 2;
+
             return View(dashboardData);
         }
 
@@ -442,6 +490,17 @@ namespace RealEstateCRM.Controllers
 
         // Top monthly agents (by agent earnings from closed deals this month)
         public List<AgentMonthlyStat> TopMonthlyAgents { get; set; } = new();
+
+        // Deal conversion rate (per-month)
+        public string ConversionMonthKey { get; set; } = string.Empty; // e.g., 2025-09
+        public string ConversionMonthLabel { get; set; } = string.Empty; // e.g., September 2025
+        public int ConversionCreated { get; set; }
+        public int ConversionClosed { get; set; }
+        public decimal ConversionRate { get; set; } // percentage 0..100
+
+        // Pagination
+        public int Page { get; set; } = 1;
+        public int TotalPages { get; set; } = 2;
     }
 
     // Simple DTO for occupation -> property type counts

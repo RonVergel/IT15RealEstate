@@ -67,7 +67,7 @@
                 @* Show Manage Agents only for users in Broker role *@
                 @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Broker"))
                 {
-                    <a class="@getNavLinkClass("Settings", "Index")" asp-controller="Settings" asp-action="Index">Agency Settings</a>
+                    @* Agency Settings moved to user dropdown. Link removed from sidebar. *@
                     <a class="@getNavLinkClass("Admin", "Index")" asp-controller="Admin" asp-action="Index">Manage Agents</a>
                 }
 

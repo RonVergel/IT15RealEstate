@@ -718,6 +718,10 @@ namespace RealEstateCRM.Controllers
             }
             catch { }
             await _context.SaveChangesAsync();
+
+            // Fire-and-forget helpful side-effects: send contract packet and recommendations
+            try { await TryEmailContractPacket(deal.Id); } catch { }
+            try { await TrySendRecommendationsOnClose(deal.Id); } catch { }
             return Ok();
         }
 
@@ -800,6 +804,65 @@ namespace RealEstateCRM.Controllers
             }
 
             try { await _notifications.NotifyRoleAsync("Broker", $"Contract email {(sent ? "sent" : "failed")} to {client.Email} for deal #{deal.Id}", "/Deals", null, "ContractEmail"); } catch { }
+        }
+
+        // Sends an email to the client with recommended active properties related to the closed deal.
+        private async Task TrySendRecommendationsOnClose(int dealId)
+        {
+            var deal = await _context.Deals.Include(d => d.Property).FirstOrDefaultAsync(d => d.Id == dealId);
+            if (deal == null) return;
+
+            // Locate client by name
+            Contact? client = null;
+            if (!string.IsNullOrWhiteSpace(deal.ClientName))
+            {
+                client = await _context.Contacts.FirstOrDefaultAsync(c => c.IsActive && c.Name.ToLower() == deal.ClientName!.ToLower());
+            }
+            if (client == null || string.IsNullOrWhiteSpace(client.Email)) return;
+
+            // Determine similarity criteria
+            var type = deal.Property?.PropertyType;
+            var basePrice = deal.OfferAmount ?? deal.Property?.Price ?? 0m;
+            decimal low = basePrice > 0 ? basePrice * 0.8m : 0m;
+            decimal high = basePrice > 0 ? basePrice * 1.2m : decimal.MaxValue;
+
+            var recQuery = _context.Properties.Where(p => p.ListingStatus == "Active");
+            if (!string.IsNullOrWhiteSpace(type)) recQuery = recQuery.Where(p => p.PropertyType == type);
+            if (basePrice > 0) recQuery = recQuery.Where(p => p.Price >= low && p.Price <= high);
+
+            var recs = await recQuery
+                .OrderBy(p => Math.Abs((double)((p.Price) - (basePrice > 0 ? basePrice : p.Price))))
+                .Take(6)
+                .ToListAsync();
+
+            if (recs.Count == 0) return;
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("<div style='font-family:Inter,Arial,sans-serif;color:#111;line-height:1.5'>");
+            sb.Append($"<h2 style='margin:0 0 8px'>You might also like these properties</h2>");
+            if (!string.IsNullOrWhiteSpace(type)) sb.Append($"<div style='color:#555;margin-bottom:8px'>Similar to your recent purchase ({System.Net.WebUtility.HtmlEncode(type)})</div>");
+            sb.Append("<ul style='padding-left:18px;margin:0'>");
+            foreach (var p in recs)
+            {
+                var price = $"? {p.Price:N0}";
+                var title = System.Net.WebUtility.HtmlEncode(p.Title ?? "Property");
+                var addr = System.Net.WebUtility.HtmlEncode(p.Address ?? "");
+                sb.Append($"<li style='margin:8px 0'><strong>{title}</strong> — {addr} — {price}</li>");
+            }
+            sb.Append("</ul>");
+            sb.Append("<div style='margin-top:8px'><a href='/Properties' style='display:inline-block;background:#2563eb;color:#fff;padding:8px 12px;border-radius:6px;text-decoration:none'>Browse All Active Properties</a></div>");
+            sb.Append("</div>");
+
+            var subject = "Recommended Properties You May Like";
+            await _emailSender.SendEmailAsync(client.Email!, subject, sb.ToString());
+
+            // Log the recommendation for brokers to see in Logs
+            try
+            {
+                var logger = HttpContext.RequestServices.GetService(typeof(RealEstateCRM.Services.Logging.IAppLogger)) as RealEstateCRM.Services.Logging.IAppLogger;
+                await (logger?.LogAsync("INFO", "Recommendations", $"Sent {recs.Count} recommendations to {client.Email} for closed deal #{deal.Id}", new { dealId, client = client.Email, count = recs.Count }) ?? Task.CompletedTask);
+            }
+            catch { }
         }
 
         private static string BuildContractHtml(Deal deal, Contact client, Offer? offer, List<DealDeadline> deadlines, decimal brokerPct, decimal agentPct)
