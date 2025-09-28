@@ -286,17 +286,19 @@
                         <button type="button" id="doc-upload" class="px-3 py-1.5 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">Upload</button>
                     </div>
                     <div class="border rounded-lg overflow-hidden">
-                        <table class="min-w-full text-sm">
-                            <thead class="bg-gray-50 text-gray-600">
-                                <tr>
-                                    <th class="text-left px-3 py-2">File Name</th>
-                                    <th class="text-left px-3 py-2">Uploaded</th>
-                                    <th class="text-left px-3 py-2">Size</th>
-                                    <th class="text-right px-3 py-2">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="doc-tbody" class="divide-y divide-gray-100"></tbody>
-                        </table>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-gray-50 text-gray-600">
+                                    <tr>
+                                        <th class="text-left px-3 py-2 font-medium">File Name</th>
+                                        <th class="text-left px-3 py-2 font-medium">Uploaded</th>
+                                        <th class="text-left px-3 py-2 font-medium">Size</th>
+                                        <th class="text-center px-3 py-2 font-medium w-32">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="doc-tbody" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -327,6 +329,20 @@
                             <button type="button" id="email-cancel" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
                             <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Send</button>
                         </div>
+                    </form>
+                </div>
+
+                <!-- ADD THIS DANGER ZONE SECTION INSIDE THE MODAL -->
+                <div class="mt-6 border-t pt-4">
+                    <h4 class="text-base font-semibold text-gray-900 mb-2">Danger Zone</h4>
+                    <p class="text-xs text-gray-500 mb-3">Archiving removes this contact from active lists but keeps historical references.</p>
+                    <form id="delete-contact-form" method="post" class="inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="contactId" id="delete-contact-id" />
+                        <button type="submit" class="px-4 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
+                                onclick="return confirm('Archive this contact? This will disable it but preserve historical references.');">
+                            Archive Contact
+                        </button>
                     </form>
                 </div>
             </div>
@@ -628,6 +644,9 @@
                         document.getElementById('email-subject').value = '';
                         document.getElementById('email-body').value = '';
 
+                        // MISSING: Set the delete contact ID
+                        document.getElementById('delete-contact-id').value = data.id;
+
                         openDetails();
                     } catch (err) {
                         console.error(err);
@@ -682,8 +701,11 @@
                             </td>
                             <td class="px-3 py-2 text-gray-700">${uploaded}</td>
                             <td class="px-3 py-2 text-gray-700">${sizeKb} KB</td>
-                            <td class="px-3 py-2 text-right">
-                                <a href="${f.url}" download class="text-sm px-2 py-1 border rounded">Download</a>
+                            <td class="px-3 py-2">
+                                <div class="flex flex-col space-y-1">
+                                    <a href="${f.url}" download class="text-xs px-2 py-1 border rounded text-center hover:bg-gray-50">Download</a>
+                                    <button type="button" class="doc-delete text-xs px-2 py-1 border rounded text-red-600 hover:bg-red-50" data-file="${f.name}">Delete</button>
+                                </div>
                             </td>
                         </tr>`;
                     }).join('');
@@ -1057,8 +1079,87 @@
             // Close dropdown and reposition on scroll/resize
             window.addEventListener('scroll', hideDropdown);
             window.addEventListener('resize', hideDropdown);
+
+            // ===============================
+            // DELETE (ARCHIVE) CONTACT
+            // ===============================
+            const deleteForm = document.getElementById('delete-contact-form');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    const id = document.getElementById('delete-contact-id').value;
+                    if (!id) return;
+                    const token = deleteForm.querySelector('input[name="__RequestVerificationToken"]').value;
+                    fetch('/Contacts/DeleteContact', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ contactId: id, __RequestVerificationToken: token })
+                    })
+                    .then(r => r.json())
+                    .then(j => {
+                        if (j.success) {
+                            showToast('Contact archived', 'success');
+                            // Remove row in table
+                            const row = document.querySelector(`tr.contact-row[data-contact-id="${id}"]`);
+                            if (row) row.remove();
+                            // Close modal
+                            document.getElementById('close-contact-details').click();
+                        } else {
+                            showToast(j.message || 'Failed to archive', 'error');
+                        }
+                    })
+                    .catch(()=>showToast('Failed to archive contact','error'));
+                });
+            }
+
+            // ===============================
+            // DELETE DOCUMENT
+            // ===============================
+            document.addEventListener('click', function(e){
+                const btn = e.target.closest('.doc-delete');
+                if (!btn) return;
+                const file = btn.getAttribute('data-file');
+                const contactId = document.getElementById('email-contact-id').value;
+                if (!file || !contactId) return;
+                if (!confirm(`Delete document "${file}"? This cannot be undone.`)) return;
+
+                const token = document.querySelector('#contact-details-modal input[name="__RequestVerificationToken"]').value;
+                fetch('/Contacts/DeleteDocument', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        contactId: contactId,
+                        fileName: file,
+                        __RequestVerificationToken: token
+                    })
+                })
+                .then(r=>r.json())
+                .then(j=>{
+                    if (j.success) {
+                        showToast('Document deleted','success');
+                        // Reload list
+                        setTimeout(()=>{ try { loadDocuments(contactId); } catch {} }, 250);
+                    } else {
+                        showToast(j.message || 'Delete failed','error');
+                    }
+                })
+                .catch(()=>showToast('Delete failed','error'));
+            });
         });
     </script>
 }
+
+<div class="mt-8 border-t pt-4">
+    <h4 class="text-base font-semibold text-gray-900 mb-2">Danger Zone</h4>
+    <p class="text-xs text-gray-500 mb-3">Archiving removes this contact from active lists but keeps historical references.</p>
+    <form id="delete-contact-form" method="post" class="inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="contactId" id="delete-contact-id" />
+        <button type="submit" class="px-4 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700"
+                onclick="return confirm('Archive this contact? This will disable it but preserve historical references.');">
+            Archive Contact
+        </button>
+    </form>
+</div>
 
 

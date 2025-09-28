@@ -42,9 +42,9 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
         public bool RememberMe { get; set; }
         public string ReturnUrl { get; set; } = "/Dashboard";
 
-        [TempData] public string Dev2FACode { get; set; }
-        [TempData] public string InfoMessage { get; set; }
-        [TempData] public string ErrorMessage { get; set; }
+        [TempData] public string? Dev2FACode { get; set; }  // ADD THIS LINE
+        [TempData] public string? InfoMessage { get; set; }
+        [TempData] public string? ErrorMessage { get; set; }
 
         private bool DevShowCodeEnabled =>
             _env.IsDevelopment() &&
@@ -159,7 +159,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                     var code = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
                     var safeCode = new string(code.Where(char.IsLetterOrDigit).ToArray());
                     await _emailSender.SendEmailAsync(
-                        user.Email,
+                        user.Email!,
                         "Your Security Code (Resent)",
                         $"Your new login security code is: <strong style='font-size:18px'>{safeCode}</strong>");
 

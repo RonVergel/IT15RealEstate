@@ -67,95 +67,110 @@ builder.Services.Configure<SecurityStampValidatorOptions>(o =>
 
 var app = builder.Build();
 
-// Database initialization (unchanged)...
+// Database initialization
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        // Create database if needed (no migrations)
+        await context.Database.EnsureCreatedAsync();
+        
+        // Ensure tables exist - Fixed SQL syntax
         try
         {
-            var context = services.GetRequiredService<AppDbContext>();
-            // Create database if needed (no migrations)
-            await context.Database.EnsureCreatedAsync();
-            // Ensure Notifications table exists when database already existed
-            try
-            {
-                var sql = @"
-CREATE TABLE IF NOT EXISTS ""Notifications"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""RecipientUserId"" TEXT NULL,
-    ""ActorUserId"" TEXT NULL,
-    ""Message"" VARCHAR(512) NOT NULL,
-    ""LinkUrl"" VARCHAR(256) NULL,
-    ""IsRead"" BOOLEAN NOT NULL DEFAULT FALSE,
-    ""CreatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ""Type"" VARCHAR(64) NULL
-);
-CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read ON ""Notifications"" (""RecipientUserId"", ""IsRead"");
--- Offers table
-CREATE TABLE IF NOT EXISTS ""Offers"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""DealId"" INT NOT NULL,
-    ""Amount"" NUMERIC(18,2) NOT NULL,
-    ""Status"" VARCHAR(32) NOT NULL DEFAULT 'Proposed',
-    ""FinancingType"" VARCHAR(64) NULL,
-    ""EarnestMoney"" NUMERIC(18,2) NULL,
-    ""CloseDate"" DATE NULL,
-    ""Notes"" VARCHAR(512) NULL,
-    ""CreatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ""UpdatedAtUtc"" TIMESTAMPTZ NULL,
-    CONSTRAINT fk_offers_deal FOREIGN KEY (""DealId"") REFERENCES ""Deals"" (""Id"") ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_offers_dealid ON ""Offers"" (""DealId"");
+            var sql = """
+                CREATE TABLE IF NOT EXISTS "Notifications" (
+                    "Id" SERIAL PRIMARY KEY,
+                    "RecipientUserId" TEXT NULL,
+                    "ActorUserId" TEXT NULL,
+                    "Message" VARCHAR(512) NOT NULL,
+                    "LinkUrl" VARCHAR(256) NULL,
+                    "IsRead" BOOLEAN NOT NULL DEFAULT FALSE,
+                    "CreatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    "Type" VARCHAR(64) NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read ON "Notifications" ("RecipientUserId", "IsRead");
+                
+                -- Offers table
+                CREATE TABLE IF NOT EXISTS "Offers" (
+                    "Id" SERIAL PRIMARY KEY,
+                    "DealId" INT NOT NULL,
+                    "Amount" NUMERIC(18,2) NOT NULL,
+                    "Status" VARCHAR(32) NOT NULL DEFAULT 'Proposed',
+                    "FinancingType" VARCHAR(64) NULL,
+                    "EarnestMoney" NUMERIC(18,2) NULL,
+                    "CloseDate" DATE NULL,
+                    "Notes" VARCHAR(512) NULL,
+                    "CreatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    "UpdatedAtUtc" TIMESTAMPTZ NULL,
+                    CONSTRAINT fk_offers_deal FOREIGN KEY ("DealId") REFERENCES "Deals" ("Id") ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_offers_dealid ON "Offers" ("DealId");
 
--- Deadlines table
-CREATE TABLE IF NOT EXISTS ""DealDeadlines"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""DealId"" INT NOT NULL,
-    ""Type"" VARCHAR(64) NOT NULL,
-    ""DueDate"" DATE NOT NULL,
-    ""CreatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ""CompletedAtUtc"" TIMESTAMPTZ NULL,
-    ""Notes"" VARCHAR(512) NULL,
-    CONSTRAINT fk_deadlines_deal FOREIGN KEY (""DealId"") REFERENCES ""Deals"" (""Id"") ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_deadlines_dealid ON ""DealDeadlines"" (""DealId"");
+                -- Deadlines table
+                CREATE TABLE IF NOT EXISTS "DealDeadlines" (
+                    "Id" SERIAL PRIMARY KEY,
+                    "DealId" INT NOT NULL,
+                    "Type" VARCHAR(64) NOT NULL,
+                    "DueDate" DATE NOT NULL,
+                    "CreatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    "CompletedAtUtc" TIMESTAMPTZ NULL,
+                    "Notes" VARCHAR(512) NULL,
+                    CONSTRAINT fk_deadlines_deal FOREIGN KEY ("DealId") REFERENCES "Deals" ("Id") ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_deadlines_dealid ON "DealDeadlines" ("DealId");
 
--- AgencySettings table (single-row configuration)
-CREATE TABLE IF NOT EXISTS ""AgencySettings"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""BrokerCommissionPercent"" NUMERIC(5,2) NOT NULL DEFAULT 10.00,
-    ""AgentCommissionPercent"" NUMERIC(5,2) NOT NULL DEFAULT 5.00,
-    ""UpdatedAtUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ""MonthlyRevenueGoal"" NUMERIC(18,2) NOT NULL DEFAULT 0.00,
-    ""LastNotifiedAchievedPeriod"" INT NULL,
-    ""LastNotifiedBehindPeriod"" INT NULL
-);
--- Seed a default row if table is empty
-INSERT INTO ""AgencySettings"" (""BrokerCommissionPercent"", ""AgentCommissionPercent"")
-SELECT 10.00, 5.00
-WHERE NOT EXISTS (SELECT 1 FROM ""AgencySettings"");
+                -- AgencySettings table (single-row configuration)
+                CREATE TABLE IF NOT EXISTS "AgencySettings" (
+                    "Id" SERIAL PRIMARY KEY,
+                    "BrokerCommissionPercent" NUMERIC(5,2) NOT NULL DEFAULT 10.00,
+                    "AgentCommissionPercent" NUMERIC(5,2) NOT NULL DEFAULT 5.00,
+                    "UpdatedAtUtc" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    "MonthlyRevenueGoal" NUMERIC(18,2) NOT NULL DEFAULT 0.00,
+                    "LastNotifiedAchievedPeriod" INT NULL,
+                    "LastNotifiedBehindPeriod" INT NULL
+                );
+                
+                -- Seed a default row if table is empty
+                INSERT INTO "AgencySettings" ("BrokerCommissionPercent", "AgentCommissionPercent")
+                SELECT 10.00, 5.00
+                WHERE NOT EXISTS (SELECT 1 FROM "AgencySettings");
 
--- Add closed tracking to Deals for revenue analytics
-ALTER TABLE ""Deals"" ADD COLUMN IF NOT EXISTS ""ClosedAtUtc"" TIMESTAMPTZ NULL;
-ALTER TABLE ""Deals"" ADD COLUMN IF NOT EXISTS ""ClosedByUserId"" TEXT NULL;
-CREATE INDEX IF NOT EXISTS idx_deals_closedat ON ""Deals"" (""ClosedAtUtc"");
-CREATE INDEX IF NOT EXISTS idx_deals_closedby ON ""Deals"" (""ClosedByUserId"");
+                -- Add closed tracking to Deals for revenue analytics
+                ALTER TABLE "Deals" ADD COLUMN IF NOT EXISTS "ClosedAtUtc" TIMESTAMPTZ NULL;
+                ALTER TABLE "Deals" ADD COLUMN IF NOT EXISTS "ClosedByUserId" TEXT NULL;
+                CREATE INDEX IF NOT EXISTS idx_deals_closedat ON "Deals" ("ClosedAtUtc");
+                CREATE INDEX IF NOT EXISTS idx_deals_closedby ON "Deals" ("ClosedByUserId");
 
--- Add new columns to AgencySettings if table existed before
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""MonthlyRevenueGoal"" NUMERIC(18,2) NOT NULL DEFAULT 0.00;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LastNotifiedAchievedPeriod"" INT NULL;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LastNotifiedBehindPeriod"" INT NULL;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""InspectionDays"" INT NOT NULL DEFAULT 7;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""AppraisalDays"" INT NOT NULL DEFAULT 14;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""LoanCommitmentDays"" INT NOT NULL DEFAULT 21;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""ClosingDays"" INT NOT NULL DEFAULT 30;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""MaxActiveAssignmentsPerAgent"" INT NOT NULL DEFAULT 5;
-ALTER TABLE ""AgencySettings"" ADD COLUMN IF NOT EXISTS ""MaxDeclinesPerAgentPerMonth"" INT NOT NULL DEFAULT 3;
-";
-                await context.Database.ExecuteSqlRawAsync(sql);
-            }
-            catch { }
+                -- Add new columns to AgencySettings if table existed before
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "MonthlyRevenueGoal" NUMERIC(18,2) NOT NULL DEFAULT 0.00;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "LastNotifiedAchievedPeriod" INT NULL;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "LastNotifiedBehindPeriod" INT NULL;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "InspectionDays" INT NOT NULL DEFAULT 7;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "AppraisalDays" INT NOT NULL DEFAULT 14;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "LoanCommitmentDays" INT NOT NULL DEFAULT 21;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "ClosingDays" INT NOT NULL DEFAULT 30;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "MaxActiveAssignmentsPerAgent" INT NOT NULL DEFAULT 5;
+                ALTER TABLE "AgencySettings" ADD COLUMN IF NOT EXISTS "MaxDeclinesPerAgentPerMonth" INT NOT NULL DEFAULT 3;
+                """;
+            await context.Database.ExecuteSqlRawAsync(sql);
+        }
+        catch { }
+
+        // Contact table alterations - Fixed SQL syntax
+        try
+        {
+            var contactSql = """
+                ALTER TABLE "Contacts" ADD COLUMN IF NOT EXISTS "NextFollowUpUtc" TIMESTAMPTZ NULL;
+                ALTER TABLE "Contacts" ADD COLUMN IF NOT EXISTS "FollowUpNotifiedUtc" TIMESTAMPTZ NULL;
+                ALTER TABLE "Contacts" ADD COLUMN IF NOT EXISTS "ArchivedAtUtc" TIMESTAMPTZ NULL;
+                """;
+            await context.Database.ExecuteSqlRawAsync(contactSql);
+        }
+        catch { }
 
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<IdentityUser>>();

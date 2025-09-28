@@ -1,26 +1,42 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Models;
+using RealEstateCRM.Services.Notifications;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using System.Text.Encodings.Web;
 using System.Net;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
+using System;
 
 namespace RealEstateCRM.Controllers
 {
     [Authorize]
-    public class ContactsController : Controller
+    public partial class ContactsController : Controller
     {
         private readonly AppDbContext _db;
+        private readonly INotificationService _notifications;
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly IEmailSender _emailSender;
         private readonly ILogger<ContactsController> _logger;
-        private readonly Microsoft.AspNetCore.Identity.UI.Services.IEmailSender _emailSender;
 
-        public ContactsController(AppDbContext db, ILogger<ContactsController> logger, Microsoft.AspNetCore.Identity.UI.Services.IEmailSender emailSender)
+        public ContactsController(AppDbContext db,
+                                  INotificationService notifications,
+                                  UserManager<IdentityUser> userManager,
+                                  IEmailSender emailSender,
+                                  ILogger<ContactsController> logger)
         {
             _db = db;
-            _logger = logger;
+            _notifications = notifications;
+            _userManager = userManager;
             _emailSender = emailSender;
+            _logger = logger;
         }
 
         // GET: /Contacts/Index?page=1 - Exclude contacts with Type = "Lead" (paged)
@@ -40,8 +56,6 @@ namespace RealEstateCRM.Controllers
                     .Take(pageSize)
                     .ToListAsync();
 
-                _logger.LogInformation($"Retrieved {contacts.Count} contacts for page {page} of {totalPages}");
-                
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.PageSize = pageSize;
@@ -51,7 +65,7 @@ namespace RealEstateCRM.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving contacts");
+                _logger.LogError(ex, "Error loading contacts page {Page}", page);
                 ViewBag.CurrentPage = 1;
                 ViewBag.TotalPages = 1;
                 ViewBag.PageSize = pageSize;
@@ -91,7 +105,7 @@ namespace RealEstateCRM.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving contact details for {Id}", id);
+                _logger.LogError(ex, "Error getting contact {Id}", id);
                 return Json(new { success = false, message = "An error occurred while retrieving the contact" });
             }
         }
@@ -537,6 +551,62 @@ namespace RealEstateCRM.Controllers
                 return Json(new { found = false, message = "Error checking database" });
             }
         }
+
+        // POST: /Contacts/DeleteContact
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteContact(int contactId)
+        {
+            var contact = await _db.Contacts.FindAsync(contactId);
+            if (contact == null) return NotFound(new { success = false, message = "Contact not found" });
+            if (!contact.IsActive && contact.ArchivedAtUtc != null)
+                return Ok(new { success = true, archived = true });
+
+            // Authorization: Broker OR (agent matches)
+            var fullName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value;
+            var isBroker = User.IsInRole("Broker");
+            if (!isBroker && !string.Equals(contact.Agent ?? "", fullName ?? "", StringComparison.OrdinalIgnoreCase))
+                return Forbid();
+
+            contact.IsActive = false;
+            contact.ArchivedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { success = true, archived = true });
+        }
+
+        // POST: /Contacts/DeleteDocument
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteDocument(int contactId, string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return BadRequest(new { success = false, message = "Missing file name" });
+
+            // Basic sanitization (no path traversal)
+            var safeName = fileName.Replace("\\", "").Replace("/", "");
+            if (safeName != fileName)
+                return BadRequest(new { success = false, message = "Invalid file name" });
+
+            var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contacts", contactId.ToString());
+            var fullPath = Path.Combine(root, safeName);
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound(new { success = false, message = "File not found" });
+
+            try
+            {
+                System.IO.File.Delete(fullPath);
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
     }
 }
+
+
+
 

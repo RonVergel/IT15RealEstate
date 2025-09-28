@@ -1,6 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-#nullable disable
+#nullable enable
 
 using System;
 using System.Collections.Generic;
@@ -45,14 +45,14 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
         }
 
         [BindProperty]
-        public InputModel Input { get; set; }
+        public InputModel Input { get; set; } = new();
 
-        public IList<AuthenticationScheme> ExternalLogins { get; set; }
+        public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
 
-        public string ReturnUrl { get; set; }
+        public string ReturnUrl { get; set; } = string.Empty;
 
-        [TempData] public string ErrorMessage { get; set; }
-        [TempData] public string Dev2FACode { get; set; }
+        [TempData] public string? ErrorMessage { get; set; }
+        [TempData] public string? Dev2FACode { get; set; }
 
         // Toggle (true enables automatic bypass of 2FA). Set in appsettings.Development.json:
         // "TwoFactor": { "Bypass": true, "ShowDevCode": true }
@@ -69,17 +69,17 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
         {
             [Required]
             [EmailAddress]
-            public string Email { get; set; }
+            public string Email { get; set; } = string.Empty;  // ADD DEFAULT VALUE
 
             [Required]
             [DataType(DataType.Password)]
-            public string Password { get; set; }
+            public string Password { get; set; } = string.Empty;  // ADD DEFAULT VALUE
 
             [Display(Name = "Remember me?")]
             public bool RememberMe { get; set; }
         }
 
-        public async Task OnGetAsync(string returnUrl = null)
+        public async Task OnGetAsync(string? returnUrl = null)
         {
             if (!string.IsNullOrEmpty(ErrorMessage))
             {
@@ -154,7 +154,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                 {
                     try
                     {
-                            if (!await _userManager.GetTwoFactorEnabledAsync(twoFactorUser))
+                        if (!await _userManager.GetTwoFactorEnabledAsync(twoFactorUser))
                         {
                             await _userManager.SetTwoFactorEnabledAsync(twoFactorUser, true);
                         }
@@ -171,7 +171,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                         var safeCode = new string(code.Where(char.IsLetterOrDigit).ToArray());
 
                         await _emailSender.SendEmailAsync(
-                            twoFactorUser.Email,
+                            twoFactorUser.Email!,
                             "Your Security Code",
                             $"Your login security code is: <strong style='font-size:18px'>{safeCode}</strong><br/><br/>It expires shortly. If you didn't request this you can ignore it.");
 

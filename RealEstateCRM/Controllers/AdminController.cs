@@ -199,7 +199,7 @@ namespace RealEstateCRM.Controllers
                 values: new { area = "Identity", userId = user.Id, code = code, returnUrl = "/Dashboard" },
                 protocol: Request.Scheme);
 
-            var body = $@"<p>Please confirm your account for Real Estate CRM:</p><p><a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Confirm Email</a></p>";
+            var body = $@"<p>Please confirm your account for Real Estate CRM:</p><p><a href='{HtmlEncoder.Default.Encode(callbackUrl ?? string.Empty)}'>Confirm Email</a></p>";
             await _emailSender.SendEmailAsync(user.Email, "Confirm your email", body);
             return Ok();
         }
@@ -466,9 +466,9 @@ namespace RealEstateCRM.Controllers
                     <div style='max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
                         <h2 style='text-align: center; color: #0056b3;'>Welcome to Real Estate CRM!</h2>\r\n                        <p>An admin has created an account for you. Please confirm your email address to activate the account.</p>\r\n\r\n                        <h3 style='margin-top: 24px; margin-bottom: 8px;'>Your Login Details</h3>\r\n                        <ul style='padding-left: 18px; margin-top: 0;'>\r\n                            <li>Email: <strong>{HtmlEncoder.Default.Encode(model.Email)}</strong></li>\r\n                            <li>Temporary Password: <strong>{HtmlEncoder.Default.Encode(model.Password)}</strong></li>\r\n                        </ul>\r\n                        <p style='font-size: 12px; color: #666; margin-top: 6px;'>For your security, please change your password after your first sign-in.</p>
                         <div style='text-align: center; margin: 30px 0;'>
-                            <a href='{HtmlEncoder.Default.Encode(callbackUrl)}' style='background-color: #0056b3; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Confirm Your Account</a>
-                        </div>\r\n                        <div style='text-align: center; margin: 10px 0;'>\r\n                            <a href='{HtmlEncoder.Default.Encode(loginUrl)}' style='color: #0056b3; text-decoration: underline;'>Go to Login</a>\r\n                        </div>\r\n                        <p>If you are having trouble with the button above, please copy and paste the URL below into your web browser:</p>
-                        <p style='word-break: break-all; font-size: 12px;'><a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>{HtmlEncoder.Default.Encode(callbackUrl)}</a></p>
+                            <a href='{HtmlEncoder.Default.Encode(callbackUrl ?? string.Empty)}' style='background-color: #0056b3; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;'>Confirm Your Account</a>
+                        </div>\r\n                        <div style='text-align: center; margin: 10px 0;'>\r\n                            <a href='{HtmlEncoder.Default.Encode(loginUrl ?? string.Empty)}' style='color: #0056b3; text-decoration: underline;'>Go to Login</a>\r\n                        </div>\r\n                        <p>If you are having trouble with the button above, please copy and paste the URL below into your web browser:</p>
+                        <p style='word-break: break-all; font-size: 12px;'><a href='{HtmlEncoder.Default.Encode(callbackUrl ?? string.Empty)}'>{HtmlEncoder.Default.Encode(callbackUrl ?? string.Empty)}</a></p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'/>
                         <p style='font-size: 12px; color: #888;'>If you did not expect this account, please contact your administrator.</p>
                     </div>
