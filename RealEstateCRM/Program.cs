@@ -1,4 +1,4 @@
-﻿using QuestPDF.Infrastructure;
+using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -22,16 +22,35 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    var databaseUri = new Uri(databaseUrl);
-    var userInfo = databaseUri.UserInfo.Split(':');
-    var dbHost = databaseUri.Host;
-    var dbPort = databaseUri.Port;
-    var dbUser = userInfo[0];
-    var dbPass = userInfo[1];
-    var dbName = databaseUri.LocalPath.TrimStart('/');
+    try
+    {
+        // If DATABASE_URL is a URI (postgres://user:pass@host:port/db or tcp://host:port/db)
+        if (databaseUrl.Contains("://"))
+        {
+            var databaseUri = new Uri(databaseUrl);
 
-    // Build the connection string for Npgsql, including SSL settings required by Render
-    connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPass};SslMode=Require;Trust Server Certificate=true;";
+            // Ensure safe defaults when parts are missing
+            var userInfo = (databaseUri.UserInfo ?? string.Empty).Split(':', 2);
+            var dbUser = userInfo.Length > 0 ? userInfo[0] : string.Empty;
+            var dbPass = userInfo.Length > 1 ? userInfo[1] : string.Empty;
+            var dbHost = string.IsNullOrEmpty(databaseUri.Host) ? "localhost" : databaseUri.Host;
+            var dbPort = databaseUri.Port > 0 ? databaseUri.Port : 5432; // default to 5432 when unspecified
+            var dbName = databaseUri.AbsolutePath?.TrimStart('/') ?? string.Empty;
+
+            // Build the connection string for Npgsql, including SSL settings commonly required on hosted Postgres
+            connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPass};SslMode=Require;Trust Server Certificate=true;";
+        }
+        else
+        {
+            // Treat DATABASE_URL as an ADO/Npgsql-style connection string.
+            // Defensive: remove any stray tcp:// occurrences and use as-is.
+            connectionString = databaseUrl.Replace("tcp://", "", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+    catch
+    {
+        // If parsing fails, keep whatever connectionString we had; the provider will report the error.
+    }
 }
 
 if (string.IsNullOrEmpty(connectionString))
@@ -187,4 +206,3 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
-
