@@ -141,7 +141,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseAuthentication();
-app.UseAuthorization()
+app.UseAuthorization();
 
 // If a logged-in user becomes locked, sign them out and send to login
 app.Use(async (context, next) =>
