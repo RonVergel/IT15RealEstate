@@ -22,6 +22,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account.Manage
 
         public string SharedKey { get; set; } = string.Empty;
         public string AuthenticatorUri { get; set; } = string.Empty;
+        public string? QrCodeDataUrl { get; set; }
 
         public class InputModel
         {
@@ -75,6 +76,13 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account.Manage
             SharedKey = FormatKey(key ?? string.Empty);
             var email = user.Email ?? user.UserName ?? "user";
             AuthenticatorUri = GenerateQrUri(email, key ?? string.Empty);
+
+            try
+            {
+                // Generate QR code image as data URI
+                QrCodeDataUrl = GenerateQrDataUrl(AuthenticatorUri);
+            }
+            catch { QrCodeDataUrl = null; }
         }
 
         private static string FormatKey(string unformattedKey)
@@ -97,6 +105,15 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account.Manage
         {
             return $"otpauth://totp/Homey:{Uri.EscapeDataString(email)}?secret={secret}&issuer=Homey&digits=6";
         }
+
+        private static string GenerateQrDataUrl(string payload)
+        {
+            // Uses QRCoder to create a compact PNG QR
+            using var qrGenerator = new QRCoder.QRCodeGenerator();
+            var qrData = qrGenerator.CreateQrCode(payload, QRCoder.QRCodeGenerator.ECCLevel.Q);
+            var png = new QRCoder.PngByteQRCode(qrData);
+            var bytes = png.GetGraphic(4);
+            return "data:image/png;base64," + Convert.ToBase64String(bytes);
+        }
     }
 }
-

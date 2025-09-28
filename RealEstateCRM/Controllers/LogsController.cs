@@ -12,9 +12,11 @@ namespace RealEstateCRM.Controllers
         public LogsController(AppDbContext db) { _db = db; }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? level = null, string? q = null, int take = 200)
+        public async Task<IActionResult> Index(string? level = null, string? q = null, int take = 200, DateTime? from = null, DateTime? to = null)
         {
             var query = _db.Notifications.Where(n => n.Type == "SystemLog");
+            if (from.HasValue) query = query.Where(n => n.CreatedAtUtc >= from.Value);
+            if (to.HasValue) query = query.Where(n => n.CreatedAtUtc <= to.Value);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var kw = q.Trim().ToLowerInvariant();
@@ -30,6 +32,8 @@ namespace RealEstateCRM.Controllers
             ViewBag.Q = q;
             ViewBag.Level = level;
             ViewData["Title"] = "System Logs";
+            ViewBag.From = from?.ToString("yyyy-MM-dd");
+            ViewBag.To = to?.ToString("yyyy-MM-dd");
             return View();
         }
 
@@ -74,5 +78,7 @@ namespace RealEstateCRM.Controllers
                 return (v.Contains('"')||v.Contains(',')||v.Contains('\n')) ? $"\"{v.Replace("\"","\"\"")}\"" : v;
             }
         }
+
+        // PDF export removed per request; keep CSV export only.
     }
 }

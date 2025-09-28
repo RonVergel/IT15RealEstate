@@ -20,9 +20,21 @@
                 <div class="text-xs text-gray-500 mt-2">Issuer: Homey • Digits: 6 • Period: 30s</div>
             </div>
 
-            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div class="text-sm text-gray-600 mb-2">Alternate setup</div>
-                <div class="text-xs text-gray-700 break-all">@Model.AuthenticatorUri</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 flex items-center justify-center">
+                    @if (!string.IsNullOrWhiteSpace(Model.QrCodeDataUrl))
+                    {
+                        <img src="@Model.QrCodeDataUrl" alt="Scan QR with Authenticator" class="w-48 h-48 object-contain" />
+                    }
+                    else
+                    {
+                        <div class="text-sm text-gray-600">QR code not available.</div>
+                    }
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="text-sm text-gray-600 mb-2">Alternate setup (URI)</div>
+                    <div class="text-xs text-gray-700 break-all">@Model.AuthenticatorUri</div>
+                </div>
             </div>
 
             <form method="post" class="space-y-3">

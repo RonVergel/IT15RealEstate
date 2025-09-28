@@ -86,8 +86,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                     return Page();
                 }
 
-                // If we found a user by email, use their UserName for sign-in.
-                // This covers the case where UserName != Email (Register sets UserName separately).
+                
                 var signInName = user?.UserName ?? Input.Email;
 
                 var result = await _signInManager.PasswordSignInAsync(signInName, Input.Password, Input.RememberMe, lockoutOnFailure: true);
@@ -100,7 +99,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                 }
                 if (result.RequiresTwoFactor)
                 {
-                    // Temporary: bypass 2FA to unblock access
+                    //Temporary bypass to unblock login while testing
                     var bypassUser = user ?? await _userManager.FindByNameAsync(signInName);
                     if (bypassUser != null)
                     {
@@ -125,7 +124,7 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
                 return Page();
             }
 
-            // If we got this far, something failed, redisplay form
+            
             return Page();
         }
     }
