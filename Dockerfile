@@ -1,22 +1,39 @@
+# ==============================
 # Build stage
+# ==============================
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# copy csproj and restore (improves cache)
+# Install Node.js (needed for Tailwind)
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
+
+# Copy sln and csproj first (for layer caching)
 COPY *.sln .
 COPY RealEstateCRM/*.csproj ./RealEstateCRM/
 RUN dotnet restore
 
-# copy everything and publish
+# Copy everything else
 COPY . .
+
+# Go into the project folder
 WORKDIR /src/RealEstateCRM
+
+# Install npm packages & build Tailwind
+RUN npm install
+RUN npm run build
+
+# Publish the app
 RUN dotnet publish -c Release -o /app/publish
 
-# Runtime stage (updated to include pg_isready and entrypoint)
+# ==============================
+# Runtime stage
+# ==============================
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
-# install pg_isready (postgres client) so entrypoint can wait for DB
+# Install pg_isready (postgres client)
 USER root
 RUN apt-get update \
   && apt-get install -y --no-install-recommends postgresql-client \
@@ -25,10 +42,10 @@ RUN apt-get update \
 ENV ASPNETCORE_URLS=http://+:80
 EXPOSE 80
 
-# copy published app
+# Copy published app from build stage
 COPY --from=build /app/publish .
 
-# copy entrypoint and make executable
+# Copy entrypoint script
 COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
