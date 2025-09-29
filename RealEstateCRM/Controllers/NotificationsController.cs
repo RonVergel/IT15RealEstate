@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Controllers
 {
@@ -11,9 +12,9 @@ namespace RealEstateCRM.Controllers
     public class NotificationsController : Controller
     {
         private readonly AppDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public NotificationsController(AppDbContext db, UserManager<IdentityUser> userManager)
+        public NotificationsController(AppDbContext db, UserManager<ApplicationUser> userManager)
         {
             _db = db;
             _userManager = userManager;

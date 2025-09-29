@@ -27,6 +27,14 @@
 }
 <div id="current-user-meta" data-display-name="@currentDisplayName" class="hidden"></div>
 
+<!-- Property model for form repopulation -->
+@if (TempData["PropertyModel"] != null)
+{
+    <script>
+        window.propertyModel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["PropertyModel"], new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+    </script>
+}
+
 <!-- Search / controls (keeps your existing row) -->
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <form id="filter-form" method="get" asp-action="Index" asp-controller="Properties" class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -572,6 +580,26 @@
             <div class="p-8">
                 <h3 class="text-xl font-semibold text-gray-900 text-center mb-6">Add New Property</h3>
 
+                <!-- Error Messages Display -->
+                @if (ViewData.ModelState.ErrorCount > 0)
+                {
+                    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h4 class="text-sm font-medium text-red-800 mb-2">Please correct the following errors:</h4>
+                        <ul class="text-sm text-red-700 space-y-1">
+                            @foreach (var modelState in ViewData.ModelState)
+                            {
+                                if (modelState.Value.Errors.Any())
+                                {
+                                    foreach (var error in modelState.Value.Errors)
+                                    {
+                                        <li>@error.ErrorMessage</li>
+                                    }
+                                }
+                            }
+                        </ul>
+                    </div>
+                }
+
                 <form asp-controller="Properties" asp-action="Create" method="post" enctype="multipart/form-data" class="space-y-4">
                     @Html.AntiForgeryToken()
                     
@@ -897,7 +925,94 @@
                 </text>
             }
 
+            // Check for error message from TempData
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <text>
+                showToast('@Html.Raw(TempData["ErrorMessage"])', 'error');
+                </text>
+            }
+
+            // Check if we need to show the add modal
+            @if (TempData["ShowAddModal"] != null && TempData["ShowAddModal"] is bool showModal && showModal)
+            {
+                <text>
+                setTimeout(() => openModal(), 100);
+                </text>
+            }
+
             // ===============================
+
+            function populateFormFromModel(model) {
+                if (!model) return;
+
+                // Populate text inputs
+                if (model.title) document.getElementById('property-title').value = model.title;
+                if (model.address) document.getElementById('property-address').value = model.address;
+                if (model.price) document.getElementById('property-price').value = model.price;
+                if (model.area) document.getElementById('property-area').value = model.area;
+                if (model.sqft) document.getElementById('property-floor-sqft').value = model.sqft;
+                if (model.bedrooms !== null) document.getElementById('property-bedrooms').value = model.bedrooms;
+                if (model.bathrooms !== null) document.getElementById('property-bathrooms').value = model.bathrooms;
+                if (model.propertyLink) document.getElementById('property-link').value = model.propertyLink;
+                if (model.description) document.getElementById('property-description').value = model.description;
+
+                // Property type buttons
+                if (model.propertyType) {
+                    document.querySelectorAll('.property-type-btn').forEach(btn => {
+                        if (btn.dataset.type === model.propertyType) {
+                            btn.classList.add('bg-blue-600', 'text-white');
+                            btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+                        } else {
+                            btn.classList.remove('bg-blue-600', 'text-white');
+                            btn.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+                        }
+                    });
+                    document.getElementById('property-type').value = model.propertyType;
+                }
+
+                // Type buttons
+                if (model.type) {
+                    document.querySelectorAll('.type-btn').forEach(btn => {
+                        if (btn.dataset.type === model.type) {
+                            btn.classList.add('bg-blue-600', 'text-white');
+                            btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
+                        } else {
+                            btn.classList.remove('bg-blue-600', 'text-white');
+                            btn.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+                        }
+                    });
+                    document.getElementById('property-buying-type').value = model.type;
+                }
+
+                // Listing status
+                if (model.listingStatus) document.getElementById('property-listing-status').value = model.listingStatus;
+
+                // Listing time
+                if (model.listingTime) {
+                    const dt = new Date(model.listingTime);
+                    const localDt = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+                    document.getElementById('property-listing-time').value = localDt.toISOString().slice(0, 16);
+                }
+
+                // Agent
+                if (model.agent) {
+                    // Wait for agents to load, then set
+                    setTimeout(() => {
+                        const agentSelect = document.getElementById('property-agent');
+                        for (let i = 0; i < agentSelect.options.length; i++) {
+                            if (agentSelect.options[i].value === model.agent) {
+                                agentSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }, 500);
+                }
+
+                // Trigger calculations
+                computeCalculatedValues();
+            }
+
             // MODAL FUNCTIONS - ADD PROPERTY MODAL
             // ===============================
             function openModal() {
@@ -922,6 +1037,11 @@
                 }
 
                 document.body.style.overflow = 'hidden';
+
+                // Populate form if we have a model from TempData
+                if (window.propertyModel) {
+                    populateFormFromModel(window.propertyModel);
+                }
             }
 
             function closeModal() {

@@ -8,10 +8,10 @@ namespace RealEstateCRM.Services.Notifications
     public class NotificationService : INotificationService
     {
         private readonly AppDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RealEstateCRM.Services.Logging.IAppLogger _appLogger;
 
-        public NotificationService(AppDbContext db, UserManager<IdentityUser> userManager, RealEstateCRM.Services.Logging.IAppLogger appLogger)
+        public NotificationService(AppDbContext db, UserManager<ApplicationUser> userManager, RealEstateCRM.Services.Logging.IAppLogger appLogger)
         {
             _db = db;
             _userManager = userManager;
@@ -32,7 +32,6 @@ namespace RealEstateCRM.Services.Notifications
             };
             _db.Notifications.Add(notif);
             await _db.SaveChangesAsync();
-            // Mirror to SystemLog for centralized audit trail
             try
             {
                 var category = string.IsNullOrWhiteSpace(type) ? "Notification" : type;
@@ -58,7 +57,6 @@ namespace RealEstateCRM.Services.Notifications
             if (list.Count == 0) return 0;
             _db.Notifications.AddRange(list);
             var count = await _db.SaveChangesAsync();
-            // Single summarized SystemLog entry
             try
             {
                 var category = string.IsNullOrWhiteSpace(type) ? "Notification" : type;
@@ -72,7 +70,6 @@ namespace RealEstateCRM.Services.Notifications
         {
             var users = await _userManager.GetUsersInRoleAsync(roleName);
             var result = await NotifyUsersAsync(users.Select(u => u.Id), message, linkUrl, actorUserId, type);
-            // Extra context in SystemLog for role-based notifications
             try
             {
                 var category = string.IsNullOrWhiteSpace(type) ? "Notification" : type;

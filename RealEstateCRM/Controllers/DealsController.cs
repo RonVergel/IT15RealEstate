@@ -14,12 +14,12 @@ namespace RealEstateCRM.Controllers
     public class DealsController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly INotificationService _notifications;
         private readonly IEmailSender _emailSender;
         private readonly RealEstateCRM.Services.ContractPdfGenerator _pdfGen;
 
-        public DealsController(AppDbContext context, UserManager<IdentityUser> userManager, INotificationService notifications, IEmailSender emailSender, RealEstateCRM.Services.ContractPdfGenerator pdfGen)
+        public DealsController(AppDbContext context, UserManager<ApplicationUser> userManager, INotificationService notifications, IEmailSender emailSender, RealEstateCRM.Services.ContractPdfGenerator pdfGen)
         {
             _context = context;
             _userManager = userManager;

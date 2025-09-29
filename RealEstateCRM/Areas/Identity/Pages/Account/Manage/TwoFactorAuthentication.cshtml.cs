@@ -2,15 +2,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Areas.Identity.Pages.Account.Manage
 {
     [Authorize]
     public class TwoFactorAuthenticationModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TwoFactorAuthenticationModel(UserManager<IdentityUser> userManager)
+        public TwoFactorAuthenticationModel(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
         }

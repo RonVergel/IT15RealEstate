@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
 using RealEstateCRM.Services.Notifications;
+using Microsoft.AspNetCore.Identity;
 
 namespace RealEstateCRM.Controllers
 {
@@ -15,10 +16,10 @@ namespace RealEstateCRM.Controllers
     public class DashboardController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly INotificationService _notifications;
 
-        public DashboardController(AppDbContext context, Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> userManager, INotificationService notifications)
+        public DashboardController(AppDbContext context, UserManager<ApplicationUser> userManager, INotificationService notifications)
         {
             _context = context;
             _userManager = userManager;

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
 using RealEstateCRM.Services;
 using RealEstateCRM.Services.Notifications;
+using RealEstateCRM.Models;
 
 // Relax legacy timestamp behavior to avoid hard failures on Unspecified kinds
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -45,7 +46,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options =>
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
     options.Password.RequireDigit = true;
@@ -141,15 +142,15 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseAuthentication();
-app.UseAuthorization()
+app.UseAuthorization();
 
 // If a logged-in user becomes locked, sign them out and send to login
 app.Use(async (context, next) =>
 {
     if (context.User?.Identity?.IsAuthenticated == true)
     {
-        var userManager = context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
-        var signInManager = context.RequestServices.GetRequiredService<SignInManager<IdentityUser>>();
+        var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var signInManager = context.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>();
         var user = await userManager.GetUserAsync(context.User);
         if (user != null && await userManager.IsLockedOutAsync(user))
         {

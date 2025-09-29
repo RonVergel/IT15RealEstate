@@ -22,13 +22,13 @@ namespace RealEstateCRM.Controllers
     {
         private readonly AppDbContext _db;
         private readonly INotificationService _notifications;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
         private readonly ILogger<ContactsController> _logger;
 
         public ContactsController(AppDbContext db,
                                   INotificationService notifications,
-                                  UserManager<IdentityUser> userManager,
+                                  UserManager<ApplicationUser> userManager,
                                   IEmailSender emailSender,
                                   ILogger<ContactsController> logger)
         {

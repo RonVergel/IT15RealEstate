@@ -6,6 +6,7 @@ using RealEstateCRM.Data;
 using RealEstateCRM.Services.Notifications;
 using RealEstateCRM.Services.Logging;
 using System.Text.Json;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Controllers
 {
@@ -14,10 +15,10 @@ namespace RealEstateCRM.Controllers
     {
         private readonly AppDbContext _context;
         private readonly INotificationService _notifications;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAppLogger _appLogger;
 
-        public ArchivesController(AppDbContext context, INotificationService notifications, UserManager<IdentityUser> userManager, IAppLogger appLogger)
+        public ArchivesController(AppDbContext context, INotificationService notifications, UserManager<ApplicationUser> userManager, IAppLogger appLogger)
         {
             _context = context;
             _notifications = notifications;

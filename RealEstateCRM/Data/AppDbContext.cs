@@ -5,14 +5,14 @@ using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Data
 {
-    public class AppDbContext : IdentityDbContext<IdentityUser>
+    public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
         // Keep your business models separate from Identity
-        public DbSet<Contact> Contacts { get; set; }  // Changed to Contact (singular)
+        public DbSet<Contact> Contacts { get; set; }
         public DbSet<Lead> Leads { get; set; }
         public DbSet<Property> Properties { get; set; }
         public DbSet<Deal> Deals { get; set; }

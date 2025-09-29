@@ -4,16 +4,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
     public class LoginWithRecoveryCodeModel : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly RealEstateCRM.Services.Logging.IAppLogger _appLogger;
 
-        public LoginWithRecoveryCodeModel(SignInManager<IdentityUser> signInManager, RealEstateCRM.Services.Logging.IAppLogger appLogger)
+        public LoginWithRecoveryCodeModel(SignInManager<ApplicationUser> signInManager, RealEstateCRM.Services.Logging.IAppLogger appLogger)
         {
             _signInManager = signInManager;
             _appLogger = appLogger;

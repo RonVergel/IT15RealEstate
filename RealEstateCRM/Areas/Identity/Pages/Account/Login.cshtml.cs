@@ -13,13 +13,14 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Areas.Identity.Pages.Account
 {
     public class LoginModel : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
         private readonly RealEstateCRM.Services.Logging.IAppLogger _appLogger;
         private readonly IEmailSender _emailSender;
@@ -27,8 +28,8 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
         private readonly IWebHostEnvironment _env;
 
         public LoginModel(
-            SignInManager<IdentityUser> signInManager,
-            UserManager<IdentityUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            UserManager<ApplicationUser> userManager,
             ILogger<LoginModel> logger,
             RealEstateCRM.Services.Logging.IAppLogger appLogger,
             IEmailSender emailSender,

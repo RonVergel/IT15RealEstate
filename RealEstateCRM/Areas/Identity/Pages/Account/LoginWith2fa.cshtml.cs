@@ -6,14 +6,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
     public class LoginWith2faModel : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RealEstateCRM.Services.Logging.IAppLogger _appLogger;
         private readonly ILogger<LoginWith2faModel> _logger;
         private readonly IEmailSender _emailSender;
@@ -21,8 +22,8 @@ namespace RealEstateCRM.Areas.Identity.Pages.Account
         private readonly IWebHostEnvironment _env;
 
         public LoginWith2faModel(
-            SignInManager<IdentityUser> signInManager,
-            UserManager<IdentityUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            UserManager<ApplicationUser> userManager,
             RealEstateCRM.Services.Logging.IAppLogger appLogger,
             ILogger<LoginWith2faModel> logger,
             IEmailSender emailSender,

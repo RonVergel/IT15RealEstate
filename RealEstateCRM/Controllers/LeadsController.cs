@@ -13,9 +13,9 @@ namespace RealEstateCRM.Controllers
     {
         private readonly AppDbContext _db;
         private readonly ILogger<LeadsController> _logger;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public LeadsController(AppDbContext db, ILogger<LeadsController> logger, UserManager<IdentityUser> _userManager)
+        public LeadsController(AppDbContext db, ILogger<LeadsController> logger, UserManager<ApplicationUser> _userManager)
         {
             _db = db;
             _logger = logger;

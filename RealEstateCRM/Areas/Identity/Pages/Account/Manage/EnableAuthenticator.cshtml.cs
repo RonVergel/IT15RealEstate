@@ -4,15 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using RealEstateCRM.Models;
 
 namespace RealEstateCRM.Areas.Identity.Pages.Account.Manage
 {
     [Authorize]
     public class EnableAuthenticatorModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public EnableAuthenticatorModel(UserManager<IdentityUser> userManager)
+        public EnableAuthenticatorModel(UserManager<ApplicationUser> userManager)
         {
             _userManager = userManager;
         }

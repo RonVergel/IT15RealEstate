@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RealEstateCRM.Data;
+using RealEstateCRM.Models;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,9 +13,9 @@ namespace RealEstateCRM.Controllers
     public class PendingAssignmentsController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public PendingAssignmentsController(AppDbContext context, UserManager<IdentityUser> userManager)
+        public PendingAssignmentsController(AppDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _userManager = userManager;
