@@ -23,40 +23,40 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    try
+  try
+  {
+    // If DATABASE_URL is a URI (postgres://user:pass@host:port/db or tcp://host:port/db)
+    if (databaseUrl.Contains("://"))
     {
-        // If DATABASE_URL is a URI (postgres://user:pass@host:port/db or tcp://host:port/db)
-        if (databaseUrl.Contains("://"))
-        {
-            var databaseUri = new Uri(databaseUrl);
+      var databaseUri = new Uri(databaseUrl);
 
-            // Ensure safe defaults when parts are missing
-            var userInfo = (databaseUri.UserInfo ?? string.Empty).Split(':', 2);
-            var dbUser = userInfo.Length > 0 ? userInfo[0] : string.Empty;
-            var dbPass = userInfo.Length > 1 ? userInfo[1] : string.Empty;
-            var dbHost = string.IsNullOrEmpty(databaseUri.Host) ? "localhost" : databaseUri.Host;
-            var dbPort = databaseUri.Port > 0 ? databaseUri.Port : 5432; // default to 5432 when unspecified
-            var dbName = databaseUri.AbsolutePath?.TrimStart('/') ?? string.Empty;
+      // Ensure safe defaults when parts are missing
+      var userInfo = (databaseUri.UserInfo ?? string.Empty).Split(':', 2);
+      var dbUser = userInfo.Length > 0 ? userInfo[0] : string.Empty;
+      var dbPass = userInfo.Length > 1 ? userInfo[1] : string.Empty;
+      var dbHost = string.IsNullOrEmpty(databaseUri.Host) ? "localhost" : databaseUri.Host;
+      var dbPort = databaseUri.Port > 0 ? databaseUri.Port : 5432; // default to 5432 when unspecified
+      var dbName = databaseUri.AbsolutePath?.TrimStart('/') ?? string.Empty;
 
-            // Build the connection string for Npgsql, including SSL settings commonly required on hosted Postgres
-            connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPass};SslMode=Require;Trust Server Certificate=true;";
-        }
-        else
-        {
-            // Treat DATABASE_URL as an ADO/Npgsql-style connection string.
-            // Defensive: remove any stray tcp:// occurrences and use as-is.
-            connectionString = databaseUrl.Replace("tcp://", "", StringComparison.OrdinalIgnoreCase);
-        }
+      // Build the connection string for Npgsql, including SSL settings commonly required on hosted Postgres
+      connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPass};SslMode=Require;Trust Server Certificate=true;";
     }
-    catch
+    else
     {
-        // If parsing fails, keep whatever connectionString we had; the provider will report the error.
+      // Treat DATABASE_URL as an ADO/Npgsql-style connection string.
+      // Defensive: remove any stray tcp:// occurrences and use as-is.
+      connectionString = databaseUrl.Replace("tcp://", "", StringComparison.OrdinalIgnoreCase);
     }
+  }
+  catch
+  {
+    // If parsing fails, keep whatever connectionString we had; the provider will report the error.
+  }
 }
 
 if (string.IsNullOrEmpty(connectionString))
 {
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found or DATABASE_URL is not set.");
+  throw new InvalidOperationException("Connection string 'DefaultConnection' not found or DATABASE_URL is not set.");
 }
 
 
@@ -67,17 +67,17 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = true;
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = true;
-    options.Password.RequiredLength = 8;
-    options.Password.RequiredUniqueChars = 1;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.AllowedForNewUsers = true;
-    options.User.RequireUniqueEmail = true;
+  options.SignIn.RequireConfirmedAccount = true;
+  options.Password.RequireDigit = true;
+  options.Password.RequireLowercase = true;
+  options.Password.RequireUppercase = true;
+  options.Password.RequireNonAlphanumeric = true;
+  options.Password.RequiredLength = 8;
+  options.Password.RequiredUniqueChars = 1;
+  options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+  options.Lockout.MaxFailedAccessAttempts = 5;
+  options.Lockout.AllowedForNewUsers = true;
+  options.User.RequireUniqueEmail = true;
 })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
@@ -88,14 +88,14 @@ builder.Services.Configure<AuthMessageSenderOptions>(builder.Configuration.GetSe
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.LoginPath = "/Identity/Account/Login";
-    options.LogoutPath = "/Identity/Account/Logout";
-    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+  options.LoginPath = "/Identity/Account/Login";
+  options.LogoutPath = "/Identity/Account/Logout";
+  options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 });
 
 builder.Services.AddControllersWithViews(options =>
 {
-    options.Filters.Add<RealEstateCRM.Services.Logging.ActionAuditFilter>();
+  options.Filters.Add<RealEstateCRM.Services.Logging.ActionAuditFilter>();
 });
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton<RealEstateCRM.Services.ContractPdfGenerator>();
@@ -103,21 +103,25 @@ builder.Services.AddSingleton<RealEstateCRM.Services.ContractPdfGenerator>();
 // Ensure security stamp is validated every request so locked users are signed out immediately
 builder.Services.Configure<SecurityStampValidatorOptions>(o =>
 {
-    o.ValidationInterval = TimeSpan.Zero;
+  o.ValidationInterval = TimeSpan.Zero;
 });
 
 var app = builder.Build();
 
-
+using (var scope = app.Services.CreateScope())
+{
+  var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+  db.Database.Migrate(); // applies migrations automatically
+}
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseMigrationsEndPoint();
+  app.UseMigrationsEndPoint();
 }
 else
 {
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
+  app.UseExceptionHandler("/Home/Error");
+  app.UseHsts();
 }
 
 app.UseHttpsRedirection();
@@ -128,36 +132,36 @@ app.UseRouting();
 // Minimal error logging middleware to capture unhandled exceptions to SystemLog
 app.Use(async (ctx, next) =>
 {
-    try { await next(); }
-    catch (Exception ex)
+  try { await next(); }
+  catch (Exception ex)
+  {
+    try
     {
-        try
-        {
-            var logger = ctx.RequestServices.GetService<RealEstateCRM.Services.Logging.IAppLogger>();
-            if (logger != null)
-            {
-                await logger.LogAsync("ERROR", "Unhandled", ex.Message, new { path = ctx.Request.Path.Value, stack = ex.ToString() });
-            }
-        }
-        catch { }
-        throw;
+      var logger = ctx.RequestServices.GetService<RealEstateCRM.Services.Logging.IAppLogger>();
+      if (logger != null)
+      {
+        await logger.LogAsync("ERROR", "Unhandled", ex.Message, new { path = ctx.Request.Path.Value, stack = ex.ToString() });
+      }
     }
+    catch { }
+    throw;
+  }
 });
 
 // Seed the database with initial data (roles and broker account)
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var configuration = services.GetRequiredService<IConfiguration>();
-        await RealEstateCRM.Data.SeedData.Initialize(services, configuration);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
-    }
+  var services = scope.ServiceProvider;
+  try
+  {
+    var configuration = services.GetRequiredService<IConfiguration>();
+    await RealEstateCRM.Data.SeedData.Initialize(services, configuration);
+  }
+  catch (Exception ex)
+  {
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while seeding the database.");
+  }
 }
 
 app.UseAuthentication();
@@ -166,37 +170,37 @@ app.UseAuthorization();
 // If a logged-in user becomes locked, sign them out and send to login
 app.Use(async (context, next) =>
 {
-    if (context.User?.Identity?.IsAuthenticated == true)
+  if (context.User?.Identity?.IsAuthenticated == true)
+  {
+    var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+    var signInManager = context.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>();
+    var user = await userManager.GetUserAsync(context.User);
+    if (user != null && await userManager.IsLockedOutAsync(user))
     {
-        var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-        var signInManager = context.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>();
-        var user = await userManager.GetUserAsync(context.User);
-        if (user != null && await userManager.IsLockedOutAsync(user))
-        {
-            await signInManager.SignOutAsync();
-            context.Response.Redirect("/Identity/Account/Login");
-            return;
-        }
+      await signInManager.SignOutAsync();
+      context.Response.Redirect("/Identity/Account/Login");
+      return;
     }
-    await next();
+  }
+  await next();
 });
 
 // Handle root requests: send unauthenticated users to login, authenticated to dashboard
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path == "/" || string.Equals(context.Request.Path, string.Empty, StringComparison.Ordinal))
+  if (context.Request.Path == "/" || string.Equals(context.Request.Path, string.Empty, StringComparison.Ordinal))
+  {
+    if (context.User?.Identity?.IsAuthenticated == true)
     {
-        if (context.User?.Identity?.IsAuthenticated == true)
-        {
-            context.Response.Redirect("/Dashboard/Index");
-        }
-        else
-        {
-            context.Response.Redirect("/Identity/Account/Login");
-        }
-        return;
+      context.Response.Redirect("/Dashboard/Index");
     }
-    await next();
+    else
+    {
+      context.Response.Redirect("/Identity/Account/Login");
+    }
+    return;
+  }
+  await next();
 });
 
 // Default MVC route
