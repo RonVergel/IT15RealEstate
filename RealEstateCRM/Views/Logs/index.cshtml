@@ -1,0 +1,111 @@
+@{
+  ViewData["Title"] = ViewData["Title"] ?? "System Logs";
+  var items = ViewBag.Items as List<RealEstateCRM.Models.Notification> ?? new();
+}
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <!-- Filters -->
+  <div class="space-y-3">
+    <h1 class="text-2xl font-semibold">System Logs</h1>
+    <form method="get" class="space-y-3 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600 w-16">Level</label>
+        <select name="level" class="flex-1 border rounded px-2 py-1 text-sm">
+          <option value="">All</option>
+          @foreach (var l in new[] { "INFO", "WARN", "ERROR", "AUDIT" })
+          {
+            if ((string)(ViewBag.Level ?? "") == l)
+            {
+              <option selected value="@l">@l</option>
+            }
+            else
+            {
+
+              <option value="@l">@l
+              </option>
+            }
+          }
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600 w-16">From</label>
+        <input type="date" name="from" value="@((string)(ViewBag.From ?? ""))"
+          class="flex-1 border rounded px-2 py-1 text-sm" />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600 w-16">To</label>
+        <input type="date" name="to" value="@((string)(ViewBag.To ?? ""))"
+          class="flex-1 border rounded px-2 py-1 text-sm" />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600 w-16">Search</label>
+        <input type="text" name="q" value="@((string)(ViewBag.Q ?? ""))" placeholder="Search message/context..."
+          class="flex-1 border rounded px-3 py-1 text-sm" />
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">Filter</button>
+        <a id="exportCsv" class="px-3 py-1 border rounded text-sm" href="#">Export CSV</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Table -->
+  <div class="md:col-span-2 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-left">Time (UTC)</th>
+          <th class="px-3 py-2 text-left">Level</th>
+          <th class="px-3 py-2 text-left">Category</th>
+          <th class="px-3 py-2 text-left">Message</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        @if (!items.Any())
+        {
+          <tr>
+            <td class="px-3 py-2 text-gray-500" colspan="4">No log entries</td>
+          </tr>
+        }
+        else
+        {
+          foreach (var n in items)
+          {
+            string level = "INFO"; string category = ""; string message = n.Message;
+            try
+            {
+              using var doc = System.Text.Json.JsonDocument.Parse(n.Message);
+              var root = doc.RootElement;
+              if (root.TryGetProperty("level", out var el)) level = el.GetString() ?? level;
+              if (root.TryGetProperty("category", out var cat)) category = cat.GetString() ?? "";
+              if (root.TryGetProperty("message", out var msg)) message = msg.GetString() ?? message;
+            }
+            catch { }
+            <tr>
+              <td class="px-3 py-2 text-gray-700">@n.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+              <td class="px-3 py-2"><span
+                  class="px-2 py-0.5 rounded text-xs @(level == "ERROR" ? "bg-red-100 text-red-800" : level == "WARN" ? "bg-amber-100 text-amber-800" : level == "AUDIT" ? "bg-indigo-100 text-indigo-800" : "bg-gray-100 text-gray-800")">@level</span>
+              </td>
+              <td class="px-3 py-2 text-gray-700">@category</td>
+              <td class="px-3 py-2 text-gray-900">@message</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+    <div class="p-2 text-xs text-gray-500">Showing latest @items.Count entries</div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const f = document.querySelector('form[method="get"]');
+    function refreshLinks() {
+      const params = new URLSearchParams(new FormData(f));
+      document.getElementById('exportCsv').href = '/Logs/Export?' + params.toString();
+    }
+    refreshLinks();
+    f.addEventListener('change', refreshLinks);
+    f.addEventListener('input', refreshLinks);
+  })();
+</script>
