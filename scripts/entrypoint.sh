@@ -13,4 +13,7 @@ until pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" > /dev/null 2>&
 done
 
 echo "Postgres is ready."
+
+echo "Starting application..."
 exec dotnet RealEstateCRM.dll
+
