@@ -13,4 +13,11 @@ until pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" > /dev/null 2>&
 done
 
 echo "Postgres is ready."
+
+# 🔹 Run EF migrations
+echo "Applying EF Core migrations..."
+dotnet ef database update --no-build --project RealEstateCRM/RealEstateCRM.csproj
+
+echo "Starting application..."
 exec dotnet RealEstateCRM.dll
+
